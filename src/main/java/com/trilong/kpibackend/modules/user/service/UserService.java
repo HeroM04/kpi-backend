@@ -113,6 +113,7 @@ public class UserService {
                 .role(dto.getRole().toUpperCase())
                 .status("ACTIVE")
                 .department(dept)
+                .avatarUrl(dto.getAvatarUrl())
                 .basicSalary(dto.getBasicSalary() != null ? dto.getBasicSalary() : 10000000.0)
                 .build();
 

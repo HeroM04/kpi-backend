@@ -26,5 +26,7 @@ public class CreateUserDTO {
 
     private Long departmentId;
 
+    private String avatarUrl;
+
     private Double basicSalary;
 }

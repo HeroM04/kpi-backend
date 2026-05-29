@@ -1,0 +1,172 @@
+﻿=== STEP 0 (2026-05-21T02:06:38Z) ===
+<USER_REQUEST>
+Đọc dự án này cho tôi :
+Module1 : Quy trình KPI
+
+Phần 1 : Cách chấm KPI ( Phòng Admin / HR , Saler)
+
+TC1 : Tác phong
+Quy trình hiện tại: Tính điểm đi làm đúng giờ (+5đ), đi muộn/vắng mặt bị trừ điểm , Đang phải xuất file chấm công , sau đó check theo trong nhóm hoạt động.
+
+Việc tham gia đào tạo phải điểm danh bằng ảnh chụp tập thể chưa hợp lý.
+
+Khi nhân viên bấm nút [Chấm công], hệ thống sẽ tự động rẽ nhánh thành 2 luồng xử lý:
+
+Luồng 1: Chấm công tại Văn phòng (Tự động duyệt - Auto Approve)
+Điều kiện: Tọa độ GPS của thiết bị nằm trong bán kính quy định (ví dụ: 50m) xung quanh địa chỉ văn phòng công ty.
+Thao tác: Nhân viên mở App, chụp một bức ảnh Selfie trực tiếp.
+Kết quả: Hệ thống lập tức ghi nhận thời gian, đóng dấu GPS lên ảnh và tự động cộng/trừ điểm tác phong theo mốc 8h30 và 17h30. Nhân viên thấy điểm tăng ngay lập tức mà Admin/HR không cần phải can thiệp duyệt tay.
+
+Luồng 2: Check-in Ngoại tuyến / Đi thị trường (Chờ xét duyệt - Pending)
+Điều kiện: Tọa độ GPS của thiết bị nằm NGOÀI bán kính văn phòng công ty (nhân viên đang ở dự án, nhà khách hàng, quán cafe gặp khách...).
+Thao tác: Nhân viên chụp ảnh Selfie lấy bối cảnh thực tế xung quanh và nhập một dòng ghi chú ngắn (Ví dụ: "Gặp khách tại dự án Trí Long").
+Kết quả: Hệ thống vẫn ghi nhận dữ liệu nhưng chuyển sang trạng thái "Yêu cầu (Request)". Báo cáo này sẽ được đẩy về hệ thống Web App của Admin/HR để dùng mắt thường kiểm tra bối cảnh bức ảnh và bấm nút [Duyệt] hoặc [Từ chối].
+Lá chắn bảo vệ hệ thống (Cơ chế chống gian lận chạy ngầm): Để ngăn chặn tình trạng lợi dụng hệ thố
+<truncated 19948 bytes>
+on) vào thẳng Backend. Tốc độ nhận diện chưa tới 1 giây và hoàn toàn miễn phí.
+
+6. Công nghệ duyệt Mạng xã hội: AI OCR & NLP
+Đây là bước đánh giá bài đăng mạng xã hội (Lan tỏa giá trị).
+Trích xuất chữ từ ảnh (OCR): Nếu Sales gửi ảnh chụp màn hình, hệ thống dùng Google Cloud Vision API (Text Detection) hoặc Tesseract OCR (Mã nguồn mở miễn phí) để biến hình ảnh thành văn bản dạng Text.
+Khớp từ khóa (Keyword Matching): Dev dùng Regex (Biểu thức chính quy) để quét xem trong đoạn văn bản đó có chứa các #Hashtag bắt buộc hay không.
+Phân tích ngữ nghĩa (NLP - Tương lai): Khi cần bộ lọc thông minh hơn, kết nối hệ thống với OpenAI API (ChatGPT-4o-mini) hoặc Google Gemini API. Đẩy đoạn text vào cùng câu lệnh: "Hãy chấm điểm bài viết này có tính chất quảng cáo BĐS hay không", AI sẽ trả về kết quả Hợp lệ/Từ chối.
+
+7. Công nghệ Cập nhật Thời gian thực (Real-time Dashboard)
+Để Sales chụp ảnh xong thấy điểm nảy số ngay lập tức trên màn hình (như chơi game) mà không cần vuốt xuống để tải lại trang (refresh):
+Công nghệ cốt lõi: WebSockets hoặc thư viện Socket.io.
+Tính năng này giúp duy trì một đường ống kết nối liên tục giữa điện thoại của Sales và Máy chủ. Khi máy chủ vừa cộng điểm xong, nó sẽ "bắn" ngay tín hiệu xuống điện thoại để thanh tiến trình chạy cái "vèo" lên màu xanh.
+
+
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-05-21T09:06:38+07:00.
+</ADDITIONAL_METADATA>
+<USER_SETTINGS_CHANGE>
+The user changed setting `Model Selection` from None to Claude Sonnet 4.6 (Thinking). No need to comment on this change if the user doesn't ask about it. If reporting what model you are, please use a human readable name instead of the exact string.
+</USER_SETTINGS_CHANGE>
+
+
+
+=== STEP 63 (2026-05-21T02:12:28Z) ===
+<USER_REQUEST>
+sửa lỗi hiện có và xây dựng phần auth để làm login . Hiện tại đang có 4 role : sale , admin , trưởng phòng kinh doanh , nhân viên văn phòng . bên dưới là db hqua t mới tạo 
+-- 1. Bảng Phòng ban / Chi nhánh 
+CREATE TABLE departments (
+    id BIGSERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    office_lat DOUBLE PRECISION, 
+    office_lng DOUBLE PRECISION, 
+    allowed_radius INT DEFAULT 50, 
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 2. Bảng Nhân viên
+CREATE TABLE users (
+    id BIGSERIAL PRIMARY KEY,
+    department_id BIGINT REFERENCES departments(id),
+    full_name VARCHAR(255) NOT NULL,
+    phone_number VARCHAR(20) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    role VARCHAR(50) DEFAULT 'SALE', 
+    status VARCHAR(20) DEFAULT 'ACTIVE',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 3. Bảng Lịch sử Gặp khách (Thực chiến MVP)
+CREATE TABLE checkin_logs (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT REFERENCES users(id),
+    checkin_time TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    checkin_type VARCHAR(50) DEFAULT 'FIELD', -- Đi thị trường
+    latitude DOUBLE PRECISION NOT NULL, 
+    longitude DOUBLE PRECISION NOT NULL,
+    photo_url VARCHAR(500) NOT NULL, 
+    note TEXT, 
+    status VARCHAR(50) DEFAULT 'PENDING' -- Chờ HR duyệt
+);
+
+-- 1. Thêm email vào bảng users (nếu chưa có)
+
+
+
+
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-05-21T09:12:28+07:00.
+</ADDITIONAL_METADATA>
+
+
+
+=== STEP 144 (2026-05-21T02:25:31Z) ===
+<USER_REQUEST>
+ sao lại có một file này ở bên ngoài cho nó vào folder nào hợp lý đi . và các folder tạo từ trước kia có cái nào không dùng tới haowcj có dùng tới thì viết đầy đủ đi hoặc setup trước để tối ưu cho hệ thống sau này phát triển tiếp các module tiếp theo
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-05-21T09:25:31+07:00.
+</ADDITIONAL_METADATA>
+
+
+
+=== STEP 200 (2026-05-21T02:35:16Z) ===
+<USER_REQUEST>
+làm Phase 2 luôn đi và làm phân quyền end point , chuyển upload sang S3, bật Swagger UI đầy đủ như một tính năng login thực tế ngoài thị trường đi
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-05-21T09:35:16+07:00.
+</ADDITIONAL_METADATA>
+
+
+
+=== STEP 245 (2026-05-21T04:21:23Z) ===
+<USER_REQUEST>
+Áp dụng RBAC được không 
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-05-21T11:21:23+07:00.
+</ADDITIONAL_METADATA>
+
+
+
+=== STEP 252 (2026-05-21T04:22:44Z) ===
+<USER_REQUEST>
+Áp dụng RBAC được không 
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-05-21T11:22:44+07:00.
+</ADDITIONAL_METADATA>
+<USER_SETTINGS_CHANGE>
+The user changed setting `Model Selection` from Claude Sonnet 4.6 (Thinking) to Gemini 3.5 Flash (High). No need to comment on this change if the user doesn't ask about it. If reporting what model you are, please use a human readable name instead of the exact string.
+</USER_SETTINGS_CHANGE>
+
+
+
+=== STEP 321 (2026-05-21T07:42:36Z) ===
+<USER_REQUEST>
+tôi mới cập nhật thêm phần feed back cho nhân sự nhưng đang bị 2 lỗi như ảnh bạn fix đi vì sao lại vậy , nhớ là t đang làm back-end cho cà mobile app và web đó nhé 
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-05-21T14:42:36+07:00.
+</ADDITIONAL_METADATA>
+
+
+
+=== STEP 361 (2026-05-21T07:51:51Z) ===
+<USER_REQUEST>
+phần login đã hoàn thiện chưa để giờ thiết kế UI UX cho mobile và thiết kế web sau này đây
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-05-21T14:51:51+07:00.
+</ADDITIONAL_METADATA>
+
+
+
+=== STEP 371 (2026-05-22T06:49:12Z) ===
+<USER_REQUEST>
+Đọc 2 Phần MobileApp và WebAdmin đi fe đấy sau đấy thiết kế Database và back-end cho từng phần thôi
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-05-22T13:49:12+07:00.
+</ADDITIONAL_METADATA>
+
+
+

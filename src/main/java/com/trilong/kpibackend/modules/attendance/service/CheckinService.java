@@ -53,12 +53,12 @@ import java.util.Map;
 public class CheckinService {
 
     // ── Ngưỡng khoảng cách (mét) ─────────────────────────────────────────────
-    /** Trong vòng 50m so với văn phòng → APPROVED tự động */
-    private static final double OFFICE_RADIUS_METERS = 50.0;
+    /** Trong vòng 2000m so với văn phòng → APPROVED tự động */
+    private static final double OFFICE_RADIUS_METERS = 2000.0;
 
     // ── Tọa độ văn phòng mặc định (fallback khi phòng ban chưa set) ──────────
-    private static final double DEFAULT_OFFICE_LAT = 21.028511; // Hà Nội
-    private static final double DEFAULT_OFFICE_LNG = 105.804817;
+    private static final double DEFAULT_OFFICE_LAT = 20.999042; // Hà Nội
+    private static final double DEFAULT_OFFICE_LNG = 105.806702;
 
     // ── Mốc giờ KPI ─────────────────────────────────────────────────────────
     private static final LocalTime CUTOFF_CHECKIN  = LocalTime.of(8, 30);  // 08:30 — đúng giờ
@@ -103,10 +103,9 @@ public class CheckinService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy nhân viên"));
 
-        // Tính khoảng cách đến văn phòng theo phòng ban của user
-        Department dept = user.getDepartment();
-        double officeLat = (dept != null && dept.getOfficeLat() != null) ? dept.getOfficeLat() : DEFAULT_OFFICE_LAT;
-        double officeLng = (dept != null && dept.getOfficeLng() != null) ? dept.getOfficeLng() : DEFAULT_OFFICE_LNG;
+        // Tính khoảng cách đến văn phòng (áp dụng chung 1 tọa độ cho TẤT CẢ phòng ban)
+        double officeLat = DEFAULT_OFFICE_LAT;
+        double officeLng = DEFAULT_OFFICE_LNG;
 
         double distance = HaversineUtils.calculateDistanceInMeters(
                 request.getLatitude(), request.getLongitude(), officeLat, officeLng
@@ -127,10 +126,8 @@ public class CheckinService {
      * Dùng tọa độ văn phòng mặc định (trung tâm HN) — cho phép fallback.
      */
     public boolean isWithinOfficeRange(Long userId, double lat, double lng) {
-        User user = userRepository.findById(userId).orElse(null);
-        Department dept = (user != null) ? user.getDepartment() : null;
-        double officeLat = (dept != null && dept.getOfficeLat() != null) ? dept.getOfficeLat() : DEFAULT_OFFICE_LAT;
-        double officeLng = (dept != null && dept.getOfficeLng() != null) ? dept.getOfficeLng() : DEFAULT_OFFICE_LNG;
+        double officeLat = DEFAULT_OFFICE_LAT;
+        double officeLng = DEFAULT_OFFICE_LNG;
         double distance = HaversineUtils.calculateDistanceInMeters(lat, lng, officeLat, officeLng);
         return distance <= OFFICE_RADIUS_METERS;
     }

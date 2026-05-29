@@ -109,6 +109,13 @@
 			<artifactId>rekognition</artifactId>
 		</dependency>
 
+		<!-- ── Cloudinary ─────────────────────────────────────────────── -->
+		<dependency>
+			<groupId>com.cloudinary</groupId>
+			<artifactId>cloudinary-http44</artifactId>
+			<version>1.39.0</version>
+		</dependency>
+
 		<!-- ── API Documentation ──────────────────────────────────────── -->
 		<!-- Swagger UI tự động tại /swagger-ui/index.html -->
 		<dependency>

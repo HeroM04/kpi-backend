@@ -1,6 +1,7 @@
 package com.trilong.kpibackend.modules.user.controller;
 
 import com.trilong.kpibackend.core.security.UserPrincipal;
+import com.trilong.kpibackend.core.service.CloudinaryService;
 import com.trilong.kpibackend.modules.user.dto.CreateUserDTO;
 import com.trilong.kpibackend.modules.user.dto.UpdateUserDTO;
 import com.trilong.kpibackend.modules.user.service.UserService;
@@ -9,10 +10,12 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Map;
 
@@ -24,6 +27,7 @@ import java.util.Map;
 public class UserController {
 
     private final UserService userService;
+    private final CloudinaryService cloudinaryService;
 
     @Operation(summary = "Lấy danh sách nhân viên (có thể lọc theo phòng ban, role, trạng thái)")
     @GetMapping
@@ -124,6 +128,27 @@ public class UserController {
                     "message", "Cập nhật trạng thái thành công."));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("status", "ERROR", "message", e.getMessage()));
+        }
+    }
+
+    @Operation(summary = "Upload / Cập nhật ảnh đại diện của chính mình",
+               description = "Nhân viên upload ảnh avatar mới. Ảnh được đẩy lên Cloudinary, URL được lưu vào DB.")
+    @PostMapping(value = "/my-profile/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<?> uploadMyAvatar(
+            @AuthenticationPrincipal UserPrincipal currentUser,
+            @RequestParam("file") MultipartFile file) {
+        try {
+            String avatarUrl = cloudinaryService.uploadImage(file);
+            UpdateUserDTO dto = new UpdateUserDTO();
+            dto.setAvatarUrl(avatarUrl);
+            userService.updateUser(currentUser.getUserId(), dto);
+            return ResponseEntity.ok(Map.of("status", "SUCCESS",
+                    "data", Map.of("avatarUrl", avatarUrl)));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("status", "ERROR", "message", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(Map.of("status", "ERROR", "message", "Upload avatar thất bại: " + e.getMessage()));
         }
     }
 

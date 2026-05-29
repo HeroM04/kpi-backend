@@ -1,91 +1,71 @@
 package com.trilong.kpibackend.modules.upload.controller;
 
+import com.trilong.kpibackend.core.service.CloudinaryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Map;
-import java.util.UUID;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.util.StringUtils;
-import org.springframework.web.multipart.MultipartFile;
-import org.springframework.http.MediaType;
 
+/**
+ * UploadController — API upload file ảnh lên Cloudinary.
+ *
+ * <p>Endpoint {@code POST /api/v1/upload/image} nhận file từ client,
+ * đẩy lên Cloudinary và trả về {@code secure_url} để lưu vào DB.
+ *
+ * <p>Flow:
+ * <pre>
+ *   Client ──(multipart/form-data)──► UploadController
+ *       ──► CloudinaryService.uploadImage()
+ *       ──► Cloudinary CDN
+ *       ◄── secure_url (HTTPS)
+ *   Client ◄── { "url": "https://res.cloudinary.com/..." }
+ * </pre>
+ */
 @RestController
 @RequestMapping("/api/v1/upload")
-@Tag(name = "Upload", description = "Quản lý upload file lên Cloud (S3)")
+@RequiredArgsConstructor
+@Tag(name = "Upload", description = "Upload file ảnh lên Cloudinary CDN")
 @SecurityRequirement(name = "Bearer Authentication")
 public class UploadController {
 
-    // Giả lập service S3. Thực tế bạn sẽ tiêm AmazonS3 client vào đây
-    // private final AmazonS3 s3Client; 
+    private final CloudinaryService cloudinaryService;
 
-    @Value("${app.storage.local.dir:uploads}")
-    private String uploadDir;
-
-    @Value("${app.storage.local.base-url:http://localhost:8080/uploads}")
-    private String localBaseUrl;
-
+    /**
+     * Upload một file ảnh lên Cloudinary.
+     *
+     * @param file File ảnh (jpg, png, webp, ...) — max 20MB (cấu hình trong application.properties)
+     * @return JSON chứa {@code url} — đường link HTTPS đến ảnh trên Cloudinary
+     */
     @Operation(
-            summary = "Upload File (Local)",
-            description = "Lưu file vật lý vào thư mục uploads của server và trả về URL."
+            summary = "Upload ảnh lên Cloudinary",
+            description = "Nhận file ảnh, đẩy lên Cloudinary với nén tự động, trả về secure_url để lưu vào DB."
     )
-    @PostMapping(value = "/file", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(value = "/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<?> uploadFileLocal(@RequestParam("file") MultipartFile file) {
+    public ResponseEntity<?> uploadImage(@RequestParam("file") MultipartFile file) {
         try {
-            if (file.isEmpty()) throw new RuntimeException("File is empty");
-            String originalFilename = StringUtils.cleanPath(file.getOriginalFilename() != null ? file.getOriginalFilename() : "image.jpg");
-            String fileName = UUID.randomUUID().toString() + "_" + originalFilename;
-            
-            Path uploadPath = Paths.get(uploadDir).toAbsolutePath().normalize();
-            Files.createDirectories(uploadPath);
-            Path filePath = uploadPath.resolve(fileName);
-            file.transferTo(filePath.toFile());
-            
-            String publicUrl = localBaseUrl + "/" + fileName;
-            return ResponseEntity.ok(Map.of("status", "SUCCESS", "data", Map.of("url", publicUrl)));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("status", "ERROR", "message", e.getMessage()));
-        }
-    }
-    
-    @Operation(
-            summary = "Lấy URL Upload (Presigned URL)",
-            description = "Trả về một Presigned URL từ AWS S3 để Mobile/Web có thể đẩy ảnh lên trực tiếp mà không cần gửi qua Server (Giảm tải băng thông Server). URL có hạn trong 15 phút."
-    )
-    @GetMapping("/presigned-url")
-    @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<?> getPresignedUrl(
-            @RequestParam String fileName,
-            @RequestParam String contentType) {
-        try {
-            // MÔ PHỎNG logic sinh Presigned URL
-            String fileKey = "uploads/" + UUID.randomUUID().toString() + "-" + fileName;
-            
-            // Generate presigned URL (Ví dụ: 15 phút hết hạn)
-            // URL url = s3Client.generatePresignedUrl(bucketName, fileKey, expiration, HttpMethod.PUT);
-            
-            String dummyPresignedUrl = "https://s3.amazonaws.com/kpi-bucket/" + fileKey + "?X-Amz-Signature=dummy-signature";
-            String publicUrl = "https://kpi-bucket.s3.amazonaws.com/" + fileKey;
-
+            String url = cloudinaryService.uploadImage(file);
             return ResponseEntity.ok(Map.of(
                     "status", "SUCCESS",
-                    "data", Map.of(
-                            "presignedUrl", dummyPresignedUrl,
-                            "publicUrl", publicUrl,
-                            "fileKey", fileKey,
-                            "expiresIn", 900 // 15 phút
-                    )
+                    "data", Map.of("url", url)
+            ));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "status", "ERROR",
+                    "message", e.getMessage()
             ));
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("status", "ERROR", "message", e.getMessage()));
+            return ResponseEntity.internalServerError().body(Map.of(
+                    "status", "ERROR",
+                    "message", "Upload thất bại: " + e.getMessage()
+            ));
         }
     }
 }

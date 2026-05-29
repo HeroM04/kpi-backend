@@ -10,8 +10,10 @@ import com.trilong.kpibackend.modules.user.entity.User;
 import com.trilong.kpibackend.modules.user.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.trilong.kpibackend.core.service.FaceRecognitionService;
 
 import java.time.LocalTime;
 import java.time.ZoneId;
@@ -82,6 +84,12 @@ public class CheckinService {
     @Autowired
     private org.springframework.messaging.simp.SimpMessagingTemplate messagingTemplate;
 
+    @Autowired
+    private FaceRecognitionService faceRecognitionService;
+
+    @Value("${app.rekognition.enabled:false}")
+    private boolean isRekognitionEnabled;
+
     // ─────────────────────────────────────────────────────────────────────────
     // PUBLIC API
     // ─────────────────────────────────────────────────────────────────────────
@@ -102,6 +110,19 @@ public class CheckinService {
     public CheckinLog submitCheckin(Long userId, CheckinRequestDTO request) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy nhân viên"));
+
+        // Xác thực khuôn mặt bằng AWS Rekognition (nếu được bật trong properties)
+        if (isRekognitionEnabled) {
+            if (user.getAvatarUrl() == null || user.getAvatarUrl().isEmpty()) {
+                throw new IllegalArgumentException("Bạn chưa cập nhật ảnh đại diện (Avatar). Vui lòng cập nhật để sử dụng tính năng nhận diện khuôn mặt!");
+            }
+            log.info("[Checkin] Đang gọi AWS Rekognition để xác thực khuôn mặt user {}...", userId);
+            boolean isMatched = faceRecognitionService.compareFacesUrls(user.getAvatarUrl(), request.getPhotoUrl());
+            if (!isMatched) {
+                throw new IllegalArgumentException("Xác thực khuôn mặt thất bại! Người trong ảnh không khớp với ảnh đại diện của bạn.");
+            }
+            log.info("[Checkin] Xác thực khuôn mặt thành công cho user {}!", userId);
+        }
 
         // Tính khoảng cách đến văn phòng (áp dụng chung 1 tọa độ cho TẤT CẢ phòng ban)
         double officeLat = DEFAULT_OFFICE_LAT;
@@ -182,15 +203,17 @@ public class CheckinService {
 
         // Xử lý cộng/trừ KPI
         if (!"APPROVED".equals(oldStatus) && "APPROVED".equals(newStatus.toUpperCase())) {
+            int kpiPoints = calculateAttendanceKpi(checkinLog.getActionType(), checkinLog.getCheckinTime().toLocalTime());
             kpiCalculationService.updateKpiPoints(
-                    checkinLog.getUserId(), "attendance", KPI_POINTS_ATTENDANCE, checkinLog.getCheckinTime()
+                    checkinLog.getUserId(), "attendance", kpiPoints, checkinLog.getCheckinTime()
             );
-            log.info("[Checkin] ✅ Duyệt checkin #{} → +{} KPI cho userId={}", id, KPI_POINTS_ATTENDANCE, checkinLog.getUserId());
+            log.info("[Checkin] ✅ Duyệt {} #{} → {} KPI cho userId={}", checkinLog.getActionType(), id, (kpiPoints > 0 ? "+" + kpiPoints : kpiPoints), checkinLog.getUserId());
         } else if ("APPROVED".equals(oldStatus) && !"APPROVED".equals(newStatus.toUpperCase())) {
+            int kpiPoints = calculateAttendanceKpi(checkinLog.getActionType(), checkinLog.getCheckinTime().toLocalTime());
             kpiCalculationService.updateKpiPoints(
-                    checkinLog.getUserId(), "attendance", -KPI_POINTS_ATTENDANCE, checkinLog.getCheckinTime()
+                    checkinLog.getUserId(), "attendance", -kpiPoints, checkinLog.getCheckinTime()
             );
-            log.info("[Checkin] ❌ Thu hồi checkin #{} → -{} KPI cho userId={}", id, KPI_POINTS_ATTENDANCE, checkinLog.getUserId());
+            log.info("[Checkin] ❌ Thu hồi {} #{} → {} KPI cho userId={}", checkinLog.getActionType(), id, (-kpiPoints > 0 ? "+" + (-kpiPoints) : (-kpiPoints)), checkinLog.getUserId());
         }
 
         return saved;
@@ -230,7 +253,8 @@ public class CheckinService {
         checkinLog.setUserId(userId);
         checkinLog.setCheckinTime(now);
         checkinLog.setCheckinType("OFFICE");
-        checkinLog.setActionType(resolveActionType(req.getActionType()));
+        String finalActionType = resolveActionType(req.getActionType());
+        checkinLog.setActionType(finalActionType);
         checkinLog.setLatitude(req.getLatitude());
         checkinLog.setLongitude(req.getLongitude());
         checkinLog.setDistanceToOffice(distance);
@@ -241,10 +265,12 @@ public class CheckinService {
 
         CheckinLog saved = checkinLogRepository.save(checkinLog);
 
-        // Cộng KPI ngay — tính theo thời điểm checkin (tuần của ngày đó)
-        kpiCalculationService.updateKpiPoints(userId, "attendance", KPI_POINTS_ATTENDANCE, now);
-        log.info("[Checkin] ✅ OFFICE checkin userId={} lúc {} → +{} KPI | distance={}m",
-                userId, now.toLocalTime(), KPI_POINTS_ATTENDANCE, String.format("%.1f", distance));
+        // Tính điểm KPI theo mốc thời gian Check-in (08:30) / Check-out (17:30)
+        int kpiPoints = calculateAttendanceKpi(finalActionType, now.toLocalTime());
+        kpiCalculationService.updateKpiPoints(userId, "attendance", kpiPoints, now);
+        
+        log.info("[Checkin] ✅ OFFICE {} userId={} lúc {} → {} KPI | distance={}m",
+                finalActionType, userId, now.toLocalTime(), (kpiPoints > 0 ? "+" + kpiPoints : kpiPoints), String.format("%.1f", distance));
 
         // Notify WebSocket
         notifyAdmin("CHECKIN_OFFICE");
@@ -301,6 +327,24 @@ public class CheckinService {
             messagingTemplate.convertAndSend("/topic/admin/attendance", eventType);
         } catch (Exception e) {
             log.warn("[Checkin] Không gửi được WebSocket notify: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * Logic tính điểm KPI mới:
+     * - CHECK_IN: Đúng giờ (<= 08:30) -> +5 điểm. Đi trễ (> 08:30) -> 0 điểm.
+     * - CHECK_OUT: Không cộng/trừ điểm KPI (chỉ dùng để record thời gian).
+     */
+    private int calculateAttendanceKpi(String actionType, LocalTime time) {
+        if ("CHECK_OUT".equals(actionType)) {
+            return 0; // Check-out không tính điểm KPI
+        } else {
+            // Mặc định là CHECK_IN
+            if (!time.isAfter(CUTOFF_CHECKIN)) {
+                return KPI_POINTS_ATTENDANCE; // Đi đúng giờ (<= 08:30) -> +5
+            } else {
+                return 0; // Đi trễ (> 08:30) -> 0
+            }
         }
     }
 }

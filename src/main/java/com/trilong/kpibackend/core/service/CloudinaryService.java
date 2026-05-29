@@ -62,9 +62,7 @@ public class CloudinaryService {
                         // Tự động format tốt nhất cho từng trình duyệt (webp, avif, ...)
                         "fetch_format", "auto",
                         // Giới hạn kích thước tối đa để tránh ảnh quá lớn
-                        "transformation", new Object[]{
-                                ObjectUtils.asMap("width", 1920, "crop", "limit")
-                        }
+                        "transformation", new com.cloudinary.Transformation().width(1920).crop("limit")
                 )
         );
 

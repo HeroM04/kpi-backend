@@ -39,6 +39,9 @@ public class FieldBattleService {
                 .project(dto.getProject())
                 .content(dto.getContent())
                 .photoUrl(dto.getPhotoUrl())
+                .location(dto.getLocation())
+                .latitude(dto.getLatitude())
+                .longitude(dto.getLongitude())
                 .status("PENDING")
                 .build();
 

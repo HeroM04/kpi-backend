@@ -18,4 +18,10 @@ public class SubmitFieldBattleDTO {
     private String content;
 
     private String photoUrl;
+
+    private String location;
+
+    private Double latitude;
+
+    private Double longitude;
 }

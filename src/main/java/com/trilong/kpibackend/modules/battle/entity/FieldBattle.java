@@ -38,6 +38,15 @@ public class FieldBattle {
     @Column(name = "photo_url", length = 500)
     private String photoUrl;
 
+    @Column(name = "location", length = 500)
+    private String location; // Tên đường phố (reverse geocoding từ GPS Mobile)
+
+    @Column(name = "latitude")
+    private Double latitude;
+
+    @Column(name = "longitude")
+    private Double longitude;
+
     @Column(length = 50)
     @Builder.Default
     private String status = "PENDING"; // PENDING, APPROVED, REJECTED

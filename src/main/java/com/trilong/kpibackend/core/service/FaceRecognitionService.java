@@ -18,7 +18,7 @@ public class FaceRecognitionService {
 
     private final RekognitionClient rekognitionClient;
 
-    @Value("${aws.rekognition.similarity-threshold:90.0}")
+    @Value("${aws.rekognition.similarity-threshold:60.0}")
     private Float similarityThreshold;
 
     /**
@@ -79,25 +79,37 @@ public class FaceRecognitionService {
             // 4. Gọi AWS Rekognition API
             CompareFacesResponse response = rekognitionClient.compareFaces(request);
 
-            // 5. Xử lý kết quả trả về
+            // 5. Xử lý kết quả trả về — Log đầy đủ để debug
+            log.info("[Rekognition] Threshold đang dùng: {}% | Số khuôn mặt khớp: {}",
+                    similarityThreshold, response.faceMatches().size());
+
             if (!response.faceMatches().isEmpty()) {
+                float highestScore = 0;
                 for (CompareFacesMatch match : response.faceMatches()) {
-                    log.info("[Rekognition] Độ giống nhau (Similarity): {}%", match.similarity());
+                    log.info("[Rekognition] ✅ Khuôn mặt khớp — Similarity: {}%", match.similarity());
+                    if (match.similarity() > highestScore) highestScore = match.similarity();
                     if (match.similarity() >= similarityThreshold) {
                         return true;
                     }
                 }
+                log.warn("[Rekognition] ❌ Điểm cao nhất: {}% — Chưa đạt ngưỡng {}%. Tăng ngưỡng lên hoặc dùng ảnh rõ hơn.",
+                        highestScore, similarityThreshold);
             } else {
-                log.info("[Rekognition] Không tìm thấy khuôn mặt nào giống nhau đủ {}%", similarityThreshold);
+                // Không có match nào — có thể do ảnh bị biến dạng quá nhiều
+                if (!response.unmatchedFaces().isEmpty()) {
+                    log.warn("[Rekognition] ❌ Phát hiện {} khuôn mặt trong ảnh checkin nhưng KHÔNG KHỚP với Avatar.",
+                            response.unmatchedFaces().size());
+                } else {
+                    log.warn("[Rekognition] ❌ Không phát hiện được khuôn mặt nào trong ảnh checkin (ảnh mờ, quá tối, hoặc watermark che mặt).");
+                }
             }
 
         } catch (RekognitionException e) {
-            log.error("[Rekognition] Lỗi từ phía AWS (VD: Không thấy mặt trong ảnh): {}", e.getMessage());
+            log.error("[Rekognition] Lỗi từ phía AWS: {} — ErrorCode: {}", e.getMessage(), e.awsErrorDetails().errorCode());
         } catch (Exception e) {
-            log.error("[Rekognition] Lỗi hệ thống khi xử lý ảnh (Lỗi tải URL hoặc xử lý byte): {}", e.getMessage());
+            log.error("[Rekognition] Lỗi hệ thống khi xử lý ảnh: {}", e.getMessage(), e);
         }
 
-        // Bắt mọi exception, log ra an toàn và không bao giờ bắn exception ra làm chết API Check-in
         return false;
     }
 }

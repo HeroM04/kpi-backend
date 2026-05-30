@@ -21,6 +21,9 @@ public class FieldBattleResponseDTO {
     private String project;
     private String content;
     private String photoUrl;
+    private String location;
+    private Double latitude;
+    private Double longitude;
     private String status;
     private ZonedDateTime submittedAt;
     private ZonedDateTime approvedAt;
@@ -38,6 +41,9 @@ public class FieldBattleResponseDTO {
                 .project(battle.getProject())
                 .content(battle.getContent())
                 .photoUrl(battle.getPhotoUrl())
+                .location(battle.getLocation())
+                .latitude(battle.getLatitude())
+                .longitude(battle.getLongitude())
                 .status(battle.getStatus())
                 .submittedAt(battle.getSubmittedAt())
                 .approvedAt(battle.getApprovedAt())

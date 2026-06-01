@@ -1,0 +1,52 @@
+spring:
+  profiles:
+    active: dev
+  datasource:
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    open-in-view: false
+  servlet:
+    multipart:
+      max-file-size: 15MB
+      max-request-size: 15MB
+
+server:
+  port: 8088
+
+app:
+  jwt:
+    secret: trilong-kpi-system-super-secret-key-2024-very-secure
+    expiration-ms: 3600000
+    refresh-expiration-ms: 604800000
+  rekognition:
+    enabled: true
+
+aws:
+  s3:
+    access-key: ${AWS_ACCESS_KEY:CHANGE_ME_IN_PROD}
+    secret-key: ${AWS_SECRET_KEY:CHANGE_ME_IN_PROD}
+    region: ${AWS_REGION:ap-southeast-1}
+    bucket-name: ${AWS_BUCKET_NAME:trilong-kpi-uploads}
+    base-url: ${AWS_S3_BASE_URL:https://trilong-kpi-uploads.s3.ap-southeast-1.amazonaws.com}
+  accessKeyId: ${AWS_ACCESS_KEY:CHANGE_ME_IN_PROD}
+  secretKey: ${AWS_SECRET_KEY:CHANGE_ME_IN_PROD}
+  region: ap-southeast-1
+  rekognition:
+    similarity-threshold: 60.0
+
+cloudinary:
+  cloud-name: dckyblfat
+  api-key: 139225943365523
+  api-secret: KxCXVy1b9boXmtQdvOMYU-oTcIA
+
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+    try-it-out-enabled: true
+    operations-sorter: method
+    tags-sorter: alpha
+  show-actuator: false

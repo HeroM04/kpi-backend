@@ -17,11 +17,14 @@ public class WebMvcConfig implements WebMvcConfigurer {
     @Value("${app.storage.local.dir:uploads}")
     private String uploadDir;
 
-    /** CORS — cho phép Mobile App và Web Admin gọi API */
+    /** CORS – cho phép Mobile App và Web Admin gọi API
+     *  Dev: allowedOriginPatterns("*") – chấp nhận mọi nguồn gồc (LAN, localhost, Expo...)
+     *  Production: nên giới hạn lại các domain cụ thể để bảo mật
+     */
     @Override
     public void addCorsMappings(CorsRegistry registry) {
-        registry.addMapping("/api/**")
-                .allowedOriginPatterns("*")           // TODO: restrict khi production
+        registry.addMapping("/**")                    // Bảo phủ tất cả routes (kể cả /ws)
+                .allowedOriginPatterns("*")           // Dev: chấp nhận mọi IP trong LAN
                 .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
                 .exposedHeaders("Authorization")

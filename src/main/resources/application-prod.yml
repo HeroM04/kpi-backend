@@ -1,0 +1,23 @@
+spring:
+  datasource:
+    # Trên Render, có thể truyền biến DATABASE_URL từ tab Environment
+    url: ${DATABASE_URL:jdbc:postgresql://ep-nameless-band-aojtgspj.c-2.ap-southeast-1.aws.neon.tech/neondb?sslmode=require}
+    username: ${DB_USERNAME:neondb_owner}
+    password: ${DB_PASSWORD:npg_NPX60ngosZWB}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    # Tắt log SQL để đỡ tốn bộ nhớ và log file không bị phình to
+    show-sql: false 
+    properties:
+      hibernate:
+        format_sql: false
+
+app:
+  storage:
+    type: s3 # Trên prod sẽ tự động lưu ảnh lên S3 (hoặc Cloudinary)
+
+# Có thể ẩn swagger trên production nếu muốn bảo mật
+# springdoc:
+#   swagger-ui:
+#     enabled: false

@@ -1,0 +1,44 @@
+# ============================================================
+# APPLICATION-DEV.YML – Môi trường Local Development
+# Dành cho test end-to-end: Mobile (Z Fold 6) + Laptop (Wi-Fi LAN)
+# ============================================================
+
+spring:
+  datasource:
+    # 100% Localhost PostgreSQL – KHÔNG trỏ lên Cloud khi dev
+    url: jdbc:postgresql://localhost:5432/kpi_realestate_db
+    username: postgres
+    password: YOUR_POSTGRES_PASSWORD   # <-- Điền mật khẩu PostgreSQL của bạn vào đây
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 5
+      connection-timeout: 20000
+
+  jpa:
+    hibernate:
+      ddl-auto: update      # Tự động sync schema khi dev, KHÔNG xóa data
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+server:
+  port: 8088
+  # Lắng nghe trên TẤT CẢ interface (0.0.0.0) thay vì chỉ localhost
+  # → Điện thoại trong cùng mạng LAN sẽ kết nối được qua IP của Laptop
+  address: 0.0.0.0
+
+app:
+  storage:
+    type: local
+    local:
+      dir: uploads
+      # Thay <LAPTOP_IP> bằng IP thực của máy bạn (ví dụ: 192.168.88.98)
+      base-url: http://<LAPTOP_IP>:8088/uploads
+
+logging:
+  level:
+    org.hibernate.SQL: DEBUG
+    com.trilong.kpibackend: DEBUG
+    org.springframework.web: INFO

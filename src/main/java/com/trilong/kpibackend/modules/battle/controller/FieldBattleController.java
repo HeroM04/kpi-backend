@@ -30,7 +30,7 @@ public class FieldBattleController {
 
     @Operation(summary = "Sales gửi báo cáo thực chiến", description = "Lưu báo cáo thực chiến dưới dạng PENDING.")
     @PostMapping("/submit")
-    @PreAuthorize("hasAuthority('meeting:submit')")
+    @PreAuthorize("hasAuthority('meeting:submit') or hasRole('ADMIN')")
     public ResponseEntity<?> submitBattle(
             @AuthenticationPrincipal UserPrincipal currentUser,
             @Valid @RequestBody SubmitFieldBattleDTO dto) {
@@ -44,7 +44,7 @@ public class FieldBattleController {
 
     @Operation(summary = "Xem lịch sử thực chiến của chính mình", description = "Lấy tất cả các thực chiến của Sales đang đăng nhập.")
     @GetMapping("/my-battles")
-    @PreAuthorize("hasAuthority('meeting:view-my')")
+    @PreAuthorize("hasAuthority('meeting:view-my') or hasRole('ADMIN')")
     public ResponseEntity<?> getMyBattles(
             @AuthenticationPrincipal UserPrincipal currentUser,
             @RequestParam(required = false) String date) {

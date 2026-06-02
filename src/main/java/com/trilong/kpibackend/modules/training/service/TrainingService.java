@@ -166,6 +166,9 @@ public class TrainingService {
             kpiCalculationService.updateKpiPoints(attendee.getUserId(), "attendance", -KPI_POINTS_TRAINING, attendee.getAttendedAt());
         }
 
+        // Xóa tất cả học viên điểm danh trước để tránh lỗi Foreign Key
+        trainingAttendeeRepository.deleteAll(attendees);
+
         trainingSessionRepository.delete(session);
     }
 

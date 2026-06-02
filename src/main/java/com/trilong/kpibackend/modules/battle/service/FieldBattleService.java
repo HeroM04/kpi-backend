@@ -34,9 +34,9 @@ public class FieldBattleService {
 
         FieldBattle battle = FieldBattle.builder()
                 .user(user)
-                .customerName(dto.getCustomerName())
+                .customerName(dto.getCustomerName() != null ? dto.getCustomerName() : "")
                 .customerPhone(dto.getCustomerPhone())
-                .project(dto.getProject())
+                .project(dto.getProject() != null ? dto.getProject() : "")
                 .content(dto.getContent())
                 .photoUrl(dto.getPhotoUrl())
                 .location(dto.getLocation())

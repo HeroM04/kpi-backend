@@ -30,7 +30,7 @@ public class SocialPostController {
 
     @Operation(summary = "Sales gửi bài viết MXH", description = "Lưu bài đăng MXH dưới dạng PENDING để chờ duyệt.")
     @PostMapping("/submit")
-    @PreAuthorize("hasAuthority('post:submit')")
+    @PreAuthorize("hasAuthority('post:submit') or hasRole('ADMIN')")
     public ResponseEntity<?> submitPost(
             @AuthenticationPrincipal UserPrincipal currentUser,
             @Valid @RequestBody SubmitPostDTO dto) {
@@ -44,7 +44,7 @@ public class SocialPostController {
 
     @Operation(summary = "Xem lịch sử bài viết MXH của bản thân", description = "Lấy tất cả bài đăng MXH của Sales đang đăng nhập.")
     @GetMapping("/my-posts")
-    @PreAuthorize("hasAuthority('post:view-my')")
+    @PreAuthorize("hasAuthority('post:view-my') or hasRole('ADMIN')")
     public ResponseEntity<?> getMyPosts(
             @AuthenticationPrincipal UserPrincipal currentUser,
             @RequestParam(required = false) String date) {

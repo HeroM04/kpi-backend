@@ -53,12 +53,32 @@ public class KpiScoreResponseDTO {
                 .build();
     }
 
+    private static int calculateMaxKpiForMonth(String monthStr) {
+        try {
+            java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM");
+            java.time.YearMonth ym = java.time.YearMonth.parse(monthStr, formatter);
+            int mondays = 0;
+            for (int i = 1; i <= ym.lengthOfMonth(); i++) {
+                if (ym.atDay(i).getDayOfWeek() == java.time.DayOfWeek.MONDAY) {
+                    mondays++;
+                }
+            }
+            return mondays * 100;
+        } catch (Exception e) {
+            return 400;
+        }
+    }
+
     public static KpiScoreResponseDTO from(KpiScore score, int weeklyTotal) {
-        return from(score, weeklyTotal, 400); // 400 là mặc định nếu không truyền
+        if (score == null) return null;
+        int maxMonthlyKpi = calculateMaxKpiForMonth(score.getMonth());
+        return from(score, weeklyTotal, maxMonthlyKpi);
     }
     
     // Fallback for missing weeklyTotal
     public static KpiScoreResponseDTO from(KpiScore score) {
-        return from(score, 0, 400);
+        if (score == null) return null;
+        int maxMonthlyKpi = calculateMaxKpiForMonth(score.getMonth());
+        return from(score, 0, maxMonthlyKpi);
     }
 }

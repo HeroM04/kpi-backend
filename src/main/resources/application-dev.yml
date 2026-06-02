@@ -4,11 +4,15 @@
 # ============================================================
 
 spring:
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
   datasource:
     # 100% Localhost PostgreSQL – KHÔNG trỏ lên Cloud khi dev
-    url: jdbc:postgresql://localhost:5432/kpi_realestate_db
+    url: jdbc:postgresql://localhost:5432/trilong_db
     username: postgres
-    password: YOUR_POSTGRES_PASSWORD   # <-- Điền mật khẩu PostgreSQL của bạn vào đây
+    password: 123456sa
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 5
@@ -35,10 +39,15 @@ app:
     local:
       dir: uploads
       # Thay <LAPTOP_IP> bằng IP thực của máy bạn (ví dụ: 192.168.88.98)
-      base-url: http://<LAPTOP_IP>:8088/uploads
+      base-url: http://192.168.88.98:8088/uploads
 
 logging:
   level:
     org.hibernate.SQL: DEBUG
     com.trilong.kpibackend: DEBUG
     org.springframework.web: INFO
+
+aws:
+  accessKeyId: ${AWS_ACCESS_KEY_ID:}
+  secretKey: ${AWS_SECRET_ACCESS_KEY:}
+  region: ap-southeast-1

@@ -30,7 +30,7 @@ public class DealController {
 
     @Operation(summary = "Sales gửi yêu cầu chốt căn", description = "Lưu yêu cầu chốt căn dưới dạng PENDING.")
     @PostMapping("/submit")
-    @PreAuthorize("hasAuthority('deal:submit')")
+    @PreAuthorize("hasAuthority('deal:submit') or hasRole('ADMIN')")
     public ResponseEntity<?> submitDeal(
             @AuthenticationPrincipal UserPrincipal currentUser,
             @Valid @RequestBody SubmitDealDTO dto) {
@@ -42,9 +42,9 @@ public class DealController {
         ));
     }
 
-    @Operation(summary = "Xem lịch sử chốt căn của chính mình", description = "Sales xem các giao dịch chốt căn của bản thân.")
+    @Operation(summary = "Xem lịch sử chốt căn của chính mình", description = "Lấy tất cả các chốt căn của Sales đang đăng nhập.")
     @GetMapping("/my-deals")
-    @PreAuthorize("hasAuthority('deal:view-my')")
+    @PreAuthorize("hasAuthority('deal:view-my') or hasRole('ADMIN')")
     public ResponseEntity<?> getMyDeals(
             @AuthenticationPrincipal UserPrincipal currentUser,
             @RequestParam(required = false) String date) {

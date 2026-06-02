@@ -111,8 +111,9 @@ public class CheckinService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy nhân viên"));
 
-        // Xác thực khuôn mặt bằng AWS Rekognition (nếu được bật trong properties)
-        if (isRekognitionEnabled) {
+        String actionType = resolveActionType(request.getActionType());
+        // Xác thực khuôn mặt bằng AWS Rekognition (nếu được bật trong properties và không phải CHECK_OUT)
+        if (isRekognitionEnabled && !"CHECK_OUT".equals(actionType)) {
             if (user.getAvatarUrl() == null || user.getAvatarUrl().isEmpty()) {
                 throw new IllegalArgumentException("Bạn chưa cập nhật ảnh đại diện (Avatar). Vui lòng cập nhật để sử dụng tính năng nhận diện khuôn mặt!");
             }

@@ -1,9 +1,9 @@
 spring:
   datasource:
     # Trên Render, có thể truyền biến DATABASE_URL từ tab Environment
-    url: ${DATABASE_URL:jdbc:postgresql://ep-nameless-band-aojtgspj.c-2.ap-southeast-1.aws.neon.tech/neondb?sslmode=require}
-    username: ${DB_USERNAME:neondb_owner}
-    password: ${DB_PASSWORD:npg_NPX60ngosZWB}
+    url: ${DATABASE_URL:}
+    username: ${DB_USERNAME:}
+    password: ${DB_PASSWORD:}
   jpa:
     hibernate:
       ddl-auto: update

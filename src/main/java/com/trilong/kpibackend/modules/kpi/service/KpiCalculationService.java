@@ -184,10 +184,14 @@ public class KpiCalculationService {
 
         KpiScore savedScore = kpiScoreRepository.save(kpiScore);
         
+        int currentWeeklyTotal = kpiWeeklyScoreRepository.findByUserIdAndWeek(userId, getWeekString(ZonedDateTime.now()))
+                .map(KpiWeeklyScore::getTotal)
+                .orElse(0);
+
         try {
             messagingTemplate.convertAndSend(
                 "/topic/kpi/" + userId, 
-                (Object) Map.of("status", "SUCCESS", "data", KpiScoreResponseDTO.from(savedScore))
+                (Object) Map.of("status", "SUCCESS", "data", KpiScoreResponseDTO.from(savedScore, currentWeeklyTotal, maxKpi))
             );
         } catch (Exception e) {
             // Ignore messaging errors

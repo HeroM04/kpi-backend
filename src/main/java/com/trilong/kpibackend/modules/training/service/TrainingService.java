@@ -68,6 +68,14 @@ public class TrainingService {
         return trainingSessionRepository.findByStatusOrderByStartTimeDesc(status);
     }
 
+    /**
+     * Lấy danh sách buổi đào tạo ĐÃ KẾT THÚC (status = COMPLETED),
+     * sắp xếp theo thời gian mới nhất (gần đây trước). Dùng cho màn hình Kho Tài Liệu Đào Tạo Mobile.
+     */
+    public List<TrainingSession> getCompletedSessions() {
+        return trainingSessionRepository.findByStatusOrderByStartTimeDesc("COMPLETED");
+    }
+
     public TrainingSession getSessionById(Long id) {
         return trainingSessionRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy buổi đào tạo có ID: " + id));
@@ -219,6 +227,8 @@ public class TrainingService {
         if (dto.getLocation() != null) session.setLocation(dto.getLocation());
         if (dto.getMaxSlots() != null) session.setMaxSlots(dto.getMaxSlots());
         if (dto.getPhotoUrl() != null) session.setPhotoUrl(dto.getPhotoUrl());
+        // Cập nhật video URL (Admin điền sau khi buổi học kết thúc)
+        if (dto.getVideoUrl() != null) session.setVideoUrl(dto.getVideoUrl());
 
         return trainingSessionRepository.save(session);
     }

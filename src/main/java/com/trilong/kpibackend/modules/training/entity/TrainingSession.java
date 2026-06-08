@@ -44,6 +44,14 @@ public class TrainingSession {
     @Column(name = "photo_url", length = 500)
     private String photoUrl;
 
+    /**
+     * Link video YouTube của buổi đào tạo.
+     * Admin cập nhật sau khi buổi học kết thúc (status = COMPLETED).
+     * Mobile App dùng url_launcher để mở YouTube App hoặc Browser.
+     */
+    @Column(name = "video_url", columnDefinition = "TEXT")
+    private String videoUrl;
+
     @PrePersist
     public void prePersist() {
         if (this.status == null) this.status = "UPCOMING";

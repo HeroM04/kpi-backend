@@ -24,6 +24,7 @@ public class TrainingSessionResponseDTO {
     private Integer maxSlots;
     private String status;
     private String photoUrl;
+    private String videoUrl;
     private long currentSlots;
     private List<TrainingAttendeeResponseDTO> attendees;
 
@@ -40,6 +41,7 @@ public class TrainingSessionResponseDTO {
                 .maxSlots(session.getMaxSlots())
                 .status(session.getStatus())
                 .photoUrl(session.getPhotoUrl())
+                .videoUrl(session.getVideoUrl())
                 .currentSlots(currentSlots)
                 .build();
     }

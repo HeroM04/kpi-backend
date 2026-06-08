@@ -25,4 +25,10 @@ public class CreateTrainingSessionDTO {
     private Integer maxSlots;
 
     private String photoUrl;
+
+    /**
+     * Link video YouTube (Admin cập nhật sau khi buổi học kết thúc).
+     * Ví dụ: https://www.youtube.com/watch?v=dQw4w9WgXcQ
+     */
+    private String videoUrl;
 }

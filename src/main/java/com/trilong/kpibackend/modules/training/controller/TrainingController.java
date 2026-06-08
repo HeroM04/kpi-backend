@@ -41,6 +41,26 @@ public class TrainingController {
         ));
     }
 
+    @Operation(
+            summary = "Kho tài liệu đào tạo (Mobile)",
+            description = "Lấy danh sách buổi đào tạo ĐÃ KẾT THÚC kèm link video YouTube, sắp xếp mới nhất trước."
+    )
+    @GetMapping("/completed")
+    @PreAuthorize("hasAuthority('training:view')")
+    public ResponseEntity<?> getCompletedSessions() {
+        List<TrainingSession> sessions = trainingService.getCompletedSessions();
+
+        List<TrainingSessionResponseDTO> dtos = sessions.stream()
+                .map(s -> {
+                    long count = trainingService.getAttendeeCount(s.getId());
+                    TrainingSessionResponseDTO dto = TrainingSessionResponseDTO.from(s, count);
+                    // Kho tài liệu không cần load full attendees list — giảm tải DB
+                    return dto;
+                }).toList();
+
+        return ResponseEntity.ok(Map.of("status", "SUCCESS", "data", dtos));
+    }
+
     @Operation(summary = "Lấy danh sách buổi đào tạo đang hiển thị (Mobile)",
             description = "Chỉ trả về buổi UPCOMING từ hôm nay trở đi. Buổi quá ngày sẽ bị ẩn tự động.")
     @GetMapping("/active")

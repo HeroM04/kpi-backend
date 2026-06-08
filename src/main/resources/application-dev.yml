@@ -26,6 +26,7 @@ spring:
       hibernate:
         format_sql: true
         dialect: org.hibernate.dialect.PostgreSQLDialect
+        hbm2ddl.create_namespaces: true
 
 server:
   port: 8088

@@ -31,4 +31,10 @@ public class CreateTrainingSessionDTO {
      * Ví dụ: https://www.youtube.com/watch?v=dQw4w9WgXcQ
      */
     private String videoUrl;
+
+    /**
+     * Trạng thái buổi đào tạo: UPCOMING, ONGOING, COMPLETED, CANCELLED
+     * Admin có thể thay đổi khi cập nhật thông tin buổi học.
+     */
+    private String status;
 }

@@ -229,6 +229,19 @@ public class TrainingService {
         if (dto.getPhotoUrl() != null) session.setPhotoUrl(dto.getPhotoUrl());
         // Cập nhật video URL (Admin điền sau khi buổi học kết thúc)
         if (dto.getVideoUrl() != null) session.setVideoUrl(dto.getVideoUrl());
+        // Cập nhật trạng thái buổi học (Admin thay đổi từ form Edit)
+        if (dto.getStatus() != null && !dto.getStatus().isBlank()) {
+            String oldStatus = session.getStatus();
+            String newStatus = dto.getStatus();
+            session.setStatus(newStatus);
+            // Nếu chuyển sang CANCELLED, thu hồi điểm KPI của học viên
+            if ("CANCELLED".equals(newStatus) && !oldStatus.equals(newStatus)) {
+                List<TrainingAttendee> attendees = trainingAttendeeRepository.findBySessionId(sessionId);
+                for (TrainingAttendee attendee : attendees) {
+                    kpiCalculationService.updateKpiPoints(attendee.getUserId(), "attendance", -KPI_POINTS_TRAINING, attendee.getAttendedAt());
+                }
+            }
+        }
 
         return trainingSessionRepository.save(session);
     }

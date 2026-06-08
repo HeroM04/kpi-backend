@@ -43,6 +43,7 @@ public class TrainingService {
                 .maxSlots(dto.getMaxSlots() != null ? dto.getMaxSlots() : 20)
                 .status("UPCOMING")
                 .photoUrl(dto.getPhotoUrl())
+                .videoUrl(dto.getVideoUrl())
                 .build();
 
         return trainingSessionRepository.save(session);
@@ -164,6 +165,52 @@ public class TrainingService {
     }
 
     @Transactional
+    public TrainingAttendee addManualAttendee(Long sessionId, Long userId) {
+        TrainingSession session = trainingSessionRepository.findById(sessionId)
+                .orElseThrow(() -> new IllegalArgumentException("Mã phòng học không hợp lệ hoặc không tồn tại!"));
+
+        if ("CANCELLED".equals(session.getStatus())) {
+            throw new IllegalStateException("Buổi đào tạo này đã bị hủy bỏ!");
+        }
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy người dùng"));
+
+        // Kiểm tra xem đã điểm danh chưa
+        if (trainingAttendeeRepository.existsBySessionIdAndUserId(sessionId, userId)) {
+            throw new IllegalStateException("Học viên này đã được điểm danh rồi!");
+        }
+
+        // Kiểm tra giới hạn số lượng tham gia
+        long currentAttendees = trainingAttendeeRepository.countBySessionId(sessionId);
+        if (currentAttendees >= session.getMaxSlots()) {
+            throw new IllegalStateException("Phòng học đã đạt giới hạn số lượng học viên tối đa (" + session.getMaxSlots() + ")!");
+        }
+
+        TrainingAttendee attendee = TrainingAttendee.builder()
+                .sessionId(sessionId)
+                .userId(userId)
+                .session(session)
+                .user(user)
+                .attendedAt(ZonedDateTime.now())
+                .build();
+
+        TrainingAttendee savedAttendee = trainingAttendeeRepository.save(attendee);
+        kpiCalculationService.updateKpiPoints(userId, "attendance", KPI_POINTS_TRAINING, attendee.getAttendedAt());
+        return savedAttendee;
+    }
+
+    @Transactional
+    public void removeAttendee(Long sessionId, Long userId) {
+        com.trilong.kpibackend.modules.training.entity.TrainingAttendeeId id = new com.trilong.kpibackend.modules.training.entity.TrainingAttendeeId(sessionId, userId);
+        TrainingAttendee attendee = trainingAttendeeRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Học viên chưa điểm danh buổi học này!"));
+
+        kpiCalculationService.updateKpiPoints(userId, "attendance", -KPI_POINTS_TRAINING, attendee.getAttendedAt());
+        trainingAttendeeRepository.delete(attendee);
+    }
+
+    @Transactional
     public void deleteSession(Long sessionId) {
         TrainingSession session = trainingSessionRepository.findById(sessionId)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy buổi đào tạo có ID: " + sessionId));
@@ -227,8 +274,10 @@ public class TrainingService {
         if (dto.getLocation() != null) session.setLocation(dto.getLocation());
         if (dto.getMaxSlots() != null) session.setMaxSlots(dto.getMaxSlots());
         if (dto.getPhotoUrl() != null) session.setPhotoUrl(dto.getPhotoUrl());
-        // Cập nhật video URL (Admin điền sau khi buổi học kết thúc)
-        if (dto.getVideoUrl() != null) session.setVideoUrl(dto.getVideoUrl());
+        // Cập nhật video URL (Admin điền sau khi buổi học kết thúc hoặc xóa)
+        if (dto.getVideoUrl() != null) {
+            session.setVideoUrl(dto.getVideoUrl().isBlank() ? null : dto.getVideoUrl());
+        }
         // Cập nhật trạng thái buổi học (Admin thay đổi từ form Edit)
         if (dto.getStatus() != null && !dto.getStatus().isBlank()) {
             String oldStatus = session.getStatus();

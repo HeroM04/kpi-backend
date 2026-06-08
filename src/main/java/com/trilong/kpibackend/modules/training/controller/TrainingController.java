@@ -158,6 +158,37 @@ public class TrainingController {
         ));
     }
 
+    @Operation(summary = "Thêm học viên thủ công (Admin)", description = "Dành cho Admin khi quét hộ hoặc xử lý lỗi.")
+    @PostMapping("/{sessionId}/attendees/{userId}")
+    @PreAuthorize("hasAuthority('training:manage') or hasRole('ADMIN')")
+    public ResponseEntity<?> addManualAttendee(@PathVariable Long sessionId, @PathVariable Long userId) {
+        try {
+            TrainingAttendee attendee = trainingService.addManualAttendee(sessionId, userId);
+            return ResponseEntity.ok(Map.of(
+                    "status", "SUCCESS",
+                    "message", "Điểm danh thủ công thành công!",
+                    "data", TrainingAttendeeResponseDTO.from(attendee)
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("status", "ERROR", "message", e.getMessage()));
+        }
+    }
+
+    @Operation(summary = "Xóa học viên khỏi buổi đào tạo (Admin)", description = "Xóa điểm danh và thu hồi điểm KPI.")
+    @DeleteMapping("/{sessionId}/attendees/{userId}")
+    @PreAuthorize("hasAuthority('training:manage') or hasRole('ADMIN')")
+    public ResponseEntity<?> removeAttendee(@PathVariable Long sessionId, @PathVariable Long userId) {
+        try {
+            trainingService.removeAttendee(sessionId, userId);
+            return ResponseEntity.ok(Map.of(
+                    "status", "SUCCESS",
+                    "message", "Đã xóa học viên khỏi buổi đào tạo."
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("status", "ERROR", "message", e.getMessage()));
+        }
+    }
+
     @Operation(summary = "Cập nhật thông tin chi tiết buổi đào tạo", description = "Dành cho Admin/Trưởng phòng.")
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('training:manage') or hasRole('ADMIN')")

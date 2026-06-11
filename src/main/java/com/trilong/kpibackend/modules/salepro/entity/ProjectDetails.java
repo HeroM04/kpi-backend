@@ -57,6 +57,18 @@ public class ProjectDetails implements Serializable {
     // ===== Chính sách bán hàng (cấp dự án) =====
     private String salesPolicy;                  // nội dung CSBH dự án (HTML)
 
+    // ===== Trang Tổng quan (landing) =====
+    private List<String> heroImages;             // carousel ảnh lớn đầu trang
+    private String productCount;                 // thẻ "Sản phẩm", vd "4500 căn"
+    private String ownership;                    // thẻ "Sở hữu", vd "Lâu dài"
+    private List<ProductType> products;          // mục "Sản phẩm": loại căn hộ + ảnh layout
+    private List<Amenity> amenities;             // mục "Tiện ích"
+    private String featureTitle;                 // banner video: tiêu đề
+    private String featureDescription;           // banner video: mô tả
+    private String featureVideoUrl;              // banner video: link video
+    private String featureImage;                 // banner video: ảnh nền/poster
+    private List<MasterplanTab> masterplanTabs;  // mục "Mặt bằng": các tab (Tổng thể / Tòa L1...)
+
     /**
      * Điểm kết nối hạ tầng (tab Vị trí), vd time="01'", label="Ga Cát Linh - Thượng Đình".
      */
@@ -67,5 +79,37 @@ public class ProjectDetails implements Serializable {
     public static class ConnectionPoint implements Serializable {
         private String time;
         private String label;
+    }
+
+    /** Loại căn hộ trong mục "Sản phẩm" (vd "Căn hộ 1BR/1BR+1", diện tích, ảnh layout). */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ProductType implements Serializable {
+        private String name;
+        private String areaRange;       // vd "50 - 102 m²"
+        private List<String> images;    // ảnh layout
+    }
+
+    /** Tiện ích (mục "Tiện ích"): nhãn + ảnh. */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class Amenity implements Serializable {
+        private String label;
+        private String image;
+        private String description;
+    }
+
+    /** Tab trong mục "Mặt bằng": tiêu đề + ảnh (vd Tổng thể, MB Điển hình Tòa L1). */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class MasterplanTab implements Serializable {
+        private String label;
+        private String image;
     }
 }

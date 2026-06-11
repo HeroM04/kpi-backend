@@ -28,6 +28,7 @@ public class SaleProEnrichmentSeeder implements CommandLineRunner {
         runQuietly("backfill buildings", this::backfillBuildings);
         runQuietly("backfill apartments", this::backfillApartments);
         runQuietly("enrich project details", this::enrichProjectDetails);
+        runQuietly("overview landing", this::seedOverviewLanding);
         runQuietly("building_floor_plans", this::seedFloorPlans);
         runQuietly("apartment_questions", this::seedQuestions);
         runQuietly("project_progress", this::seedProgress);
@@ -139,6 +140,42 @@ public class SaleProEnrichmentSeeder implements CommandLineRunner {
                 "salesPolicy": "MIỄN PHÍ PHÍ QUẢN LÝ 24 tháng (khách mới) / 48 tháng (cư dân cũ). Thanh toán tiến độ chuẩn, hỗ trợ vay tới 70%."
             }'::jsonb
             WHERE project_type = 'CAO_TANG' AND (details->>'developer') IS NULL;
+        """);
+    }
+
+    // ============ 4b. Trang Tổng quan (landing) ============
+    private void seedOverviewLanding() {
+        jdbc.execute("""
+            UPDATE salepro.projects SET details = COALESCE(details, '{}'::jsonb) || '{
+                "heroImages": [
+                    "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?q=80&w=1600",
+                    "https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?q=80&w=1600",
+                    "https://images.unsplash.com/photo-1582268611958-ebfd161ef9cf?q=80&w=1600"
+                ],
+                "productCount": "4500 căn",
+                "ownership": "Lâu dài",
+                "products": [
+                    {"name": "Căn hộ 1BR/1BR+1", "areaRange": "50 - 102 m²", "images": ["https://images.unsplash.com/photo-1503387762-592deb58ef4e?q=80&w=600", "https://images.unsplash.com/photo-1497366216548-37526070297c?q=80&w=600"]},
+                    {"name": "Căn hộ 2BR/2BR+1", "areaRange": "86 - 152 m²", "images": ["https://images.unsplash.com/photo-1497366811353-6870744d04b2?q=80&w=600", "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?q=80&w=600"]},
+                    {"name": "Căn hộ 3BR/3BR+1", "areaRange": "107 - 152 m²", "images": ["https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?q=80&w=600", "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?q=80&w=600"]}
+                ],
+                "amenities": [
+                    {"label": "KHU VUI CHƠI TRẺ EM", "image": "https://images.unsplash.com/photo-1571260899304-425eee4c7efc?q=80&w=600"},
+                    {"label": "THƯ VIỆN", "image": "https://images.unsplash.com/photo-1521587760476-6c12a4b040da?q=80&w=600"},
+                    {"label": "CẢNH QUAN THÁC NƯỚC", "image": "https://images.unsplash.com/photo-1432405972618-c60b0225b8f9?q=80&w=600"},
+                    {"label": "CLUBHOUSE", "image": "https://images.unsplash.com/photo-1540541338287-41700207dee6?q=80&w=600"}
+                ],
+                "featureTitle": "LUMIÈRE HANOI SEASONS GARDEN: KHI ÁNH SÁNG CHẠM NGÕ, KHI CẢM XÚC NỞ HOA",
+                "featureDescription": "Tọa lạc tại vị trí kim cương 233 - 235 Nguyễn Trãi, Hanoi Seasons Garden mang đến chuẩn sống tinh hoa với thiết kế hiện đại, ngập tràn ánh sáng và kết nối thuận tiện tới trung tâm Thủ Đô.",
+                "featureVideoUrl": "https://www.youtube.com/embed/dQw4w9WgXcQ",
+                "featureImage": "https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?q=80&w=1200",
+                "masterplanTabs": [
+                    {"label": "Mặt bằng tổng thể", "image": "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=1600"},
+                    {"label": "MB Điển hình Tòa L1", "image": "https://images.unsplash.com/photo-1503387762-592deb58ef4e?q=80&w=1200"},
+                    {"label": "MB Điển hình Tòa L2", "image": "https://images.unsplash.com/photo-1497366216548-37526070297c?q=80&w=1200"}
+                ]
+            }'::jsonb
+            WHERE project_type = 'CAO_TANG' AND (details->>'productCount') IS NULL;
         """);
     }
 

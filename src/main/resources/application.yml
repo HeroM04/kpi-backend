@@ -5,7 +5,9 @@ spring:
     driver-class-name: org.postgresql.Driver
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
-    open-in-view: false
+    # Bật OSIV (mặc định Spring) để các controller KPI map entity->DTO ngoài transaction
+    # không bị LazyInitializationException (trả 400). SalePro vẫn an toàn vì mapper chạy trong @Transactional.
+    open-in-view: true
   servlet:
     multipart:
       max-file-size: 15MB

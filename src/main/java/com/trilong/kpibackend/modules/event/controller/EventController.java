@@ -48,4 +48,25 @@ public class EventController {
                 "data", event
         ));
     }
+
+    @Operation(summary = "Tạo sự kiện mới")
+    @PostMapping
+    public ResponseEntity<?> createEvent(@RequestBody EventDTO dto) {
+        EventDTO created = eventService.createEvent(dto);
+        return ResponseEntity.ok(Map.of("status", "SUCCESS", "data", created));
+    }
+
+    @Operation(summary = "Cập nhật sự kiện")
+    @PutMapping("/{id}")
+    public ResponseEntity<?> updateEvent(@PathVariable Long id, @RequestBody EventDTO dto) {
+        EventDTO updated = eventService.updateEvent(id, dto);
+        return ResponseEntity.ok(Map.of("status", "SUCCESS", "data", updated));
+    }
+
+    @Operation(summary = "Xóa sự kiện")
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteEvent(@PathVariable Long id) {
+        eventService.deleteEvent(id);
+        return ResponseEntity.ok(Map.of("status", "SUCCESS", "message", "Deleted successfully"));
+    }
 }

@@ -11,4 +11,5 @@ public class ProjectDTO {
     private String status;
     private ProjectDetails details;
     private SalesAgentDTO managingAgent;
+    private Long managingAgentId; // dùng khi admin tạo/sửa để gán chuyên viên
 }

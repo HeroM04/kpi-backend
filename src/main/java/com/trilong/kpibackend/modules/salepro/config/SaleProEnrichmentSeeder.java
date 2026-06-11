@@ -4,7 +4,6 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.core.annotation.Order;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Seeder bổ sung (chạy SAU SaleProDataSeeder) — đổ dữ liệu cho các bảng/cột mới và phủ 100% case:
@@ -21,8 +20,8 @@ public class SaleProEnrichmentSeeder implements CommandLineRunner {
         this.jdbc = jdbc;
     }
 
+    // KHÔNG dùng @Transactional: mỗi block chạy autocommit độc lập, 1 block lỗi không kéo đổ block khác.
     @Override
-    @Transactional
     public void run(String... args) {
         runQuietly("sales_agents", this::seedAgents);
         runQuietly("link managing agent", this::linkManagingAgent);
@@ -250,7 +249,9 @@ public class SaleProEnrichmentSeeder implements CommandLineRunner {
                 INSERT INTO salepro.news_articles (title, slug, thumbnail, summary, content, author, category_id, tags, project_id, published_at, view_count, status)
                 SELECT v.title, v.slug, v.thumbnail, v.summary, v.content, 'Mayhomes',
                        (SELECT id FROM salepro.news_categories WHERE slug = v.cat_slug LIMIT 1),
-                       v.tags::jsonb, v.project_id, v.published::timestamptz, v.views, 'PUBLISHED'
+                       '["Chung cư cao cấp","Đầu tư bất động sản","BĐS Hà Nội"]'::jsonb,
+                       CASE WHEN v.ptype = 'CAO_TANG' THEN (SELECT id FROM salepro.projects WHERE project_type='CAO_TANG' ORDER BY id LIMIT 1) ELSE NULL END,
+                       v.published::timestamptz, v.views, 'PUBLISHED'
                 FROM (VALUES
                     ('Diện mạo mới của "đất vàng" Cao Xà Lá: Từ tổ hợp nhà máy đến đại đô thị cao cấp', 'dien-mao-moi-cao-xa-la', 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?q=80&w=600', 'Khu công nghiệp Cao Xà Lá cũ tại trục Nguyễn Trãi đang được giải phóng mặt bằng để nhường chỗ cho siêu dự án phức hợp cao cấp Hanoi Seasons Garden.', '<p>Khu đất vàng Cao Xà Lá đang chuyển mình mạnh mẽ thành đại đô thị cao cấp.</p><h3>Vị trí kim cương</h3><p>Nằm trên trục Nguyễn Trãi huyết mạch.</p>', 'tin-tuc-du-an', '2026-05-11 09:00:00+07', 320, 'CAO_TANG'),
                     ('Giải mã sức hút của Vinhomes Sài Gòn Park: Tài sản lõi được trợ lực từ tiến độ thần tốc', 'giai-ma-suc-hut-vinhomes-sai-gon-park', 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?q=80&w=600', 'Dòng tiền đầu tư đang dịch chuyển mạnh vào nhóm tài sản lõi với pháp lý minh bạch và tiến độ xây dựng vượt trội.', '<p>Vinhomes Sài Gòn Park ghi nhận 7.778 lượt đăng ký giữ chỗ chỉ sau 3 phiên phát sóng.</p>', 'phan-tich-nhan-dinh', '2026-06-09 09:00:00+07', 540, NULL),
@@ -258,11 +259,7 @@ public class SaleProEnrichmentSeeder implements CommandLineRunner {
                     ('Pháp lý minh bạch - Bệ phóng cho bất động sản 2026', 'phap-ly-minh-bach-2026', 'https://images.unsplash.com/photo-1450101499163-c8848c66ca85?q=80&w=600', 'Các dự án có pháp lý hoàn chỉnh đang trở thành lựa chọn an toàn hàng đầu của nhà đầu tư.', '<p>Pháp lý minh bạch là yếu tố sống còn.</p>', 'phap-ly-chinh-sach', '2026-05-18 09:00:00+07', 150, NULL),
                     ('Thị trường căn hộ nội đô Hà Nội tiếp tục lập đỉnh giá mới', 'thi-truong-can-ho-noi-do', 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=600', 'Nguồn cung khan hiếm đẩy giá căn hộ khu vực trung tâm tăng mạnh trong nửa đầu 2026.', '<p>Giá căn hộ nội đô tiếp tục neo cao.</p>', 'thi-truong', '2026-06-02 09:00:00+07', 188, NULL),
                     ('LUMIÈRE Hanoi Seasons Garden cất nóc tòa L1 vượt tiến độ 30 ngày', 'lumiere-cat-noc-l1', 'https://images.unsplash.com/photo-1503387762-592deb58ef4e?q=80&w=600', 'Nhà thầu chính thức làm lễ cất nóc tháp L1, đánh dấu cột mốc quan trọng của dự án.', '<p>Cất nóc tòa L1 vượt tiến độ cam kết.</p>', 'tin-tuc-du-an', '2026-06-05 09:00:00+07', 275, 'CAO_TANG')
-                ) AS v(title, slug, thumbnail, summary, content, cat_slug, published, views, ptype)
-                CROSS JOIN LATERAL (SELECT
-                    CASE WHEN v.ptype = 'CAO_TANG' THEN (SELECT id FROM salepro.projects WHERE project_type='CAO_TANG' ORDER BY id LIMIT 1) ELSE NULL END AS project_id,
-                    '["Chung cư cao cấp","Đầu tư bất động sản","BĐS Hà Nội"]' AS tags
-                ) lat;
+                ) AS v(title, slug, thumbnail, summary, content, cat_slug, published, views, ptype);
             """);
         }
     }

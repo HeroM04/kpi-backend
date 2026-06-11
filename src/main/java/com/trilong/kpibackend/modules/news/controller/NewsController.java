@@ -65,4 +65,46 @@ public class NewsController {
                 "data", article
         ));
     }
+
+    @Operation(summary = "Tạo bài viết mới")
+    @PostMapping
+    public ResponseEntity<?> createArticle(@RequestBody NewsArticleDTO dto) {
+        NewsArticleDTO created = newsService.createArticle(dto);
+        return ResponseEntity.ok(Map.of("status", "SUCCESS", "data", created));
+    }
+
+    @Operation(summary = "Cập nhật bài viết")
+    @PutMapping("/{id}")
+    public ResponseEntity<?> updateArticle(@PathVariable Long id, @RequestBody NewsArticleDTO dto) {
+        NewsArticleDTO updated = newsService.updateArticle(id, dto);
+        return ResponseEntity.ok(Map.of("status", "SUCCESS", "data", updated));
+    }
+
+    @Operation(summary = "Xóa bài viết")
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteArticle(@PathVariable Long id) {
+        newsService.deleteArticle(id);
+        return ResponseEntity.ok(Map.of("status", "SUCCESS", "message", "Deleted successfully"));
+    }
+
+    @Operation(summary = "Tạo chuyên mục mới")
+    @PostMapping("/categories")
+    public ResponseEntity<?> createCategory(@RequestBody NewsCategoryDTO dto) {
+        NewsCategoryDTO created = newsService.createCategory(dto);
+        return ResponseEntity.ok(Map.of("status", "SUCCESS", "data", created));
+    }
+
+    @Operation(summary = "Cập nhật chuyên mục")
+    @PutMapping("/categories/{id}")
+    public ResponseEntity<?> updateCategory(@PathVariable Long id, @RequestBody NewsCategoryDTO dto) {
+        NewsCategoryDTO updated = newsService.updateCategory(id, dto);
+        return ResponseEntity.ok(Map.of("status", "SUCCESS", "data", updated));
+    }
+
+    @Operation(summary = "Xóa chuyên mục")
+    @DeleteMapping("/categories/{id}")
+    public ResponseEntity<?> deleteCategory(@PathVariable Long id) {
+        newsService.deleteCategory(id);
+        return ResponseEntity.ok(Map.of("status", "SUCCESS", "message", "Deleted successfully"));
+    }
 }

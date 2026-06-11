@@ -55,6 +55,9 @@ public class SaleProService {
     @Autowired
     private ProjectDocumentRepository projectDocumentRepository;
 
+    @Autowired
+    private com.trilong.kpibackend.modules.salepro.repository.SalesAgentRepository salesAgentRepository;
+
     // ====================== PROJECTS ======================
 
     @Transactional(readOnly = true)
@@ -174,6 +177,270 @@ public class SaleProService {
         return projectDocumentRepository.findByProjectIdOrderBySortOrderAsc(projectId).stream()
                 .map(this::toDocumentDTO)
                 .toList();
+    }
+
+    // ====================== ADMIN: CHUYÊN VIÊN ======================
+
+    @Transactional(readOnly = true)
+    public List<SalesAgentDTO> getAllAgents() {
+        return salesAgentRepository.findAll().stream().map(this::toAgentDTO).toList();
+    }
+
+    @Transactional
+    public SalesAgentDTO createAgent(SalesAgentDTO dto) {
+        SalesAgent a = new SalesAgent();
+        applyAgent(a, dto);
+        return toAgentDTO(salesAgentRepository.save(a));
+    }
+
+    @Transactional
+    public SalesAgentDTO updateAgent(Long id, SalesAgentDTO dto) {
+        SalesAgent a = salesAgentRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Agent not found: " + id));
+        applyAgent(a, dto);
+        return toAgentDTO(salesAgentRepository.save(a));
+    }
+
+    @Transactional
+    public void deleteAgent(Long id) {
+        salesAgentRepository.deleteById(id);
+    }
+
+    private void applyAgent(SalesAgent a, SalesAgentDTO dto) {
+        a.setFullName(dto.getFullName());
+        a.setTitle(dto.getTitle());
+        a.setPhone(dto.getPhone());
+        a.setEmail(dto.getEmail());
+        a.setAvatarUrl(dto.getAvatarUrl());
+        a.setZaloLink(dto.getZaloLink());
+    }
+
+    // ====================== ADMIN: DỰ ÁN ======================
+
+    @Transactional
+    public ProjectDTO createProject(ProjectDTO dto) {
+        Project p = new Project();
+        applyProject(p, dto);
+        return toProjectDTO(projectRepository.save(p));
+    }
+
+    @Transactional
+    public ProjectDTO updateProject(Long id, ProjectDTO dto) {
+        Project p = projectRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Project not found: " + id));
+        applyProject(p, dto);
+        return toProjectDTO(projectRepository.save(p));
+    }
+
+    @Transactional
+    public void deleteProject(Long id) {
+        projectRepository.deleteById(id);
+    }
+
+    private void applyProject(Project p, ProjectDTO dto) {
+        p.setName(dto.getName());
+        p.setProjectType(dto.getProjectType());
+        p.setStatus(dto.getStatus());
+        if (dto.getDetails() != null) p.setDetails(dto.getDetails());
+        if (dto.getManagingAgentId() != null) {
+            p.setManagingAgent(salesAgentRepository.findById(dto.getManagingAgentId()).orElse(null));
+        } else {
+            p.setManagingAgent(null);
+        }
+    }
+
+    // ====================== ADMIN: TÒA NHÀ ======================
+
+    @Transactional
+    public BuildingDTO createBuilding(BuildingDTO dto) {
+        Building b = new Building();
+        applyBuilding(b, dto);
+        return toBuildingDTO(buildingRepository.save(b));
+    }
+
+    @Transactional
+    public BuildingDTO updateBuilding(Long id, BuildingDTO dto) {
+        Building b = buildingRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Building not found: " + id));
+        applyBuilding(b, dto);
+        return toBuildingDTO(buildingRepository.save(b));
+    }
+
+    @Transactional
+    public void deleteBuilding(Long id) {
+        buildingRepository.deleteById(id);
+    }
+
+    private void applyBuilding(Building b, BuildingDTO dto) {
+        if (dto.getProjectId() != null) {
+            b.setProject(projectRepository.findById(dto.getProjectId())
+                    .orElseThrow(() -> new IllegalArgumentException("Project not found: " + dto.getProjectId())));
+        }
+        b.setBuildingName(dto.getBuildingName());
+        b.setSubdivisionName(dto.getSubdivisionName());
+        b.setTotalFloors(dto.getTotalFloors());
+        b.setOwnershipType(dto.getOwnershipType());
+        b.setBuildingHandoverStandard(dto.getBuildingHandoverStandard());
+        b.setTotalArea(dto.getTotalArea());
+        b.setTotalApartments(dto.getTotalApartments());
+        b.setElevatorCount(dto.getElevatorCount());
+        b.setDescription(dto.getDescription());
+        b.setImageUrl(dto.getImageUrl());
+        b.setConstructionProgress(dto.getConstructionProgress());
+        b.setSalesPolicy(dto.getSalesPolicy());
+        b.setMarkerLat(dto.getMarkerLat());
+        b.setMarkerLng(dto.getMarkerLng());
+    }
+
+    // ====================== ADMIN: CĂN HỘ ======================
+
+    @Transactional
+    public ApartmentDTO createApartment(ApartmentDTO dto) {
+        Apartment a = new Apartment();
+        applyApartment(a, dto);
+        return toApartmentDTO(apartmentRepository.save(a));
+    }
+
+    @Transactional
+    public ApartmentDTO updateApartment(Long id, ApartmentDTO dto) {
+        Apartment a = apartmentRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Apartment not found: " + id));
+        applyApartment(a, dto);
+        return toApartmentDTO(apartmentRepository.save(a));
+    }
+
+    @Transactional
+    public void deleteApartment(Long id) {
+        apartmentRepository.deleteById(id);
+    }
+
+    private void applyApartment(Apartment a, ApartmentDTO dto) {
+        if (dto.getBuildingId() != null) {
+            a.setBuilding(buildingRepository.findById(dto.getBuildingId())
+                    .orElseThrow(() -> new IllegalArgumentException("Building not found: " + dto.getBuildingId())));
+        }
+        a.setApartmentCode(dto.getApartmentCode());
+        a.setThumbnailUrl(dto.getThumbnailUrl());
+        a.setApartmentType(dto.getApartmentType());
+        a.setDirection(dto.getDirection());
+        a.setFloor(dto.getFloor());
+        a.setAxis(dto.getAxis());
+        a.setViewDescription(dto.getViewDescription());
+        a.setStatus(dto.getStatus());
+        a.setClearanceArea(dto.getClearanceArea());
+        a.setBuiltUpArea(dto.getBuiltUpArea());
+        a.setLandArea(dto.getLandArea());
+        a.setConstructionArea(dto.getConstructionArea());
+        a.setListedPrice(dto.getListedPrice());
+        a.setLoanPrice(dto.getLoanPrice());
+        a.setEarlyPaymentPrice(dto.getEarlyPaymentPrice());
+        a.setProgressPaymentPrice(dto.getProgressPaymentPrice());
+        a.setSupportedBanks(dto.getSupportedBanks());
+        a.setSalesPolicyApplied(dto.getSalesPolicyApplied());
+        a.setSalesPolicyDate(dto.getSalesPolicyDate());
+        a.setGiftsPromotions(dto.getGiftsPromotions());
+        a.setHandoverStandard(dto.getHandoverStandard());
+        a.setFundType(dto.getFundType());
+    }
+
+    // ====================== ADMIN: MẶT BẰNG TẦNG ======================
+
+    @Transactional
+    public BuildingFloorPlanDTO createFloorPlan(BuildingFloorPlanDTO dto) {
+        BuildingFloorPlan fp = new BuildingFloorPlan();
+        applyFloorPlan(fp, dto);
+        return toFloorPlanDTO(buildingFloorPlanRepository.save(fp));
+    }
+
+    @Transactional
+    public BuildingFloorPlanDTO updateFloorPlan(Long id, BuildingFloorPlanDTO dto) {
+        BuildingFloorPlan fp = buildingFloorPlanRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Floor plan not found: " + id));
+        applyFloorPlan(fp, dto);
+        return toFloorPlanDTO(buildingFloorPlanRepository.save(fp));
+    }
+
+    @Transactional
+    public void deleteFloorPlan(Long id) {
+        buildingFloorPlanRepository.deleteById(id);
+    }
+
+    private void applyFloorPlan(BuildingFloorPlan fp, BuildingFloorPlanDTO dto) {
+        if (dto.getBuildingId() != null) {
+            fp.setBuilding(buildingRepository.findById(dto.getBuildingId())
+                    .orElseThrow(() -> new IllegalArgumentException("Building not found: " + dto.getBuildingId())));
+        }
+        fp.setFloorLabel(dto.getFloorLabel());
+        fp.setImageUrl(dto.getImageUrl());
+        fp.setNote(dto.getNote());
+        fp.setSortOrder(dto.getSortOrder());
+    }
+
+    // ====================== ADMIN: TIẾN ĐỘ ======================
+
+    @Transactional
+    public ProjectProgressDTO createProgress(ProjectProgressDTO dto) {
+        ProjectProgress p = new ProjectProgress();
+        applyProgress(p, dto);
+        return toProgressDTO(projectProgressRepository.save(p));
+    }
+
+    @Transactional
+    public ProjectProgressDTO updateProgress(Long id, ProjectProgressDTO dto) {
+        ProjectProgress p = projectProgressRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Progress not found: " + id));
+        applyProgress(p, dto);
+        return toProgressDTO(projectProgressRepository.save(p));
+    }
+
+    @Transactional
+    public void deleteProgress(Long id) {
+        projectProgressRepository.deleteById(id);
+    }
+
+    private void applyProgress(ProjectProgress p, ProjectProgressDTO dto) {
+        if (dto.getProjectId() != null) {
+            p.setProject(projectRepository.findById(dto.getProjectId())
+                    .orElseThrow(() -> new IllegalArgumentException("Project not found: " + dto.getProjectId())));
+        }
+        p.setTitle(dto.getTitle());
+        p.setProgressDate(dto.getProgressDate());
+        p.setExternalUrl(dto.getExternalUrl());
+        p.setImages(dto.getImages());
+        p.setSortOrder(dto.getSortOrder());
+    }
+
+    // ====================== ADMIN: TÀI LIỆU ======================
+
+    @Transactional
+    public ProjectDocumentDTO createDocument(ProjectDocumentDTO dto) {
+        ProjectDocument d = new ProjectDocument();
+        applyDocument(d, dto);
+        return toDocumentDTO(projectDocumentRepository.save(d));
+    }
+
+    @Transactional
+    public ProjectDocumentDTO updateDocument(Long id, ProjectDocumentDTO dto) {
+        ProjectDocument d = projectDocumentRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Document not found: " + id));
+        applyDocument(d, dto);
+        return toDocumentDTO(projectDocumentRepository.save(d));
+    }
+
+    @Transactional
+    public void deleteDocument(Long id) {
+        projectDocumentRepository.deleteById(id);
+    }
+
+    private void applyDocument(ProjectDocument d, ProjectDocumentDTO dto) {
+        if (dto.getProjectId() != null) {
+            d.setProject(projectRepository.findById(dto.getProjectId())
+                    .orElseThrow(() -> new IllegalArgumentException("Project not found: " + dto.getProjectId())));
+        }
+        d.setLabel(dto.getLabel());
+        d.setDriveUrl(dto.getDriveUrl());
+        d.setDocType(dto.getDocType());
+        d.setSortOrder(dto.getSortOrder());
     }
 
     // ====================== MAPPERS ======================

@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -65,6 +66,89 @@ public class NewsService {
             if (a.getTags() != null) tags.addAll(a.getTags());
         });
         return new ArrayList<>(tags);
+    }
+
+    @Transactional
+    public NewsArticleDTO createArticle(NewsArticleDTO dto) {
+        NewsArticle article = new NewsArticle();
+        mapArticleDtoToEntity(dto, article);
+        return toArticleDTO(articleRepository.save(article));
+    }
+
+    @Transactional
+    public NewsArticleDTO updateArticle(Long id, NewsArticleDTO dto) {
+        NewsArticle article = articleRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("News article not found with ID: " + id));
+        mapArticleDtoToEntity(dto, article);
+        return toArticleDTO(articleRepository.save(article));
+    }
+
+    @Transactional
+    public void deleteArticle(Long id) {
+        articleRepository.deleteById(id);
+    }
+
+    @Transactional
+    public NewsCategoryDTO createCategory(NewsCategoryDTO dto) {
+        NewsCategory category = new NewsCategory();
+        category.setName(dto.getName());
+        category.setSlug(dto.getSlug() != null ? dto.getSlug() : generateSlug(dto.getName()));
+        category.setSortOrder(dto.getSortOrder() != null ? dto.getSortOrder() : 0);
+        return toCategoryDTO(categoryRepository.save(category));
+    }
+
+    @Transactional
+    public NewsCategoryDTO updateCategory(Long id, NewsCategoryDTO dto) {
+        NewsCategory category = categoryRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Category not found with ID: " + id));
+        category.setName(dto.getName());
+        if (dto.getSlug() != null) category.setSlug(dto.getSlug());
+        if (dto.getSortOrder() != null) category.setSortOrder(dto.getSortOrder());
+        return toCategoryDTO(categoryRepository.save(category));
+    }
+
+    @Transactional
+    public void deleteCategory(Long id) {
+        categoryRepository.deleteById(id);
+    }
+
+    private void mapArticleDtoToEntity(NewsArticleDTO dto, NewsArticle article) {
+        article.setTitle(dto.getTitle());
+        if (dto.getSlug() != null) {
+            article.setSlug(dto.getSlug());
+        } else if (article.getSlug() == null && dto.getTitle() != null) {
+            article.setSlug(generateSlug(dto.getTitle()));
+        }
+        article.setThumbnail(dto.getThumbnail());
+        article.setSummary(dto.getSummary());
+        article.setContent(dto.getContent());
+        article.setAuthor(dto.getAuthor());
+        if (dto.getCategoryId() != null) {
+            NewsCategory category = categoryRepository.findById(dto.getCategoryId())
+                    .orElseThrow(() -> new IllegalArgumentException("Category not found"));
+            article.setCategory(category);
+        } else {
+            article.setCategory(null);
+        }
+        article.setTags(dto.getTags());
+        article.setProjectId(dto.getProjectId());
+        article.setPublishedAt(dto.getPublishedAt());
+        article.setStatus(dto.getStatus());
+        if (dto.getViewCount() != null) {
+            article.setViewCount(dto.getViewCount());
+        } else if (article.getViewCount() == null) {
+            article.setViewCount(0);
+        }
+    }
+
+    private String generateSlug(String input) {
+        if (input == null) return null;
+        String slug = Normalizer.normalize(input, Normalizer.Form.NFD)
+                .replaceAll("\\p{InCombiningDiacriticalMarks}+", "")
+                .toLowerCase()
+                .replaceAll("[^a-z0-9]+", "-")
+                .replaceAll("^-+|-+$", "");
+        return slug + "-" + System.currentTimeMillis();
     }
 
     private NewsArticleDTO toArticleDTO(NewsArticle a) {

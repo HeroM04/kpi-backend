@@ -62,6 +62,10 @@ public class SecurityConfig {
                         // 3.1. Public truy cập API xem bảng hàng SalePro
                         .requestMatchers(HttpMethod.GET, "/api/v1/salepro/**").permitAll()
 
+                        // 3.2. Public truy cập Sự kiện & Tin tức của cổng SaleWeb
+                        .requestMatchers(HttpMethod.GET, "/api/v1/events/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/news/**").permitAll()
+
                         // ================== NGHIỆP VỤ HỆ THỐNG (PHÂN QUYỀN QUA @PreAuthorize Ở CONTROLLER) ==================
                         .requestMatchers("/api/v1/feedbacks/**").authenticated()
                         .requestMatchers("/api/v1/deals/**").authenticated()

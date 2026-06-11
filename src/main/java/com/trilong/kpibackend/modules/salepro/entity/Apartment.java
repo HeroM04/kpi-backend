@@ -6,6 +6,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.ZonedDateTime;
 
 @Entity
@@ -80,6 +81,10 @@ public class Apartment {
 
     @Column(name = "sales_policy_applied", columnDefinition = "TEXT")
     private String salesPolicyApplied;
+
+    // "CSBH áp dụng" hiển thị dạng ngày (vd 06/06/2026) — tách khỏi salesPolicyApplied (text)
+    @Column(name = "sales_policy_date")
+    private LocalDate salesPolicyDate;
 
     @Column(name = "gifts_promotions", columnDefinition = "TEXT")
     private String giftsPromotions;

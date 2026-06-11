@@ -208,13 +208,13 @@ public class CheckinService {
             kpiCalculationService.updateKpiPoints(
                     checkinLog.getUserId(), "attendance", kpiPoints, checkinLog.getCheckinTime()
             );
-            log.info("[Checkin] ✅ Duyệt {} #{} → {} KPI cho userId={}", checkinLog.getActionType(), id, (kpiPoints > 0 ? "+" + kpiPoints : kpiPoints), checkinLog.getUserId());
+            log.info("[Checkin]  Duyệt {} #{} → {} KPI cho userId={}", checkinLog.getActionType(), id, (kpiPoints > 0 ? "+" + kpiPoints : kpiPoints), checkinLog.getUserId());
         } else if ("APPROVED".equals(oldStatus) && !"APPROVED".equals(newStatus.toUpperCase())) {
             int kpiPoints = calculateAttendanceKpi(checkinLog.getActionType(), checkinLog.getCheckinTime().toLocalTime());
             kpiCalculationService.updateKpiPoints(
                     checkinLog.getUserId(), "attendance", -kpiPoints, checkinLog.getCheckinTime()
             );
-            log.info("[Checkin] ❌ Thu hồi {} #{} → {} KPI cho userId={}", checkinLog.getActionType(), id, (-kpiPoints > 0 ? "+" + (-kpiPoints) : (-kpiPoints)), checkinLog.getUserId());
+            log.info("[Checkin]  Thu hồi {} #{} → {} KPI cho userId={}", checkinLog.getActionType(), id, (-kpiPoints > 0 ? "+" + (-kpiPoints) : (-kpiPoints)), checkinLog.getUserId());
         }
 
         return saved;
@@ -270,7 +270,7 @@ public class CheckinService {
         int kpiPoints = calculateAttendanceKpi(finalActionType, now.toLocalTime());
         kpiCalculationService.updateKpiPoints(userId, "attendance", kpiPoints, now);
         
-        log.info("[Checkin] ✅ OFFICE {} userId={} lúc {} → {} KPI | distance={}m",
+        log.info("[Checkin]  OFFICE {} userId={} lúc {} → {} KPI | distance={}m",
                 finalActionType, userId, now.toLocalTime(), (kpiPoints > 0 ? "+" + kpiPoints : kpiPoints), String.format("%.1f", distance));
 
         // Notify WebSocket
@@ -308,7 +308,7 @@ public class CheckinService {
 
         CheckinLog saved = checkinLogRepository.save(checkinLog);
 
-        log.info("[Checkin] ⏳ FIELD checkin userId={} lúc {} → PENDING | distance={}m | note={}",
+        log.info("[Checkin]  FIELD checkin userId={} lúc {} → PENDING | distance={}m | note={}",
                 userId, now.toLocalTime(), String.format("%.1f", distance), req.getNote());
 
         // Notify WebSocket cho Admin biết có yêu cầu mới

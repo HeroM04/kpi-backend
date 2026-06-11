@@ -10,4 +10,5 @@ public class ProjectDTO {
     private String projectType;
     private String status;
     private ProjectDetails details;
+    private SalesAgentDTO managingAgent;
 }

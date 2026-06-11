@@ -34,6 +34,11 @@ public class Project {
     @Column(columnDefinition = "jsonb")
     private ProjectDetails details;
 
+    // Chuyên viên quản lý quỹ căn của dự án (đổ xuống card "Quản lý" ở modal chi tiết căn)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "managing_agent_id")
+    private SalesAgent managingAgent;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private ZonedDateTime createdAt;

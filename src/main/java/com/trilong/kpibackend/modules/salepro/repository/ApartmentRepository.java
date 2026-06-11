@@ -18,19 +18,19 @@ public interface ApartmentRepository extends JpaRepository<Apartment, Long> {
 
     long countByBuildingIdAndStatus(Long buildingId, String status);
 
-    // Phân trang + lọc + tìm kiếm quỹ căn theo dự án (tham số null = bỏ qua điều kiện)
+    // Phân trang + lọc + tìm kiếm quỹ căn theo dự án (tham số rỗng/0 = bỏ qua điều kiện)
     @Query(value = "SELECT a FROM Apartment a WHERE a.building.project.id = :projectId "
-            + "AND (:status IS NULL OR a.status = :status) "
-            + "AND (:buildingId IS NULL OR a.building.id = :buildingId) "
-            + "AND (:type IS NULL OR a.apartmentType = :type) "
-            + "AND (:direction IS NULL OR a.direction = :direction) "
-            + "AND (:q IS NULL OR LOWER(a.apartmentCode) LIKE LOWER(CONCAT('%', :q, '%')))",
+            + "AND (:status = '' OR a.status = :status) "
+            + "AND (:buildingId = 0 OR a.building.id = :buildingId) "
+            + "AND (:type = '' OR a.apartmentType = :type) "
+            + "AND (:direction = '' OR a.direction = :direction) "
+            + "AND (:q = '' OR LOWER(a.apartmentCode) LIKE LOWER(CONCAT('%', :q, '%')))",
             countQuery = "SELECT COUNT(a) FROM Apartment a WHERE a.building.project.id = :projectId "
-            + "AND (:status IS NULL OR a.status = :status) "
-            + "AND (:buildingId IS NULL OR a.building.id = :buildingId) "
-            + "AND (:type IS NULL OR a.apartmentType = :type) "
-            + "AND (:direction IS NULL OR a.direction = :direction) "
-            + "AND (:q IS NULL OR LOWER(a.apartmentCode) LIKE LOWER(CONCAT('%', :q, '%')))")
+            + "AND (:status = '' OR a.status = :status) "
+            + "AND (:buildingId = 0 OR a.building.id = :buildingId) "
+            + "AND (:type = '' OR a.apartmentType = :type) "
+            + "AND (:direction = '' OR a.direction = :direction) "
+            + "AND (:q = '' OR LOWER(a.apartmentCode) LIKE LOWER(CONCAT('%', :q, '%')))")
     Page<Apartment> searchByProject(
             @Param("projectId") Long projectId,
             @Param("status") String status,

@@ -1022,3 +1022,260 @@ Content-Length: -1
 2026-06-11T14:36:26.533+07:00  INFO 31076 --- [MessageBroker-3] o.s.w.s.c.WebSocketMessageBrokerStats    : WebSocketSession[0 current WS(0)-HttpStream(0)-HttpPoll(0), 0 total, 0 closed abnormally (0 connect failure, 0 send limit, 0 transport error)], stompSubProtocol[processed CONNECT(0)-CONNECTED(0)-DISCONNECT(0)], stompBrokerRelay[null], inboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 0], outboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 0], sockJsScheduler[pool size = 5, active threads = 1, queued tasks = 2, completed tasks = 2]
 2026-06-11T15:06:26.569+07:00  INFO 31076 --- [MessageBroker-4] o.s.w.s.c.WebSocketMessageBrokerStats    : WebSocketSession[0 current WS(0)-HttpStream(0)-HttpPoll(0), 0 total, 0 closed abnormally (0 connect failure, 0 send limit, 0 transport error)], stompSubProtocol[processed CONNECT(0)-CONNECTED(0)-DISCONNECT(0)], stompBrokerRelay[null], inboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 0], outboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 0], sockJsScheduler[pool size = 6, active threads = 1, queued tasks = 2, completed tasks = 3]
 2026-06-11T15:36:26.572+07:00  INFO 31076 --- [MessageBroker-5] o.s.w.s.c.WebSocketMessageBrokerStats    : WebSocketSession[0 current WS(0)-HttpStream(0)-HttpPoll(0), 0 total, 0 closed abnormally (0 connect failure, 0 send limit, 0 transport error)], stompSubProtocol[processed CONNECT(0)-CONNECTED(0)-DISCONNECT(0)], stompBrokerRelay[null], inboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 0], outboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 0], sockJsScheduler[pool size = 7, active threads = 1, queued tasks = 2, completed tasks = 4]
+2026-06-11T16:06:26.591+07:00  INFO 31076 --- [MessageBroker-3] o.s.w.s.c.WebSocketMessageBrokerStats    : WebSocketSession[0 current WS(0)-HttpStream(0)-HttpPoll(0), 0 total, 0 closed abnormally (0 connect failure, 0 send limit, 0 transport error)], stompSubProtocol[processed CONNECT(0)-CONNECTED(0)-DISCONNECT(0)], stompBrokerRelay[null], inboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 0], outboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 0], sockJsScheduler[pool size = 8, active threads = 1, queued tasks = 2, completed tasks = 5]
+========== [INCOMING REQUEST] ==========
+Method: GET
+URI: /api/v1/salepro/projects/1/apartments/search
+Content-Type: null
+Content-Length: -1
+========================================
+2026-06-11T16:15:46.438+07:00 DEBUG 31076 --- [0.0-8088-exec-8] org.hibernate.SQL                        : 
+    select
+        a1_0.id,
+        a1_0.apartment_code,
+        a1_0.apartment_type,
+        a1_0.axis,
+        a1_0.building_id,
+        a1_0.built_up_area,
+        a1_0.clearance_area,
+        a1_0.construction_area,
+        a1_0.created_at,
+        a1_0.direction,
+        a1_0.early_payment_price,
+        a1_0.floor,
+        a1_0.fund_type,
+        a1_0.gifts_promotions,
+        a1_0.handover_standard,
+        a1_0.land_area,
+        a1_0.listed_price,
+        a1_0.loan_price,
+        a1_0.progress_payment_price,
+        a1_0.sales_policy_applied,
+        a1_0.sales_policy_date,
+        a1_0.status,
+        a1_0.supported_banks,
+        a1_0.thumbnail_url,
+        a1_0.updated_at,
+        a1_0.view_description 
+    from
+        salepro.apartments a1_0 
+    join
+        salepro.buildings b1_0 
+            on b1_0.id=a1_0.building_id 
+    where
+        b1_0.project_id=? 
+        and (
+            ? is null 
+            or a1_0.status=?
+        ) 
+        and (
+            ? is null 
+            or a1_0.building_id=?
+        ) 
+        and (
+            ? is null 
+            or a1_0.apartment_type=?
+        ) 
+        and (
+            ? is null 
+            or a1_0.direction=?
+        ) 
+        and (
+            ? is null 
+            or lower(a1_0.apartment_code) like lower(('%'||?||'%')) escape ''
+        ) 
+    order by
+        a1_0.apartment_code 
+    fetch
+        first ? rows only
+Hibernate: 
+    select
+        a1_0.id,
+        a1_0.apartment_code,
+        a1_0.apartment_type,
+        a1_0.axis,
+        a1_0.building_id,
+        a1_0.built_up_area,
+        a1_0.clearance_area,
+        a1_0.construction_area,
+        a1_0.created_at,
+        a1_0.direction,
+        a1_0.early_payment_price,
+        a1_0.floor,
+        a1_0.fund_type,
+        a1_0.gifts_promotions,
+        a1_0.handover_standard,
+        a1_0.land_area,
+        a1_0.listed_price,
+        a1_0.loan_price,
+        a1_0.progress_payment_price,
+        a1_0.sales_policy_applied,
+        a1_0.sales_policy_date,
+        a1_0.status,
+        a1_0.supported_banks,
+        a1_0.thumbnail_url,
+        a1_0.updated_at,
+        a1_0.view_description 
+    from
+        salepro.apartments a1_0 
+    join
+        salepro.buildings b1_0 
+            on b1_0.id=a1_0.building_id 
+    where
+        b1_0.project_id=? 
+        and (
+            ? is null 
+            or a1_0.status=?
+        ) 
+        and (
+            ? is null 
+            or a1_0.building_id=?
+        ) 
+        and (
+            ? is null 
+            or a1_0.apartment_type=?
+        ) 
+        and (
+            ? is null 
+            or a1_0.direction=?
+        ) 
+        and (
+            ? is null 
+            or lower(a1_0.apartment_code) like lower(('%'||?||'%')) escape ''
+        ) 
+    order by
+        a1_0.apartment_code 
+    fetch
+        first ? rows only
+2026-06-11T16:15:46.465+07:00  WARN 31076 --- [0.0-8088-exec-8] org.hibernate.orm.jdbc.error             : HHH000247: ErrorCode: 0, SQLState: 42883
+2026-06-11T16:15:46.466+07:00  WARN 31076 --- [0.0-8088-exec-8] org.hibernate.orm.jdbc.error             : ERROR: function lower(bytea) does not exist
+  Hint: No function matches the given name and argument types. You might need to add explicit type casts.
+  Position: 806
+========== [INCOMING REQUEST] ==========
+Method: GET
+URI: /api/v1/salepro/projects/1/apartments/search
+Content-Type: null
+Content-Length: -1
+========================================
+2026-06-11T16:15:46.655+07:00 DEBUG 31076 --- [0.0-8088-exec-1] org.hibernate.SQL                        : 
+    select
+        a1_0.id,
+        a1_0.apartment_code,
+        a1_0.apartment_type,
+        a1_0.axis,
+        a1_0.building_id,
+        a1_0.built_up_area,
+        a1_0.clearance_area,
+        a1_0.construction_area,
+        a1_0.created_at,
+        a1_0.direction,
+        a1_0.early_payment_price,
+        a1_0.floor,
+        a1_0.fund_type,
+        a1_0.gifts_promotions,
+        a1_0.handover_standard,
+        a1_0.land_area,
+        a1_0.listed_price,
+        a1_0.loan_price,
+        a1_0.progress_payment_price,
+        a1_0.sales_policy_applied,
+        a1_0.sales_policy_date,
+        a1_0.status,
+        a1_0.supported_banks,
+        a1_0.thumbnail_url,
+        a1_0.updated_at,
+        a1_0.view_description 
+    from
+        salepro.apartments a1_0 
+    join
+        salepro.buildings b1_0 
+            on b1_0.id=a1_0.building_id 
+    where
+        b1_0.project_id=? 
+        and (
+            ? is null 
+            or a1_0.status=?
+        ) 
+        and (
+            ? is null 
+            or a1_0.building_id=?
+        ) 
+        and (
+            ? is null 
+            or a1_0.apartment_type=?
+        ) 
+        and (
+            ? is null 
+            or a1_0.direction=?
+        ) 
+        and (
+            ? is null 
+            or lower(a1_0.apartment_code) like lower(('%'||?||'%')) escape ''
+        ) 
+    order by
+        a1_0.apartment_code 
+    fetch
+        first ? rows only
+Hibernate: 
+    select
+        a1_0.id,
+        a1_0.apartment_code,
+        a1_0.apartment_type,
+        a1_0.axis,
+        a1_0.building_id,
+        a1_0.built_up_area,
+        a1_0.clearance_area,
+        a1_0.construction_area,
+        a1_0.created_at,
+        a1_0.direction,
+        a1_0.early_payment_price,
+        a1_0.floor,
+        a1_0.fund_type,
+        a1_0.gifts_promotions,
+        a1_0.handover_standard,
+        a1_0.land_area,
+        a1_0.listed_price,
+        a1_0.loan_price,
+        a1_0.progress_payment_price,
+        a1_0.sales_policy_applied,
+        a1_0.sales_policy_date,
+        a1_0.status,
+        a1_0.supported_banks,
+        a1_0.thumbnail_url,
+        a1_0.updated_at,
+        a1_0.view_description 
+    from
+        salepro.apartments a1_0 
+    join
+        salepro.buildings b1_0 
+            on b1_0.id=a1_0.building_id 
+    where
+        b1_0.project_id=? 
+        and (
+            ? is null 
+            or a1_0.status=?
+        ) 
+        and (
+            ? is null 
+            or a1_0.building_id=?
+        ) 
+        and (
+            ? is null 
+            or a1_0.apartment_type=?
+        ) 
+        and (
+            ? is null 
+            or a1_0.direction=?
+        ) 
+        and (
+            ? is null 
+            or lower(a1_0.apartment_code) like lower(('%'||?||'%')) escape ''
+        ) 
+    order by
+        a1_0.apartment_code 
+    fetch
+        first ? rows only
+2026-06-11T16:15:46.656+07:00  WARN 31076 --- [0.0-8088-exec-1] org.hibernate.orm.jdbc.error             : HHH000247: ErrorCode: 0, SQLState: 42883
+2026-06-11T16:15:46.656+07:00  WARN 31076 --- [0.0-8088-exec-1] org.hibernate.orm.jdbc.error             : ERROR: function lower(bytea) does not exist
+  Hint: No function matches the given name and argument types. You might need to add explicit type casts.
+  Position: 806

@@ -120,15 +120,15 @@ public class SaleProService {
     public Page<ApartmentDTO> searchApartments(Long projectId, String status, Long buildingId,
                                                String type, String direction, String q, Pageable pageable) {
         return apartmentRepository.searchByProject(
-                projectId, norm(status), buildingId, norm(type), norm(direction), norm(q), pageable
+                projectId, norm(status), buildingId == null ? 0L : buildingId, norm(type), norm(direction), norm(q), pageable
         ).map(this::toApartmentDTO);
     }
 
-    // "ALL"/rỗng -> null để bỏ qua điều kiện lọc
+    // Tránh truyền null vào JPQL để Postgres không lỗi "could not determine data type"
     private String norm(String v) {
-        if (v == null) return null;
+        if (v == null) return "";
         String t = v.trim();
-        if (t.isEmpty() || t.equalsIgnoreCase("ALL")) return null;
+        if (t.isEmpty() || t.equalsIgnoreCase("ALL")) return "";
         return t;
     }
 

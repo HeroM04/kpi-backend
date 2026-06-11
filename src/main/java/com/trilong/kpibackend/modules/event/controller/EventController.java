@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -51,6 +52,7 @@ public class EventController {
 
     @Operation(summary = "Tạo sự kiện mới")
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> createEvent(@RequestBody EventDTO dto) {
         EventDTO created = eventService.createEvent(dto);
         return ResponseEntity.ok(Map.of("status", "SUCCESS", "data", created));
@@ -58,6 +60,7 @@ public class EventController {
 
     @Operation(summary = "Cập nhật sự kiện")
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> updateEvent(@PathVariable Long id, @RequestBody EventDTO dto) {
         EventDTO updated = eventService.updateEvent(id, dto);
         return ResponseEntity.ok(Map.of("status", "SUCCESS", "data", updated));
@@ -65,6 +68,7 @@ public class EventController {
 
     @Operation(summary = "Xóa sự kiện")
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> deleteEvent(@PathVariable Long id) {
         eventService.deleteEvent(id);
         return ResponseEntity.ok(Map.of("status", "SUCCESS", "message", "Deleted successfully"));

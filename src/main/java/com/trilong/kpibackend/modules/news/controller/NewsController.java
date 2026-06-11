@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -68,6 +69,7 @@ public class NewsController {
 
     @Operation(summary = "Tạo bài viết mới")
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> createArticle(@RequestBody NewsArticleDTO dto) {
         NewsArticleDTO created = newsService.createArticle(dto);
         return ResponseEntity.ok(Map.of("status", "SUCCESS", "data", created));
@@ -75,6 +77,7 @@ public class NewsController {
 
     @Operation(summary = "Cập nhật bài viết")
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> updateArticle(@PathVariable Long id, @RequestBody NewsArticleDTO dto) {
         NewsArticleDTO updated = newsService.updateArticle(id, dto);
         return ResponseEntity.ok(Map.of("status", "SUCCESS", "data", updated));
@@ -82,6 +85,7 @@ public class NewsController {
 
     @Operation(summary = "Xóa bài viết")
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> deleteArticle(@PathVariable Long id) {
         newsService.deleteArticle(id);
         return ResponseEntity.ok(Map.of("status", "SUCCESS", "message", "Deleted successfully"));
@@ -89,6 +93,7 @@ public class NewsController {
 
     @Operation(summary = "Tạo chuyên mục mới")
     @PostMapping("/categories")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> createCategory(@RequestBody NewsCategoryDTO dto) {
         NewsCategoryDTO created = newsService.createCategory(dto);
         return ResponseEntity.ok(Map.of("status", "SUCCESS", "data", created));
@@ -96,6 +101,7 @@ public class NewsController {
 
     @Operation(summary = "Cập nhật chuyên mục")
     @PutMapping("/categories/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> updateCategory(@PathVariable Long id, @RequestBody NewsCategoryDTO dto) {
         NewsCategoryDTO updated = newsService.updateCategory(id, dto);
         return ResponseEntity.ok(Map.of("status", "SUCCESS", "data", updated));
@@ -103,6 +109,7 @@ public class NewsController {
 
     @Operation(summary = "Xóa chuyên mục")
     @DeleteMapping("/categories/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> deleteCategory(@PathVariable Long id) {
         newsService.deleteCategory(id);
         return ResponseEntity.ok(Map.of("status", "SUCCESS", "message", "Deleted successfully"));

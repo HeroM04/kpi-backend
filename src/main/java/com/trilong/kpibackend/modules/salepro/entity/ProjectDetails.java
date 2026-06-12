@@ -58,6 +58,7 @@ public class ProjectDetails implements Serializable {
     private String salesPolicy;                  // nội dung CSBH dự án (HTML)
 
     // ===== Trang Tổng quan (landing) =====
+    private Boolean isHot;                       // gắn nhãn 🔥 HOT ở danh sách dự án
     private List<String> heroImages;             // carousel ảnh lớn đầu trang
     private String productCount;                 // thẻ "Sản phẩm", vd "4500 căn"
     private String ownership;                    // thẻ "Sở hữu", vd "Lâu dài"

@@ -29,6 +29,7 @@ public class SaleProEnrichmentSeeder implements CommandLineRunner {
         runQuietly("backfill apartments", this::backfillApartments);
         runQuietly("enrich project details", this::enrichProjectDetails);
         runQuietly("overview landing", this::seedOverviewLanding);
+        runQuietly("hot flags + rich content", this::seedHotAndRichContent);
         runQuietly("building_floor_plans", this::seedFloorPlans);
         runQuietly("apartment_questions", this::seedQuestions);
         runQuietly("project_progress", this::seedProgress);
@@ -176,6 +177,45 @@ public class SaleProEnrichmentSeeder implements CommandLineRunner {
                 ]
             }'::jsonb
             WHERE project_type = 'CAO_TANG' AND (details->>'productCount') IS NULL;
+        """);
+    }
+
+    // ============ 4c. Cờ HOT + nội dung dài xen ảnh cho tin tức/sự kiện seed ============
+    private void seedHotAndRichContent() {
+        // Gắn HOT cho mọi dự án chưa có cờ (admin chỉnh lại trong Quản lý Dự án)
+        jdbc.execute("""
+            UPDATE salepro.projects
+            SET details = COALESCE(details, '{}'::jsonb) || '{"isHot": true}'::jsonb
+            WHERE (details->>'isHot') IS NULL;
+        """);
+
+        // Nội dung dài xen ảnh cho các bài tin tức SEED (không đụng bài admin tự tạo)
+        jdbc.execute("""
+            UPDATE salepro.news_articles SET content =
+              '<p>' || COALESCE(summary, title) || '</p>'
+              || '<figure><img src="' || COALESCE(thumbnail, 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?q=80&w=1200') || '" alt=""/><figcaption>' || title || '</figcaption></figure>'
+              || '<p>Trong bối cảnh thị trường bất động sản đang có nhiều chuyển biến tích cực, dòng tiền đầu tư ngày càng chọn lọc và hướng tới các dự án sở hữu pháp lý minh bạch, tiến độ đảm bảo cùng tiềm năng khai thác thực.</p>'
+              || '<h3>Vị thế và tiềm năng tăng giá</h3>'
+              || '<p>Hạ tầng giao thông đồng bộ, tiện ích nội khu hoàn chỉnh và cộng đồng cư dân văn minh là những yếu tố then chốt tạo nên giá trị bền vững của dự án trong dài hạn.</p>'
+              || '<figure><img src="https://images.unsplash.com/photo-1503387762-592deb58ef4e?q=80&w=1200" alt=""/><figcaption>Tiến độ xây dựng được đảm bảo từng giai đoạn</figcaption></figure>'
+              || '<h3>Chính sách bán hàng hấp dẫn</h3>'
+              || '<p>Chủ đầu tư đưa ra nhiều chính sách ưu đãi: hỗ trợ lãi suất, ân hạn nợ gốc, miễn phí quản lý cùng quà tặng giá trị dành cho khách hàng tiên phong.</p>'
+              || '<figure><img src="https://images.unsplash.com/photo-1560518883-ce09059eeffa?q=80&w=1200" alt=""/><figcaption>Khách hàng tham quan thực tế dự án</figcaption></figure>'
+              || '<p>Giới chuyên gia nhận định đây là thời điểm phù hợp để nhà đầu tư trung và dài hạn cân nhắc xuống tiền, đón đầu chu kỳ tăng trưởng mới của thị trường.</p>'
+            WHERE content NOT LIKE '%<figure%';
+        """);
+
+        // Nội dung dài xen ảnh cho các sự kiện SEED
+        jdbc.execute("""
+            UPDATE salepro.events SET description =
+              '<p>' || REGEXP_REPLACE(COALESCE(description, title), '<[^>]+>', '', 'g') || '</p>'
+              || '<figure><img src="' || COALESCE(banner_image, 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?q=80&w=1200') || '" alt=""/><figcaption>' || title || '</figcaption></figure>'
+              || '<p>Sự kiện quy tụ đội ngũ chuyên gia hàng đầu cùng các chuyên viên tư vấn giàu kinh nghiệm, mang đến góc nhìn toàn cảnh về dự án và cơ hội đầu tư.</p>'
+              || '<h3>Tại sự kiện, Quý khách hàng sẽ được</h3>'
+              || '<p>Khám phá tổng thể dự án qua sa bàn và khu nhà mẫu. Cập nhật chính sách bán hàng và ưu đãi mới nhất. Trực tiếp tư vấn 1-1 cùng chuyên gia. Tham gia bốc thăm trúng thưởng với nhiều phần quà giá trị.</p>'
+              || '<figure><img src="https://images.unsplash.com/photo-1511578314322-379afb476865?q=80&w=1200" alt=""/><figcaption>Không gian sự kiện được đầu tư chỉn chu</figcaption></figure>'
+              || '<p>Số lượng chỗ ngồi có hạn — Quý khách vui lòng đăng ký sớm với chuyên viên tư vấn để giữ chỗ và nhận bộ tài liệu dự án đầy đủ.</p>'
+            WHERE description NOT LIKE '%<figure%';
         """);
     }
 

@@ -58,6 +58,23 @@ public class SaleProService {
     @Autowired
     private com.trilong.kpibackend.modules.salepro.repository.SalesAgentRepository salesAgentRepository;
 
+    @Autowired
+    private com.trilong.kpibackend.modules.user.repository.UserRepository userRepository;
+
+    // Thông tin liên hệ công khai của 1 nhân viên (sale) — dùng cho link chia sẻ ?ref=<userId>
+    @Transactional(readOnly = true)
+    public SalesAgentDTO getReferrer(Long userId) {
+        return userRepository.findById(userId).map(u -> {
+            SalesAgentDTO dto = new SalesAgentDTO();
+            dto.setId(u.getId());
+            dto.setFullName(u.getFullName());
+            dto.setTitle("Chuyên viên tư vấn");
+            dto.setPhone(u.getPhoneNumber());
+            dto.setAvatarUrl(u.getAvatarUrl());
+            return dto;
+        }).orElse(null);
+    }
+
     // ====================== PROJECTS ======================
 
     @Transactional(readOnly = true)

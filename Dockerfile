@@ -1,24 +1,31 @@
-# Bước 1: Build environment (Môi trường build)
-FROM maven:3.9.6-eclipse-temurin-17 AS build
+# Stage 1: Build the Maven project
+FROM maven:3.9-eclipse-temurin-17 AS builder
+
 WORKDIR /app
 
-# Copy toàn bộ source code (bao gồm pom.xml và thư mục src)
+# Copy the pom.xml and source code
 COPY pom.xml .
 COPY src ./src
 
-# Chạy Maven để build file .jar, bỏ qua quá trình chạy test
+# Build the jar file skipping tests to speed up the process
 RUN mvn clean package -DskipTests
 
-# Bước 2: Run environment (Môi trường chạy)
-FROM eclipse-temurin:17-jre-jammy
+# Stage 2: Create the minimal runtime image
+FROM eclipse-temurin:17-jre
+
 WORKDIR /app
 
-# Mở cổng 8088 cho ứng dụng Spring Boot
+# Khai báo volume cho thư mục upload nếu dùng storage local
+VOLUME /app/uploads
+
+# Expose port
 EXPOSE 8088
 
-# Copy file .jar đã được build từ bước 1 sang bước 2
-# Đổi tên file thành app.jar cho ngắn gọn và dễ quản lý
-COPY --from=build /app/target/*.jar app.jar
+# Môi trường chạy mặc định là prod
+ENV SPRING_PROFILES_ACTIVE=prod
 
-# Thiết lập lệnh khởi chạy ứng dụng
+# Copy jar từ stage 1 sang stage 2
+COPY --from=builder /app/target/*.jar app.jar
+
+# Chạy ứng dụng
 ENTRYPOINT ["java", "-jar", "app.jar"]

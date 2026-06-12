@@ -18,8 +18,7 @@
 [INFO] skip non existing resourceDirectory D:\kpi-backend\src\test\resources
 [INFO] 
 [INFO] --- compiler:3.14.1:testCompile (default-testCompile) @ kpi-backend ---
-[INFO] Recompiling the module because of changed source code.
-[INFO] Compiling 1 source file with javac [debug parameters release 17] to target\test-classes
+[INFO] Nothing to compile - all classes are up to date.
 [INFO] 
 [INFO] <<< spring-boot:4.0.6:run (default-cli) < test-compile @ kpi-backend <<<
 [INFO] 
@@ -36,24 +35,24 @@
 
  :: Spring Boot ::                (v4.0.6)
 
-2026-06-12T09:12:16.918+07:00  INFO 20964 --- [           main] c.t.kpibackend.KpiBackendApplication     : Starting KpiBackendApplication using Java 23.0.1 with PID 20964 (D:\kpi-backend\target\classes started by Admin in D:\kpi-backend)
-2026-06-12T09:12:16.920+07:00 DEBUG 20964 --- [           main] c.t.kpibackend.KpiBackendApplication     : Running with Spring Boot v4.0.6, Spring v7.0.7
-2026-06-12T09:12:16.920+07:00  INFO 20964 --- [           main] c.t.kpibackend.KpiBackendApplication     : The following 1 profile is active: "dev"
-2026-06-12T09:12:17.472+07:00  INFO 20964 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
-2026-06-12T09:12:17.563+07:00  INFO 20964 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 83 ms. Found 26 JPA repository interfaces.
-2026-06-12T09:12:18.721+07:00  INFO 20964 --- [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 8088 (http)
-2026-06-12T09:12:18.764+07:00  INFO 20964 --- [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
-2026-06-12T09:12:18.764+07:00  INFO 20964 --- [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/11.0.21]
-2026-06-12T09:12:18.937+07:00  INFO 20964 --- [           main] b.w.c.s.WebApplicationContextInitializer : Root WebApplicationContext: initialization completed in 1973 ms
-2026-06-12T09:12:19.062+07:00 DEBUG 20964 --- [           main] c.t.k.core.security.JwtAuthFilter        : Filter 'jwtAuthFilter' configured for use
-2026-06-12T09:12:19.299+07:00  INFO 20964 --- [           main] org.hibernate.orm.jpa                    : HHH008540: Processing PersistenceUnitInfo [name: default]
-2026-06-12T09:12:19.392+07:00  INFO 20964 --- [           main] org.hibernate.orm.core                   : HHH000001: Hibernate ORM core version 7.2.12.Final
-2026-06-12T09:12:20.001+07:00  INFO 20964 --- [           main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
-2026-06-12T09:12:20.075+07:00  INFO 20964 --- [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
-2026-06-12T09:12:20.415+07:00  INFO 20964 --- [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection org.postgresql.jdbc.PgConnection@da9374c
-2026-06-12T09:12:20.420+07:00  INFO 20964 --- [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
-2026-06-12T09:12:20.478+07:00  WARN 20964 --- [           main] org.hibernate.orm.deprecation            : HHH90000025: PostgreSQLDialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
-2026-06-12T09:12:20.512+07:00  INFO 20964 --- [           main] org.hibernate.orm.connections.pooling    : HHH10001005: Database info:
+2026-06-12T15:04:52.729+07:00  INFO 15820 --- [           main] c.t.kpibackend.KpiBackendApplication     : Starting KpiBackendApplication using Java 23.0.1 with PID 15820 (D:\kpi-backend\target\classes started by Admin in D:\kpi-backend)
+2026-06-12T15:04:52.732+07:00 DEBUG 15820 --- [           main] c.t.kpibackend.KpiBackendApplication     : Running with Spring Boot v4.0.6, Spring v7.0.7
+2026-06-12T15:04:52.733+07:00  INFO 15820 --- [           main] c.t.kpibackend.KpiBackendApplication     : The following 1 profile is active: "dev"
+2026-06-12T15:04:53.699+07:00  INFO 15820 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-06-12T15:04:53.884+07:00  INFO 15820 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 167 ms. Found 26 JPA repository interfaces.
+2026-06-12T15:04:54.978+07:00  INFO 15820 --- [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 8088 (http)
+2026-06-12T15:04:54.998+07:00  INFO 15820 --- [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-06-12T15:04:54.999+07:00  INFO 15820 --- [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/11.0.21]
+2026-06-12T15:04:55.108+07:00  INFO 15820 --- [           main] b.w.c.s.WebApplicationContextInitializer : Root WebApplicationContext: initialization completed in 2319 ms
+2026-06-12T15:04:55.187+07:00 DEBUG 15820 --- [           main] c.t.k.core.security.JwtAuthFilter        : Filter 'jwtAuthFilter' configured for use
+2026-06-12T15:04:55.344+07:00  INFO 15820 --- [           main] org.hibernate.orm.jpa                    : HHH008540: Processing PersistenceUnitInfo [name: default]
+2026-06-12T15:04:55.409+07:00  INFO 15820 --- [           main] org.hibernate.orm.core                   : HHH000001: Hibernate ORM core version 7.2.12.Final
+2026-06-12T15:04:55.994+07:00  INFO 15820 --- [           main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2026-06-12T15:04:56.036+07:00  INFO 15820 --- [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-06-12T15:04:56.384+07:00  INFO 15820 --- [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection org.postgresql.jdbc.PgConnection@da9374c
+2026-06-12T15:04:56.384+07:00  INFO 15820 --- [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-06-12T15:04:56.442+07:00  WARN 15820 --- [           main] org.hibernate.orm.deprecation            : HHH90000025: PostgreSQLDialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
+2026-06-12T15:04:56.476+07:00  INFO 15820 --- [           main] org.hibernate.orm.connections.pooling    : HHH10001005: Database info:
 	Database JDBC URL [jdbc:postgresql://localhost:5432/trilong_db]
 	Database driver: PostgreSQL JDBC Driver
 	Database dialect: PostgreSQLDialect
@@ -65,10 +64,10 @@
 	Pool: DataSourceConnectionProvider
 	Minimum pool size: undefined/unknown
 	Maximum pool size: undefined/unknown
-2026-06-12T09:12:22.231+07:00  INFO 20964 --- [           main] org.hibernate.orm.core                   : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
-2026-06-12T09:12:22.493+07:00  INFO 20964 --- [           main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
-2026-06-12T09:12:22.606+07:00  INFO 20964 --- [           main] o.s.d.j.r.query.QueryEnhancerFactories   : Hibernate is in classpath; If applicable, HQL parser will be used.
-2026-06-12T09:12:24.773+07:00 DEBUG 20964 --- [           main] org.hibernate.SQL                        : 
+2026-06-12T15:04:57.950+07:00  INFO 15820 --- [           main] org.hibernate.orm.core                   : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2026-06-12T15:04:58.101+07:00  INFO 15820 --- [           main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-06-12T15:04:58.202+07:00  INFO 15820 --- [           main] o.s.d.j.r.query.QueryEnhancerFactories   : Hibernate is in classpath; If applicable, HQL parser will be used.
+2026-06-12T15:05:00.233+07:00 DEBUG 15820 --- [           main] org.hibernate.SQL                        : 
     select
         u1_0.id,
         u1_0.avatar_url,
@@ -96,7 +95,7 @@ Hibernate:
         u1_0.status 
     from
         users u1_0
-2026-06-12T09:12:24.812+07:00 DEBUG 20964 --- [           main] org.hibernate.SQL                        : 
+2026-06-12T15:05:00.273+07:00 DEBUG 15820 --- [           main] org.hibernate.SQL                        : 
     select
         d1_0.id,
         d1_0.allowed_radius,
@@ -120,7 +119,7 @@ Hibernate:
         departments d1_0 
     where
         d1_0.id=?
-2026-06-12T09:12:24.826+07:00 DEBUG 20964 --- [           main] org.hibernate.SQL                        : 
+2026-06-12T15:05:00.283+07:00 DEBUG 15820 --- [           main] org.hibernate.SQL                        : 
     select
         d1_0.id,
         d1_0.allowed_radius,
@@ -144,7 +143,7 @@ Hibernate:
         departments d1_0 
     where
         d1_0.id=?
-2026-06-12T09:12:24.830+07:00 DEBUG 20964 --- [           main] org.hibernate.SQL                        : 
+2026-06-12T15:05:00.287+07:00 DEBUG 15820 --- [           main] org.hibernate.SQL                        : 
     select
         d1_0.id,
         d1_0.allowed_radius,
@@ -168,7 +167,7 @@ Hibernate:
         departments d1_0 
     where
         d1_0.id=?
-2026-06-12T09:12:24.831+07:00 DEBUG 20964 --- [           main] org.hibernate.SQL                        : 
+2026-06-12T15:05:00.287+07:00 DEBUG 15820 --- [           main] org.hibernate.SQL                        : 
     select
         d1_0.id,
         d1_0.allowed_radius,
@@ -192,7 +191,7 @@ Hibernate:
         departments d1_0 
     where
         d1_0.id=?
-2026-06-12T09:12:24.833+07:00 DEBUG 20964 --- [           main] org.hibernate.SQL                        : 
+2026-06-12T15:05:00.287+07:00 DEBUG 15820 --- [           main] org.hibernate.SQL                        : 
     select
         d1_0.id,
         d1_0.allowed_radius,
@@ -216,7 +215,7 @@ Hibernate:
         departments d1_0 
     where
         d1_0.id=?
-2026-06-12T09:12:24.834+07:00 DEBUG 20964 --- [           main] org.hibernate.SQL                        : 
+2026-06-12T15:05:00.287+07:00 DEBUG 15820 --- [           main] org.hibernate.SQL                        : 
     select
         d1_0.id,
         d1_0.allowed_radius,
@@ -240,7 +239,7 @@ Hibernate:
         departments d1_0 
     where
         d1_0.id=?
-2026-06-12T09:12:24.836+07:00 DEBUG 20964 --- [           main] org.hibernate.SQL                        : 
+2026-06-12T15:05:00.294+07:00 DEBUG 15820 --- [           main] org.hibernate.SQL                        : 
     select
         d1_0.id,
         d1_0.allowed_radius,
@@ -264,7 +263,7 @@ Hibernate:
         departments d1_0 
     where
         d1_0.id=?
-2026-06-12T09:12:24.921+07:00 DEBUG 20964 --- [           main] org.hibernate.SQL                        : 
+2026-06-12T15:05:00.370+07:00 DEBUG 15820 --- [           main] org.hibernate.SQL                        : 
     select
         ks1_0.id,
         ks1_0.attendance,
@@ -296,7 +295,7 @@ Hibernate:
     where
         ks1_0.user_id=? 
         and ks1_0.month=?
-2026-06-12T09:12:24.935+07:00 DEBUG 20964 --- [           main] org.hibernate.SQL                        : 
+2026-06-12T15:05:00.384+07:00 DEBUG 15820 --- [           main] org.hibernate.SQL                        : 
     select
         ks1_0.id,
         ks1_0.attendance,
@@ -328,7 +327,7 @@ Hibernate:
     where
         ks1_0.user_id=? 
         and ks1_0.month=?
-2026-06-12T09:12:24.937+07:00 DEBUG 20964 --- [           main] org.hibernate.SQL                        : 
+2026-06-12T15:05:00.384+07:00 DEBUG 15820 --- [           main] org.hibernate.SQL                        : 
     select
         ks1_0.id,
         ks1_0.attendance,
@@ -360,7 +359,7 @@ Hibernate:
     where
         ks1_0.user_id=? 
         and ks1_0.month=?
-2026-06-12T09:12:24.941+07:00 DEBUG 20964 --- [           main] org.hibernate.SQL                        : 
+2026-06-12T15:05:00.389+07:00 DEBUG 15820 --- [           main] org.hibernate.SQL                        : 
     select
         ks1_0.id,
         ks1_0.attendance,
@@ -392,7 +391,7 @@ Hibernate:
     where
         ks1_0.user_id=? 
         and ks1_0.month=?
-2026-06-12T09:12:24.943+07:00 DEBUG 20964 --- [           main] org.hibernate.SQL                        : 
+2026-06-12T15:05:00.392+07:00 DEBUG 15820 --- [           main] org.hibernate.SQL                        : 
     select
         ks1_0.id,
         ks1_0.attendance,
@@ -424,7 +423,7 @@ Hibernate:
     where
         ks1_0.user_id=? 
         and ks1_0.month=?
-2026-06-12T09:12:24.944+07:00 DEBUG 20964 --- [           main] org.hibernate.SQL                        : 
+2026-06-12T15:05:00.394+07:00 DEBUG 15820 --- [           main] org.hibernate.SQL                        : 
     select
         ks1_0.id,
         ks1_0.attendance,
@@ -456,7 +455,7 @@ Hibernate:
     where
         ks1_0.user_id=? 
         and ks1_0.month=?
-2026-06-12T09:12:24.946+07:00 DEBUG 20964 --- [           main] org.hibernate.SQL                        : 
+2026-06-12T15:05:00.394+07:00 DEBUG 15820 --- [           main] org.hibernate.SQL                        : 
     select
         ks1_0.id,
         ks1_0.attendance,
@@ -488,13 +487,23 @@ Hibernate:
     where
         ks1_0.user_id=? 
         and ks1_0.month=?
-2026-06-12T09:12:26.682+07:00  INFO 20964 --- [           main] r$InitializeUserDetailsManagerConfigurer : Global AuthenticationManager configured with UserDetailsService bean with name userDetailsServiceImpl
-2026-06-12T09:12:27.484+07:00  INFO 20964 --- [           main] o.s.m.s.b.SimpleBrokerMessageHandler     : Starting...
-2026-06-12T09:12:27.485+07:00  INFO 20964 --- [           main] o.s.m.s.b.SimpleBrokerMessageHandler     : BrokerAvailabilityEvent[available=true, SimpleBrokerMessageHandler [org.springframework.messaging.simp.broker.DefaultSubscriptionRegistry@6d77f597]]
-2026-06-12T09:12:27.486+07:00  INFO 20964 --- [           main] o.s.m.s.b.SimpleBrokerMessageHandler     : Started.
-2026-06-12T09:12:27.518+07:00  INFO 20964 --- [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat started on port 8088 (http) with context path '/'
-2026-06-12T09:12:27.529+07:00  INFO 20964 --- [           main] c.t.kpibackend.KpiBackendApplication     : Started KpiBackendApplication in 10.988 seconds (process running for 11.595)
-2026-06-12T09:12:27.622+07:00 DEBUG 20964 --- [           main] org.hibernate.SQL                        : 
+2026-06-12T15:05:01.960+07:00  INFO 15820 --- [           main] r$InitializeUserDetailsManagerConfigurer : Global AuthenticationManager configured with UserDetailsService bean with name userDetailsServiceImpl
+2026-06-12T15:05:02.689+07:00  INFO 15820 --- [           main] o.s.m.s.b.SimpleBrokerMessageHandler     : Starting...
+2026-06-12T15:05:02.689+07:00  INFO 15820 --- [           main] o.s.m.s.b.SimpleBrokerMessageHandler     : BrokerAvailabilityEvent[available=true, SimpleBrokerMessageHandler [org.springframework.messaging.simp.broker.DefaultSubscriptionRegistry@11368ba6]]
+2026-06-12T15:05:02.693+07:00  INFO 15820 --- [           main] o.s.m.s.b.SimpleBrokerMessageHandler     : Started.
+2026-06-12T15:05:02.717+07:00  INFO 15820 --- [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat started on port 8088 (http) with context path '/'
+2026-06-12T15:05:02.729+07:00  INFO 15820 --- [           main] c.t.kpibackend.KpiBackendApplication     : Started KpiBackendApplication in 10.502 seconds (process running for 11.101)
+2026-06-12T15:05:02.787+07:00 DEBUG 15820 --- [           main] org.hibernate.SQL                        : 
+    select
+        count(*) 
+    from
+        departments d1_0
+Hibernate: 
+    select
+        count(*) 
+    from
+        departments d1_0
+2026-06-12T15:05:02.793+07:00 DEBUG 15820 --- [           main] org.hibernate.SQL                        : 
     select
         u1_0.id 
     from
@@ -512,2529 +521,253 @@ Hibernate:
         u1_0.phone_number=? 
     fetch
         first ? rows only
-2026-06-12T09:12:27.638+07:00 DEBUG 20964 --- [           main] org.hibernate.SQL                        : 
-    select
-        count(*) 
-    from
-        departments d1_0
-Hibernate: 
-    select
-        count(*) 
-    from
-        departments d1_0
-2026-06-12T09:12:29.142+07:00  INFO 20964 --- [0.0-8088-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
-2026-06-12T09:12:29.142+07:00  INFO 20964 --- [0.0-8088-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
-2026-06-12T09:12:29.146+07:00  INFO 20964 --- [0.0-8088-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 4 ms
-========== [INCOMING REQUEST] ==========
-Method: GET
-URI: /api/v1/news
-Content-Type: null
-Content-Length: -1
-========================================
-2026-06-12T09:12:29.212+07:00 DEBUG 20964 --- [0.0-8088-exec-1] org.hibernate.SQL                        : 
-    select
-        na1_0.id,
-        na1_0.author,
-        na1_0.category_id,
-        na1_0.content,
-        na1_0.created_at,
-        na1_0.project_id,
-        na1_0.published_at,
-        na1_0.slug,
-        na1_0.status,
-        na1_0.summary,
-        na1_0.tags,
-        na1_0.thumbnail,
-        na1_0.title,
-        na1_0.updated_at,
-        na1_0.view_count 
-    from
-        salepro.news_articles na1_0 
-    order by
-        na1_0.published_at desc
-Hibernate: 
-    select
-        na1_0.id,
-        na1_0.author,
-        na1_0.category_id,
-        na1_0.content,
-        na1_0.created_at,
-        na1_0.project_id,
-        na1_0.published_at,
-        na1_0.slug,
-        na1_0.status,
-        na1_0.summary,
-        na1_0.tags,
-        na1_0.thumbnail,
-        na1_0.title,
-        na1_0.updated_at,
-        na1_0.view_count 
-    from
-        salepro.news_articles na1_0 
-    order by
-        na1_0.published_at desc
-2026-06-12T09:12:29.254+07:00 DEBUG 20964 --- [0.0-8088-exec-1] org.hibernate.SQL                        : 
-    select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
-    from
-        salepro.news_categories nc1_0 
-    where
-        nc1_0.id=?
-Hibernate: 
-    select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
-    from
-        salepro.news_categories nc1_0 
-    where
-        nc1_0.id=?
-2026-06-12T09:12:29.257+07:00 DEBUG 20964 --- [0.0-8088-exec-1] org.hibernate.SQL                        : 
-    select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
-    from
-        salepro.news_categories nc1_0 
-    where
-        nc1_0.id=?
-Hibernate: 
-    select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
-    from
-        salepro.news_categories nc1_0 
-    where
-        nc1_0.id=?
-2026-06-12T09:12:29.260+07:00 DEBUG 20964 --- [0.0-8088-exec-1] org.hibernate.SQL                        : 
-    select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
-    from
-        salepro.news_categories nc1_0 
-    where
-        nc1_0.id=?
-Hibernate: 
-    select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
-    from
-        salepro.news_categories nc1_0 
-    where
-        nc1_0.id=?
-2026-06-12T09:12:29.261+07:00 DEBUG 20964 --- [0.0-8088-exec-1] org.hibernate.SQL                        : 
-    select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
-    from
-        salepro.news_categories nc1_0 
-    where
-        nc1_0.id=?
-Hibernate: 
-    select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
-    from
-        salepro.news_categories nc1_0 
-    where
-        nc1_0.id=?
-2026-06-12T09:12:29.262+07:00 DEBUG 20964 --- [0.0-8088-exec-1] org.hibernate.SQL                        : 
-    select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
-    from
-        salepro.news_categories nc1_0 
-    where
-        nc1_0.id=?
-Hibernate: 
-    select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
-    from
-        salepro.news_categories nc1_0 
-    where
-        nc1_0.id=?
-========== [INCOMING REQUEST] ==========
-Method: GET
-URI: /api/v1/news
-Content-Type: null
-Content-Length: -1
-========================================
-2026-06-12T09:12:29.447+07:00 DEBUG 20964 --- [0.0-8088-exec-2] org.hibernate.SQL                        : 
-    select
-        na1_0.id,
-        na1_0.author,
-        na1_0.category_id,
-        na1_0.content,
-        na1_0.created_at,
-        na1_0.project_id,
-        na1_0.published_at,
-        na1_0.slug,
-        na1_0.status,
-        na1_0.summary,
-        na1_0.tags,
-        na1_0.thumbnail,
-        na1_0.title,
-        na1_0.updated_at,
-        na1_0.view_count 
-    from
-        salepro.news_articles na1_0 
-    order by
-        na1_0.published_at desc
-Hibernate: 
-    select
-        na1_0.id,
-        na1_0.author,
-        na1_0.category_id,
-        na1_0.content,
-        na1_0.created_at,
-        na1_0.project_id,
-        na1_0.published_at,
-        na1_0.slug,
-        na1_0.status,
-        na1_0.summary,
-        na1_0.tags,
-        na1_0.thumbnail,
-        na1_0.title,
-        na1_0.updated_at,
-        na1_0.view_count 
-    from
-        salepro.news_articles na1_0 
-    order by
-        na1_0.published_at desc
-2026-06-12T09:12:29.451+07:00 DEBUG 20964 --- [0.0-8088-exec-2] org.hibernate.SQL                        : 
-    select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
-    from
-        salepro.news_categories nc1_0 
-    where
-        nc1_0.id=?
-Hibernate: 
-    select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
-    from
-        salepro.news_categories nc1_0 
-    where
-        nc1_0.id=?
-2026-06-12T09:12:29.455+07:00 DEBUG 20964 --- [0.0-8088-exec-2] org.hibernate.SQL                        : 
-    select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
-    from
-        salepro.news_categories nc1_0 
-    where
-        nc1_0.id=?
-Hibernate: 
-    select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
-    from
-        salepro.news_categories nc1_0 
-    where
-        nc1_0.id=?
-2026-06-12T09:12:29.456+07:00 DEBUG 20964 --- [0.0-8088-exec-2] org.hibernate.SQL                        : 
-    select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
-    from
-        salepro.news_categories nc1_0 
-    where
-        nc1_0.id=?
-Hibernate: 
-    select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
-    from
-        salepro.news_categories nc1_0 
-    where
-        nc1_0.id=?
-2026-06-12T09:12:29.457+07:00 DEBUG 20964 --- [0.0-8088-exec-2] org.hibernate.SQL                        : 
-    select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
-    from
-        salepro.news_categories nc1_0 
-    where
-        nc1_0.id=?
-Hibernate: 
-    select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
-    from
-        salepro.news_categories nc1_0 
-    where
-        nc1_0.id=?
-2026-06-12T09:12:29.458+07:00 DEBUG 20964 --- [0.0-8088-exec-2] org.hibernate.SQL                        : 
-    select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
-    from
-        salepro.news_categories nc1_0 
-    where
-        nc1_0.id=?
-Hibernate: 
-    select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
-    from
-        salepro.news_categories nc1_0 
-    where
-        nc1_0.id=?
+2026-06-12T15:05:45.251+07:00  INFO 15820 --- [0.0-8088-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-06-12T15:05:45.252+07:00  INFO 15820 --- [0.0-8088-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-06-12T15:05:45.253+07:00  INFO 15820 --- [0.0-8088-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 1 ms
 ========== [INCOMING REQUEST] ==========
 ========== [INCOMING REQUEST] ==========
 Method: OPTIONS
 Method: OPTIONS
-URI: /api/v1/news/categories
-URI: /api/v1/news/tags
+URI: /api/v1/salepro/projects/1/buildings
 Content-Type: null
-Content-Type: null
-Content-Length: -1
-========================================
-Content-Length: -1
-========================================
-========== [INCOMING REQUEST] ==========
-Method: OPTIONS
-URI: /api/v1/news
+URI: /api/v1/salepro/projects/1
 Content-Type: null
 Content-Length: -1
 ========================================
-========== [INCOMING REQUEST] ==========
-Method: OPTIONS
-URI: /api/v1/news/tags
-Content-Type: null
-Content-Length: -1
-========================================
-========== [INCOMING REQUEST] ==========
-Method: OPTIONS
-URI: /api/v1/news/categories
-Content-Type: null
-Content-Length: -1
-========================================
-========== [INCOMING REQUEST] ==========
-Method: OPTIONS
-URI: /api/v1/news
-Content-Type: null
 Content-Length: -1
 ========================================
 ========== [INCOMING REQUEST] ==========
 Method: GET
 ========== [INCOMING REQUEST] ==========
 Method: GET
-========== [INCOMING REQUEST] ==========
-Method: GET
-URI: /api/v1/news/categories
-URI: /api/v1/news/tags
-URI: /api/v1/news
+URI: /api/v1/salepro/projects/1
 Content-Type: application/json
+URI: /api/v1/salepro/projects/1/buildings
+Content-Length: -1
 Content-Type: application/json
-Content-Length: -1
-========================================
-Content-Type: application/json
-Content-Length: -1
 ========================================
 Content-Length: -1
 ========================================
-2026-06-12T09:12:43.555+07:00 DEBUG 20964 --- [0.0-8088-exec-2] org.hibernate.SQL                        : 
+2026-06-12T15:05:45.320+07:00 DEBUG 15820 --- [0.0-8088-exec-3] org.hibernate.SQL                        : 
     select
-        na1_0.id,
-        na1_0.author,
-        na1_0.category_id,
-        na1_0.content,
-        na1_0.created_at,
-        na1_0.project_id,
-        na1_0.published_at,
-        na1_0.slug,
-        na1_0.status,
-        na1_0.summary,
-        na1_0.tags,
-        na1_0.thumbnail,
-        na1_0.title,
-        na1_0.updated_at,
-        na1_0.view_count 
+        b1_0.id,
+        b1_0.handover_standard,
+        b1_0.building_name,
+        b1_0.construction_progress,
+        b1_0.description,
+        b1_0.elevator_count,
+        b1_0.image_url,
+        b1_0.marker_lat,
+        b1_0.marker_lng,
+        b1_0.ownership_type,
+        b1_0.project_id,
+        b1_0.sales_policy,
+        b1_0.subdivision_name,
+        b1_0.total_apartments,
+        b1_0.total_area,
+        b1_0.total_floors 
     from
-        salepro.news_articles na1_0 
+        salepro.buildings b1_0 
+    where
+        b1_0.project_id=?
+Hibernate: 
+    select
+        b1_0.id,
+        b1_0.handover_standard,
+        b1_0.building_name,
+        b1_0.construction_progress,
+        b1_0.description,
+        b1_0.elevator_count,
+        b1_0.image_url,
+        b1_0.marker_lat,
+        b1_0.marker_lng,
+        b1_0.ownership_type,
+        b1_0.project_id,
+        b1_0.sales_policy,
+        b1_0.subdivision_name,
+        b1_0.total_apartments,
+        b1_0.total_area,
+        b1_0.total_floors 
+    from
+        salepro.buildings b1_0 
+    where
+        b1_0.project_id=?
+2026-06-12T15:05:45.329+07:00 DEBUG 15820 --- [0.0-8088-exec-4] org.hibernate.SQL                        : 
+    select
+        p1_0.id,
+        p1_0.created_at,
+        p1_0.details,
+        p1_0.managing_agent_id,
+        p1_0.name,
+        p1_0.project_type,
+        p1_0.status,
+        p1_0.updated_at 
+    from
+        salepro.projects p1_0 
+    where
+        p1_0.id=?
+Hibernate: 
+    select
+        p1_0.id,
+        p1_0.created_at,
+        p1_0.details,
+        p1_0.managing_agent_id,
+        p1_0.name,
+        p1_0.project_type,
+        p1_0.status,
+        p1_0.updated_at 
+    from
+        salepro.projects p1_0 
+    where
+        p1_0.id=?
+2026-06-12T15:05:45.333+07:00 DEBUG 15820 --- [0.0-8088-exec-3] org.hibernate.SQL                        : 
+    select
+        count(a1_0.id) 
+    from
+        salepro.apartments a1_0 
+    where
+        a1_0.building_id=?
+Hibernate: 
+    select
+        count(a1_0.id) 
+    from
+        salepro.apartments a1_0 
+    where
+        a1_0.building_id=?
+2026-06-12T15:05:45.336+07:00 DEBUG 15820 --- [0.0-8088-exec-3] org.hibernate.SQL                        : 
+    select
+        count(a1_0.id) 
+    from
+        salepro.apartments a1_0 
+    where
+        a1_0.building_id=? 
+        and a1_0.status=?
+Hibernate: 
+    select
+        count(a1_0.id) 
+    from
+        salepro.apartments a1_0 
+    where
+        a1_0.building_id=? 
+        and a1_0.status=?
+2026-06-12T15:05:45.341+07:00 DEBUG 15820 --- [0.0-8088-exec-3] org.hibernate.SQL                        : 
+    select
+        bfp1_0.id,
+        bfp1_0.building_id,
+        bfp1_0.floor_label,
+        bfp1_0.image_url,
+        bfp1_0.note,
+        bfp1_0.sort_order 
+    from
+        salepro.building_floor_plans bfp1_0 
+    where
+        bfp1_0.building_id=? 
     order by
-        na1_0.published_at desc
+        bfp1_0.sort_order
 Hibernate: 
     select
-        na1_0.id,
-        na1_0.author,
-        na1_0.category_id,
-        na1_0.content,
-        na1_0.created_at,
-        na1_0.project_id,
-        na1_0.published_at,
-        na1_0.slug,
-        na1_0.status,
-        na1_0.summary,
-        na1_0.tags,
-        na1_0.thumbnail,
-        na1_0.title,
-        na1_0.updated_at,
-        na1_0.view_count 
+        bfp1_0.id,
+        bfp1_0.building_id,
+        bfp1_0.floor_label,
+        bfp1_0.image_url,
+        bfp1_0.note,
+        bfp1_0.sort_order 
     from
-        salepro.news_articles na1_0 
+        salepro.building_floor_plans bfp1_0 
+    where
+        bfp1_0.building_id=? 
     order by
-        na1_0.published_at desc
-2026-06-12T09:12:43.555+07:00 DEBUG 20964 --- [.0-8088-exec-10] org.hibernate.SQL                        : 
+        bfp1_0.sort_order
+2026-06-12T15:05:45.344+07:00 DEBUG 15820 --- [0.0-8088-exec-3] org.hibernate.SQL                        : 
     select
-        na1_0.id,
-        na1_0.author,
-        na1_0.category_id,
-        na1_0.content,
-        na1_0.created_at,
-        na1_0.project_id,
-        na1_0.published_at,
-        na1_0.slug,
-        na1_0.status,
-        na1_0.summary,
-        na1_0.tags,
-        na1_0.thumbnail,
-        na1_0.title,
-        na1_0.updated_at,
-        na1_0.view_count 
+        count(a1_0.id) 
     from
-        salepro.news_articles na1_0 
+        salepro.apartments a1_0 
+    where
+        a1_0.building_id=?
+Hibernate: 
+    select
+        count(a1_0.id) 
+    from
+        salepro.apartments a1_0 
+    where
+        a1_0.building_id=?
+2026-06-12T15:05:45.345+07:00 DEBUG 15820 --- [0.0-8088-exec-3] org.hibernate.SQL                        : 
+    select
+        count(a1_0.id) 
+    from
+        salepro.apartments a1_0 
+    where
+        a1_0.building_id=? 
+        and a1_0.status=?
+Hibernate: 
+    select
+        count(a1_0.id) 
+    from
+        salepro.apartments a1_0 
+    where
+        a1_0.building_id=? 
+        and a1_0.status=?
+2026-06-12T15:05:45.345+07:00 DEBUG 15820 --- [0.0-8088-exec-3] org.hibernate.SQL                        : 
+    select
+        bfp1_0.id,
+        bfp1_0.building_id,
+        bfp1_0.floor_label,
+        bfp1_0.image_url,
+        bfp1_0.note,
+        bfp1_0.sort_order 
+    from
+        salepro.building_floor_plans bfp1_0 
+    where
+        bfp1_0.building_id=? 
     order by
-        na1_0.published_at desc
+        bfp1_0.sort_order
 Hibernate: 
     select
-        na1_0.id,
-        na1_0.author,
-        na1_0.category_id,
-        na1_0.content,
-        na1_0.created_at,
-        na1_0.project_id,
-        na1_0.published_at,
-        na1_0.slug,
-        na1_0.status,
-        na1_0.summary,
-        na1_0.tags,
-        na1_0.thumbnail,
-        na1_0.title,
-        na1_0.updated_at,
-        na1_0.view_count 
+        bfp1_0.id,
+        bfp1_0.building_id,
+        bfp1_0.floor_label,
+        bfp1_0.image_url,
+        bfp1_0.note,
+        bfp1_0.sort_order 
     from
-        salepro.news_articles na1_0 
+        salepro.building_floor_plans bfp1_0 
+    where
+        bfp1_0.building_id=? 
     order by
-        na1_0.published_at desc
-2026-06-12T09:12:43.559+07:00 DEBUG 20964 --- [0.0-8088-exec-1] org.hibernate.SQL                        : 
-    select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
-    from
-        salepro.news_categories nc1_0 
-    order by
-        nc1_0.sort_order
-Hibernate: 
-    select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
-    from
-        salepro.news_categories nc1_0 
-    order by
-        nc1_0.sort_order
-========== [INCOMING REQUEST] ==========
-Method: GET
-URI: /api/v1/news/tags
-Content-Type: application/json
-Content-Length: -1
-========================================
-2026-06-12T09:12:43.580+07:00 DEBUG 20964 --- [0.0-8088-exec-1] org.hibernate.SQL                        : 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-Hibernate: 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-2026-06-12T09:12:43.581+07:00 DEBUG 20964 --- [0.0-8088-exec-3] org.hibernate.SQL                        : 
-    select
-        na1_0.id,
-        na1_0.author,
-        na1_0.category_id,
-        na1_0.content,
-        na1_0.created_at,
-        na1_0.project_id,
-        na1_0.published_at,
-        na1_0.slug,
-        na1_0.status,
-        na1_0.summary,
-        na1_0.tags,
-        na1_0.thumbnail,
-        na1_0.title,
-        na1_0.updated_at,
-        na1_0.view_count 
-    from
-        salepro.news_articles na1_0 
-    order by
-        na1_0.published_at desc
-Hibernate: 
-    select
-        na1_0.id,
-        na1_0.author,
-        na1_0.category_id,
-        na1_0.content,
-        na1_0.created_at,
-        na1_0.project_id,
-        na1_0.published_at,
-        na1_0.slug,
-        na1_0.status,
-        na1_0.summary,
-        na1_0.tags,
-        na1_0.thumbnail,
-        na1_0.title,
-        na1_0.updated_at,
-        na1_0.view_count 
-    from
-        salepro.news_articles na1_0 
-    order by
-        na1_0.published_at desc
-2026-06-12T09:12:43.582+07:00 DEBUG 20964 --- [.0-8088-exec-10] org.hibernate.SQL                        : 
-    select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
-    from
-        salepro.news_categories nc1_0 
-    where
-        nc1_0.id=?
-Hibernate: 
-    select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
-    from
-        salepro.news_categories nc1_0 
-    where
-        nc1_0.id=?
-2026-06-12T09:12:43.584+07:00 DEBUG 20964 --- [0.0-8088-exec-1] org.hibernate.SQL                        : 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-Hibernate: 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-2026-06-12T09:12:43.586+07:00 DEBUG 20964 --- [.0-8088-exec-10] org.hibernate.SQL                        : 
-    select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
-    from
-        salepro.news_categories nc1_0 
-    where
-        nc1_0.id=?
-2026-06-12T09:12:43.586+07:00 DEBUG 20964 --- [0.0-8088-exec-1] org.hibernate.SQL                        : 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-Hibernate: 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-Hibernate: 
-    select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
-    from
-        salepro.news_categories nc1_0 
-    where
-        nc1_0.id=?
-2026-06-12T09:12:43.590+07:00 DEBUG 20964 --- [0.0-8088-exec-1] org.hibernate.SQL                        : 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-2026-06-12T09:12:43.590+07:00 DEBUG 20964 --- [.0-8088-exec-10] org.hibernate.SQL                        : 
-    select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
-    from
-        salepro.news_categories nc1_0 
-    where
-        nc1_0.id=?
-Hibernate: 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-Hibernate: 
-    select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
-    from
-        salepro.news_categories nc1_0 
-    where
-        nc1_0.id=?
-2026-06-12T09:12:43.592+07:00 DEBUG 20964 --- [.0-8088-exec-10] org.hibernate.SQL                        : 
-    select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
-    from
-        salepro.news_categories nc1_0 
-    where
-        nc1_0.id=?
-Hibernate: 
-    select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
-    from
-        salepro.news_categories nc1_0 
-    where
-        nc1_0.id=?
-2026-06-12T09:12:43.592+07:00 DEBUG 20964 --- [0.0-8088-exec-1] org.hibernate.SQL                        : 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-Hibernate: 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-2026-06-12T09:12:43.593+07:00 DEBUG 20964 --- [.0-8088-exec-10] org.hibernate.SQL                        : 
-    select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
-    from
-        salepro.news_categories nc1_0 
-    where
-        nc1_0.id=?
-Hibernate: 
-    select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
-    from
-        salepro.news_categories nc1_0 
-    where
-        nc1_0.id=?
-2026-06-12T09:12:43.594+07:00 DEBUG 20964 --- [0.0-8088-exec-1] org.hibernate.SQL                        : 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-Hibernate: 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-2026-06-12T09:12:43.595+07:00 DEBUG 20964 --- [0.0-8088-exec-1] org.hibernate.SQL                        : 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-Hibernate: 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-2026-06-12T09:12:43.597+07:00 DEBUG 20964 --- [0.0-8088-exec-1] org.hibernate.SQL                        : 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-Hibernate: 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-2026-06-12T09:12:43.599+07:00 DEBUG 20964 --- [0.0-8088-exec-1] org.hibernate.SQL                        : 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-Hibernate: 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-========== [INCOMING REQUEST] ==========
-Method: GET
-URI: /api/v1/news
-Content-Type: application/json
-Content-Length: -1
-========================================
-2026-06-12T09:12:43.601+07:00 DEBUG 20964 --- [0.0-8088-exec-1] org.hibernate.SQL                        : 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-Hibernate: 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-2026-06-12T09:12:43.607+07:00 DEBUG 20964 --- [0.0-8088-exec-5] org.hibernate.SQL                        : 
-    select
-        na1_0.id,
-        na1_0.author,
-        na1_0.category_id,
-        na1_0.content,
-        na1_0.created_at,
-        na1_0.project_id,
-        na1_0.published_at,
-        na1_0.slug,
-        na1_0.status,
-        na1_0.summary,
-        na1_0.tags,
-        na1_0.thumbnail,
-        na1_0.title,
-        na1_0.updated_at,
-        na1_0.view_count 
-    from
-        salepro.news_articles na1_0 
-    order by
-        na1_0.published_at desc
-Hibernate: 
-    select
-        na1_0.id,
-        na1_0.author,
-        na1_0.category_id,
-        na1_0.content,
-        na1_0.created_at,
-        na1_0.project_id,
-        na1_0.published_at,
-        na1_0.slug,
-        na1_0.status,
-        na1_0.summary,
-        na1_0.tags,
-        na1_0.thumbnail,
-        na1_0.title,
-        na1_0.updated_at,
-        na1_0.view_count 
-    from
-        salepro.news_articles na1_0 
-    order by
-        na1_0.published_at desc
-========== [INCOMING REQUEST] ==========
-Method: GET
-URI: /api/v1/news/categories
-Content-Type: application/json
-Content-Length: -1
-========================================
-2026-06-12T09:12:43.616+07:00 DEBUG 20964 --- [0.0-8088-exec-5] org.hibernate.SQL                        : 
-    select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
-    from
-        salepro.news_categories nc1_0 
-    where
-        nc1_0.id=?
-Hibernate: 
-    select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
-    from
-        salepro.news_categories nc1_0 
-    where
-        nc1_0.id=?
-2026-06-12T09:12:43.617+07:00 DEBUG 20964 --- [0.0-8088-exec-6] org.hibernate.SQL                        : 
-    select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
-    from
-        salepro.news_categories nc1_0 
-    order by
-        nc1_0.sort_order
-Hibernate: 
-    select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
-    from
-        salepro.news_categories nc1_0 
-    order by
-        nc1_0.sort_order
-2026-06-12T09:12:43.619+07:00 DEBUG 20964 --- [0.0-8088-exec-5] org.hibernate.SQL                        : 
-    select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
-    from
-        salepro.news_categories nc1_0 
-    where
-        nc1_0.id=?
-Hibernate: 
-    select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
-    from
-        salepro.news_categories nc1_0 
-    where
-        nc1_0.id=?
-2026-06-12T09:12:43.620+07:00 DEBUG 20964 --- [0.0-8088-exec-5] org.hibernate.SQL                        : 
-    select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
-    from
-        salepro.news_categories nc1_0 
-    where
-        nc1_0.id=?
-Hibernate: 
-    select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
-    from
-        salepro.news_categories nc1_0 
-    where
-        nc1_0.id=?
-2026-06-12T09:12:43.621+07:00 DEBUG 20964 --- [0.0-8088-exec-5] org.hibernate.SQL                        : 
-    select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
-    from
-        salepro.news_categories nc1_0 
-    where
-        nc1_0.id=?
-Hibernate: 
-    select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
-    from
-        salepro.news_categories nc1_0 
-    where
-        nc1_0.id=?
-2026-06-12T09:12:43.622+07:00 DEBUG 20964 --- [0.0-8088-exec-6] org.hibernate.SQL                        : 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-Hibernate: 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-2026-06-12T09:12:43.622+07:00 DEBUG 20964 --- [0.0-8088-exec-5] org.hibernate.SQL                        : 
-    select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
-    from
-        salepro.news_categories nc1_0 
-    where
-        nc1_0.id=?
-Hibernate: 
-    select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
-    from
-        salepro.news_categories nc1_0 
-    where
-        nc1_0.id=?
-2026-06-12T09:12:43.624+07:00 DEBUG 20964 --- [0.0-8088-exec-6] org.hibernate.SQL                        : 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-Hibernate: 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-2026-06-12T09:12:43.624+07:00 DEBUG 20964 --- [0.0-8088-exec-6] org.hibernate.SQL                        : 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-Hibernate: 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-2026-06-12T09:12:43.628+07:00 DEBUG 20964 --- [0.0-8088-exec-6] org.hibernate.SQL                        : 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-Hibernate: 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-2026-06-12T09:12:43.630+07:00 DEBUG 20964 --- [0.0-8088-exec-6] org.hibernate.SQL                        : 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-Hibernate: 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-2026-06-12T09:12:43.632+07:00 DEBUG 20964 --- [0.0-8088-exec-6] org.hibernate.SQL                        : 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-Hibernate: 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-2026-06-12T09:12:43.636+07:00 DEBUG 20964 --- [0.0-8088-exec-6] org.hibernate.SQL                        : 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-Hibernate: 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-2026-06-12T09:12:43.639+07:00 DEBUG 20964 --- [0.0-8088-exec-6] org.hibernate.SQL                        : 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-Hibernate: 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-2026-06-12T09:12:43.644+07:00 DEBUG 20964 --- [0.0-8088-exec-6] org.hibernate.SQL                        : 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-Hibernate: 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-2026-06-12T09:12:43.647+07:00 DEBUG 20964 --- [0.0-8088-exec-6] org.hibernate.SQL                        : 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-Hibernate: 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-========== [INCOMING REQUEST] ==========
-Method: OPTIONS
-URI: /api/v1/news/2
-Content-Type: null
-Content-Length: -1
-========================================
-========== [INCOMING REQUEST] ==========
-Method: OPTIONS
-URI: /api/v1/news/2
-Content-Type: null
-Content-Length: -1
-========================================
-========== [INCOMING REQUEST] ==========
-Method: GET
-URI: /api/v1/news/2
-Content-Type: application/json
-Content-Length: -1
-========================================
-2026-06-12T09:12:52.733+07:00 DEBUG 20964 --- [0.0-8088-exec-9] org.hibernate.SQL                        : 
-    select
-        na1_0.id,
-        na1_0.author,
-        na1_0.category_id,
-        na1_0.content,
-        na1_0.created_at,
-        na1_0.project_id,
-        na1_0.published_at,
-        na1_0.slug,
-        na1_0.status,
-        na1_0.summary,
-        na1_0.tags,
-        na1_0.thumbnail,
-        na1_0.title,
-        na1_0.updated_at,
-        na1_0.view_count 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.id=?
-Hibernate: 
-    select
-        na1_0.id,
-        na1_0.author,
-        na1_0.category_id,
-        na1_0.content,
-        na1_0.created_at,
-        na1_0.project_id,
-        na1_0.published_at,
-        na1_0.slug,
-        na1_0.status,
-        na1_0.summary,
-        na1_0.tags,
-        na1_0.thumbnail,
-        na1_0.title,
-        na1_0.updated_at,
-        na1_0.view_count 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.id=?
-2026-06-12T09:12:52.742+07:00 DEBUG 20964 --- [0.0-8088-exec-9] org.hibernate.SQL                        : 
-    select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
-    from
-        salepro.news_categories nc1_0 
-    where
-        nc1_0.id=?
-Hibernate: 
-    select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
-    from
-        salepro.news_categories nc1_0 
-    where
-        nc1_0.id=?
-2026-06-12T09:12:52.774+07:00 DEBUG 20964 --- [0.0-8088-exec-9] org.hibernate.SQL                        : 
-    update
-        salepro.news_articles 
-    set
-        author=?,
-        category_id=?,
-        content=?,
-        project_id=?,
-        published_at=?,
-        slug=?,
-        status=?,
-        summary=?,
-        tags=?,
-        thumbnail=?,
-        title=?,
-        updated_at=?,
-        view_count=? 
-    where
-        id=?
-Hibernate: 
-    update
-        salepro.news_articles 
-    set
-        author=?,
-        category_id=?,
-        content=?,
-        project_id=?,
-        published_at=?,
-        slug=?,
-        status=?,
-        summary=?,
-        tags=?,
-        thumbnail=?,
-        title=?,
-        updated_at=?,
-        view_count=? 
-    where
-        id=?
-========== [INCOMING REQUEST] ==========
-Method: GET
-URI: /api/v1/news/2
-Content-Type: application/json
-Content-Length: -1
-========================================
-2026-06-12T09:12:52.815+07:00 DEBUG 20964 --- [0.0-8088-exec-9] org.hibernate.SQL                        : 
-    select
-        na1_0.id,
-        na1_0.author,
-        na1_0.category_id,
-        na1_0.content,
-        na1_0.created_at,
-        na1_0.project_id,
-        na1_0.published_at,
-        na1_0.slug,
-        na1_0.status,
-        na1_0.summary,
-        na1_0.tags,
-        na1_0.thumbnail,
-        na1_0.title,
-        na1_0.updated_at,
-        na1_0.view_count 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.id=?
-Hibernate: 
-    select
-        na1_0.id,
-        na1_0.author,
-        na1_0.category_id,
-        na1_0.content,
-        na1_0.created_at,
-        na1_0.project_id,
-        na1_0.published_at,
-        na1_0.slug,
-        na1_0.status,
-        na1_0.summary,
-        na1_0.tags,
-        na1_0.thumbnail,
-        na1_0.title,
-        na1_0.updated_at,
-        na1_0.view_count 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.id=?
-2026-06-12T09:12:52.819+07:00 DEBUG 20964 --- [0.0-8088-exec-9] org.hibernate.SQL                        : 
-    select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
-    from
-        salepro.news_categories nc1_0 
-    where
-        nc1_0.id=?
-Hibernate: 
-    select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
-    from
-        salepro.news_categories nc1_0 
-    where
-        nc1_0.id=?
-2026-06-12T09:12:52.822+07:00 DEBUG 20964 --- [0.0-8088-exec-9] org.hibernate.SQL                        : 
-    update
-        salepro.news_articles 
-    set
-        author=?,
-        category_id=?,
-        content=?,
-        project_id=?,
-        published_at=?,
-        slug=?,
-        status=?,
-        summary=?,
-        tags=?,
-        thumbnail=?,
-        title=?,
-        updated_at=?,
-        view_count=? 
-    where
-        id=?
-Hibernate: 
-    update
-        salepro.news_articles 
-    set
-        author=?,
-        category_id=?,
-        content=?,
-        project_id=?,
-        published_at=?,
-        slug=?,
-        status=?,
-        summary=?,
-        tags=?,
-        thumbnail=?,
-        title=?,
-        updated_at=?,
-        view_count=? 
-    where
-        id=?
-========== [INCOMING REQUEST] ==========
-Method: OPTIONS
-URI: /api/v1/news
-Content-Type: null
-Content-Length: -1
-========================================
-========== [INCOMING REQUEST] ==========
-Method: GET
-URI: /api/v1/news
-Content-Type: application/json
-Content-Length: -1
-========================================
-2026-06-12T09:12:52.848+07:00 DEBUG 20964 --- [0.0-8088-exec-3] org.hibernate.SQL                        : 
-    select
-        na1_0.id,
-        na1_0.author,
-        na1_0.category_id,
-        na1_0.content,
-        na1_0.created_at,
-        na1_0.project_id,
-        na1_0.published_at,
-        na1_0.slug,
-        na1_0.status,
-        na1_0.summary,
-        na1_0.tags,
-        na1_0.thumbnail,
-        na1_0.title,
-        na1_0.updated_at,
-        na1_0.view_count 
-    from
-        salepro.news_articles na1_0 
-    order by
-        na1_0.published_at desc
-Hibernate: 
-    select
-        na1_0.id,
-        na1_0.author,
-        na1_0.category_id,
-        na1_0.content,
-        na1_0.created_at,
-        na1_0.project_id,
-        na1_0.published_at,
-        na1_0.slug,
-        na1_0.status,
-        na1_0.summary,
-        na1_0.tags,
-        na1_0.thumbnail,
-        na1_0.title,
-        na1_0.updated_at,
-        na1_0.view_count 
-    from
-        salepro.news_articles na1_0 
-    order by
-        na1_0.published_at desc
-2026-06-12T09:12:52.853+07:00 DEBUG 20964 --- [0.0-8088-exec-3] org.hibernate.SQL                        : 
-    select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
-    from
-        salepro.news_categories nc1_0 
-    where
-        nc1_0.id=?
-Hibernate: 
-    select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
-    from
-        salepro.news_categories nc1_0 
-    where
-        nc1_0.id=?
-========== [INCOMING REQUEST] ==========
-Method: GET
-URI: /api/v1/news/categories
-========== [INCOMING REQUEST] ==========
-Method: GET
-URI: /api/v1/news/tags
-Content-Type: application/json
-Content-Type: application/json
-Content-Length: -1
-========================================
-Content-Length: -1
-========================================
-2026-06-12T09:12:52.927+07:00 DEBUG 20964 --- [.0-8088-exec-10] org.hibernate.SQL                        : 
-    select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
-    from
-        salepro.news_categories nc1_0 
-    order by
-        nc1_0.sort_order
-Hibernate: 
-    select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
-    from
-        salepro.news_categories nc1_0 
-    order by
-        nc1_0.sort_order
-2026-06-12T09:12:52.927+07:00 DEBUG 20964 --- [0.0-8088-exec-1] org.hibernate.SQL                        : 
-    select
-        na1_0.id,
-        na1_0.author,
-        na1_0.category_id,
-        na1_0.content,
-        na1_0.created_at,
-        na1_0.project_id,
-        na1_0.published_at,
-        na1_0.slug,
-        na1_0.status,
-        na1_0.summary,
-        na1_0.tags,
-        na1_0.thumbnail,
-        na1_0.title,
-        na1_0.updated_at,
-        na1_0.view_count 
-    from
-        salepro.news_articles na1_0 
-    order by
-        na1_0.published_at desc
-Hibernate: 
-    select
-        na1_0.id,
-        na1_0.author,
-        na1_0.category_id,
-        na1_0.content,
-        na1_0.created_at,
-        na1_0.project_id,
-        na1_0.published_at,
-        na1_0.slug,
-        na1_0.status,
-        na1_0.summary,
-        na1_0.tags,
-        na1_0.thumbnail,
-        na1_0.title,
-        na1_0.updated_at,
-        na1_0.view_count 
-    from
-        salepro.news_articles na1_0 
-    order by
-        na1_0.published_at desc
-2026-06-12T09:12:52.933+07:00 DEBUG 20964 --- [.0-8088-exec-10] org.hibernate.SQL                        : 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-Hibernate: 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-2026-06-12T09:12:52.936+07:00 DEBUG 20964 --- [.0-8088-exec-10] org.hibernate.SQL                        : 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-Hibernate: 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-2026-06-12T09:12:52.938+07:00 DEBUG 20964 --- [.0-8088-exec-10] org.hibernate.SQL                        : 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-Hibernate: 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-2026-06-12T09:12:52.941+07:00 DEBUG 20964 --- [.0-8088-exec-10] org.hibernate.SQL                        : 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-Hibernate: 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-2026-06-12T09:12:52.943+07:00 DEBUG 20964 --- [.0-8088-exec-10] org.hibernate.SQL                        : 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-Hibernate: 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-2026-06-12T09:12:52.944+07:00 DEBUG 20964 --- [.0-8088-exec-10] org.hibernate.SQL                        : 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-Hibernate: 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-2026-06-12T09:12:52.946+07:00 DEBUG 20964 --- [.0-8088-exec-10] org.hibernate.SQL                        : 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-Hibernate: 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-2026-06-12T09:12:52.947+07:00 DEBUG 20964 --- [.0-8088-exec-10] org.hibernate.SQL                        : 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-Hibernate: 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-========== [INCOMING REQUEST] ==========
-Method: GET
-URI: /api/v1/news/tags
-Content-Type: application/json
-Content-Length: -1
-========================================
-2026-06-12T09:12:52.948+07:00 DEBUG 20964 --- [.0-8088-exec-10] org.hibernate.SQL                        : 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-Hibernate: 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-2026-06-12T09:12:52.948+07:00 DEBUG 20964 --- [.0-8088-exec-10] org.hibernate.SQL                        : 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-Hibernate: 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-2026-06-12T09:12:52.950+07:00 DEBUG 20964 --- [0.0-8088-exec-1] org.hibernate.SQL                        : 
-    select
-        na1_0.id,
-        na1_0.author,
-        na1_0.category_id,
-        na1_0.content,
-        na1_0.created_at,
-        na1_0.project_id,
-        na1_0.published_at,
-        na1_0.slug,
-        na1_0.status,
-        na1_0.summary,
-        na1_0.tags,
-        na1_0.thumbnail,
-        na1_0.title,
-        na1_0.updated_at,
-        na1_0.view_count 
-    from
-        salepro.news_articles na1_0 
-    order by
-        na1_0.published_at desc
-Hibernate: 
-    select
-        na1_0.id,
-        na1_0.author,
-        na1_0.category_id,
-        na1_0.content,
-        na1_0.created_at,
-        na1_0.project_id,
-        na1_0.published_at,
-        na1_0.slug,
-        na1_0.status,
-        na1_0.summary,
-        na1_0.tags,
-        na1_0.thumbnail,
-        na1_0.title,
-        na1_0.updated_at,
-        na1_0.view_count 
-    from
-        salepro.news_articles na1_0 
-    order by
-        na1_0.published_at desc
-========== [INCOMING REQUEST] ==========
-Method: GET
-URI: /api/v1/news/categories
-Content-Type: application/json
-Content-Length: -1
-========================================
-2026-06-12T09:12:52.958+07:00 DEBUG 20964 --- [0.0-8088-exec-6] org.hibernate.SQL                        : 
-    select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
-    from
-        salepro.news_categories nc1_0 
-    order by
-        nc1_0.sort_order
-Hibernate: 
-    select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
-    from
-        salepro.news_categories nc1_0 
-    order by
-        nc1_0.sort_order
-2026-06-12T09:12:52.961+07:00 DEBUG 20964 --- [0.0-8088-exec-6] org.hibernate.SQL                        : 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-Hibernate: 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-2026-06-12T09:12:52.963+07:00 DEBUG 20964 --- [0.0-8088-exec-6] org.hibernate.SQL                        : 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-Hibernate: 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-2026-06-12T09:12:52.965+07:00 DEBUG 20964 --- [0.0-8088-exec-6] org.hibernate.SQL                        : 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-Hibernate: 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-2026-06-12T09:12:52.966+07:00 DEBUG 20964 --- [0.0-8088-exec-6] org.hibernate.SQL                        : 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-Hibernate: 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-2026-06-12T09:12:52.968+07:00 DEBUG 20964 --- [0.0-8088-exec-6] org.hibernate.SQL                        : 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-Hibernate: 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-2026-06-12T09:12:52.970+07:00 DEBUG 20964 --- [0.0-8088-exec-6] org.hibernate.SQL                        : 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-Hibernate: 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-2026-06-12T09:12:52.971+07:00 DEBUG 20964 --- [0.0-8088-exec-6] org.hibernate.SQL                        : 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-Hibernate: 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-2026-06-12T09:12:52.971+07:00 DEBUG 20964 --- [0.0-8088-exec-6] org.hibernate.SQL                        : 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-Hibernate: 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-2026-06-12T09:12:52.972+07:00 DEBUG 20964 --- [0.0-8088-exec-6] org.hibernate.SQL                        : 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-Hibernate: 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-2026-06-12T09:12:52.973+07:00 DEBUG 20964 --- [0.0-8088-exec-6] org.hibernate.SQL                        : 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-Hibernate: 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-========== [INCOMING REQUEST] ==========
-Method: OPTIONS
-URI: /api/v1/news/1
-Content-Type: null
-Content-Length: -1
-========================================
-========== [INCOMING REQUEST] ==========
-Method: OPTIONS
-URI: /api/v1/news/1
-Content-Type: null
-Content-Length: -1
-========================================
-========== [INCOMING REQUEST] ==========
-Method: GET
-URI: /api/v1/news/1
-Content-Type: application/json
-Content-Length: -1
-========================================
-2026-06-12T09:13:23.142+07:00 DEBUG 20964 --- [0.0-8088-exec-7] org.hibernate.SQL                        : 
-    select
-        na1_0.id,
-        na1_0.author,
-        na1_0.category_id,
-        na1_0.content,
-        na1_0.created_at,
-        na1_0.project_id,
-        na1_0.published_at,
-        na1_0.slug,
-        na1_0.status,
-        na1_0.summary,
-        na1_0.tags,
-        na1_0.thumbnail,
-        na1_0.title,
-        na1_0.updated_at,
-        na1_0.view_count 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.id=?
-Hibernate: 
-    select
-        na1_0.id,
-        na1_0.author,
-        na1_0.category_id,
-        na1_0.content,
-        na1_0.created_at,
-        na1_0.project_id,
-        na1_0.published_at,
-        na1_0.slug,
-        na1_0.status,
-        na1_0.summary,
-        na1_0.tags,
-        na1_0.thumbnail,
-        na1_0.title,
-        na1_0.updated_at,
-        na1_0.view_count 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.id=?
-2026-06-12T09:13:23.144+07:00 DEBUG 20964 --- [0.0-8088-exec-7] org.hibernate.SQL                        : 
-    select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
-    from
-        salepro.news_categories nc1_0 
-    where
-        nc1_0.id=?
-Hibernate: 
-    select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
-    from
-        salepro.news_categories nc1_0 
-    where
-        nc1_0.id=?
-2026-06-12T09:13:23.145+07:00 DEBUG 20964 --- [0.0-8088-exec-7] org.hibernate.SQL                        : 
-    update
-        salepro.news_articles 
-    set
-        author=?,
-        category_id=?,
-        content=?,
-        project_id=?,
-        published_at=?,
-        slug=?,
-        status=?,
-        summary=?,
-        tags=?,
-        thumbnail=?,
-        title=?,
-        updated_at=?,
-        view_count=? 
-    where
-        id=?
-Hibernate: 
-    update
-        salepro.news_articles 
-    set
-        author=?,
-        category_id=?,
-        content=?,
-        project_id=?,
-        published_at=?,
-        slug=?,
-        status=?,
-        summary=?,
-        tags=?,
-        thumbnail=?,
-        title=?,
-        updated_at=?,
-        view_count=? 
-    where
-        id=?
-========== [INCOMING REQUEST] ==========
-Method: GET
-URI: /api/v1/news/1
-Content-Type: application/json
-Content-Length: -1
-========================================
-2026-06-12T09:13:23.154+07:00 DEBUG 20964 --- [0.0-8088-exec-9] org.hibernate.SQL                        : 
-    select
-        na1_0.id,
-        na1_0.author,
-        na1_0.category_id,
-        na1_0.content,
-        na1_0.created_at,
-        na1_0.project_id,
-        na1_0.published_at,
-        na1_0.slug,
-        na1_0.status,
-        na1_0.summary,
-        na1_0.tags,
-        na1_0.thumbnail,
-        na1_0.title,
-        na1_0.updated_at,
-        na1_0.view_count 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.id=?
-Hibernate: 
-    select
-        na1_0.id,
-        na1_0.author,
-        na1_0.category_id,
-        na1_0.content,
-        na1_0.created_at,
-        na1_0.project_id,
-        na1_0.published_at,
-        na1_0.slug,
-        na1_0.status,
-        na1_0.summary,
-        na1_0.tags,
-        na1_0.thumbnail,
-        na1_0.title,
-        na1_0.updated_at,
-        na1_0.view_count 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.id=?
-2026-06-12T09:13:23.158+07:00 DEBUG 20964 --- [0.0-8088-exec-9] org.hibernate.SQL                        : 
-    select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
-    from
-        salepro.news_categories nc1_0 
-    where
-        nc1_0.id=?
-Hibernate: 
-    select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
-    from
-        salepro.news_categories nc1_0 
-    where
-        nc1_0.id=?
-2026-06-12T09:13:23.159+07:00 DEBUG 20964 --- [0.0-8088-exec-9] org.hibernate.SQL                        : 
-    update
-        salepro.news_articles 
-    set
-        author=?,
-        category_id=?,
-        content=?,
-        project_id=?,
-        published_at=?,
-        slug=?,
-        status=?,
-        summary=?,
-        tags=?,
-        thumbnail=?,
-        title=?,
-        updated_at=?,
-        view_count=? 
-    where
-        id=?
-Hibernate: 
-    update
-        salepro.news_articles 
-    set
-        author=?,
-        category_id=?,
-        content=?,
-        project_id=?,
-        published_at=?,
-        slug=?,
-        status=?,
-        summary=?,
-        tags=?,
-        thumbnail=?,
-        title=?,
-        updated_at=?,
-        view_count=? 
-    where
-        id=?
-========== [INCOMING REQUEST] ==========
-Method: OPTIONS
-URI: /api/v1/news
-Content-Type: null
-Content-Length: -1
-========================================
-========== [INCOMING REQUEST] ==========
-Method: GET
-URI: /api/v1/news
-Content-Type: application/json
-Content-Length: -1
-========================================
-2026-06-12T09:13:23.194+07:00 DEBUG 20964 --- [0.0-8088-exec-3] org.hibernate.SQL                        : 
-    select
-        na1_0.id,
-        na1_0.author,
-        na1_0.category_id,
-        na1_0.content,
-        na1_0.created_at,
-        na1_0.project_id,
-        na1_0.published_at,
-        na1_0.slug,
-        na1_0.status,
-        na1_0.summary,
-        na1_0.tags,
-        na1_0.thumbnail,
-        na1_0.title,
-        na1_0.updated_at,
-        na1_0.view_count 
-    from
-        salepro.news_articles na1_0 
-    order by
-        na1_0.published_at desc
-Hibernate: 
-    select
-        na1_0.id,
-        na1_0.author,
-        na1_0.category_id,
-        na1_0.content,
-        na1_0.created_at,
-        na1_0.project_id,
-        na1_0.published_at,
-        na1_0.slug,
-        na1_0.status,
-        na1_0.summary,
-        na1_0.tags,
-        na1_0.thumbnail,
-        na1_0.title,
-        na1_0.updated_at,
-        na1_0.view_count 
-    from
-        salepro.news_articles na1_0 
-    order by
-        na1_0.published_at desc
-2026-06-12T09:13:23.199+07:00 DEBUG 20964 --- [0.0-8088-exec-3] org.hibernate.SQL                        : 
-    select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
-    from
-        salepro.news_categories nc1_0 
-    where
-        nc1_0.id=?
-Hibernate: 
-    select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
-    from
-        salepro.news_categories nc1_0 
-    where
-        nc1_0.id=?
-========== [INCOMING REQUEST] ==========
-Method: GET
-URI: /api/v1/news/categories
-Content-Type: application/json
-========== [INCOMING REQUEST] ==========
-Method: GET
-Content-Length: -1
-========================================
-URI: /api/v1/news/tags
-Content-Type: application/json
-Content-Length: -1
-========================================
-2026-06-12T09:13:23.257+07:00 DEBUG 20964 --- [0.0-8088-exec-5] org.hibernate.SQL                        : 
-    select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
-    from
-        salepro.news_categories nc1_0 
-    order by
-        nc1_0.sort_order
-Hibernate: 
-    select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
-    from
-        salepro.news_categories nc1_0 
-    order by
-        nc1_0.sort_order
-2026-06-12T09:13:23.257+07:00 DEBUG 20964 --- [.0-8088-exec-10] org.hibernate.SQL                        : 
-    select
-        na1_0.id,
-        na1_0.author,
-        na1_0.category_id,
-        na1_0.content,
-        na1_0.created_at,
-        na1_0.project_id,
-        na1_0.published_at,
-        na1_0.slug,
-        na1_0.status,
-        na1_0.summary,
-        na1_0.tags,
-        na1_0.thumbnail,
-        na1_0.title,
-        na1_0.updated_at,
-        na1_0.view_count 
-    from
-        salepro.news_articles na1_0 
-    order by
-        na1_0.published_at desc
-Hibernate: 
-    select
-        na1_0.id,
-        na1_0.author,
-        na1_0.category_id,
-        na1_0.content,
-        na1_0.created_at,
-        na1_0.project_id,
-        na1_0.published_at,
-        na1_0.slug,
-        na1_0.status,
-        na1_0.summary,
-        na1_0.tags,
-        na1_0.thumbnail,
-        na1_0.title,
-        na1_0.updated_at,
-        na1_0.view_count 
-    from
-        salepro.news_articles na1_0 
-    order by
-        na1_0.published_at desc
-2026-06-12T09:13:23.262+07:00 DEBUG 20964 --- [0.0-8088-exec-5] org.hibernate.SQL                        : 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-Hibernate: 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-2026-06-12T09:13:23.266+07:00 DEBUG 20964 --- [0.0-8088-exec-5] org.hibernate.SQL                        : 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-Hibernate: 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-========== [INCOMING REQUEST] ==========
-Method: GET
-URI: /api/v1/news/tags
-Content-Type: application/json
-Content-Length: -1
-========================================
-2026-06-12T09:13:23.271+07:00 DEBUG 20964 --- [0.0-8088-exec-5] org.hibernate.SQL                        : 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-Hibernate: 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-2026-06-12T09:13:23.274+07:00 DEBUG 20964 --- [0.0-8088-exec-5] org.hibernate.SQL                        : 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-Hibernate: 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-2026-06-12T09:13:23.276+07:00 DEBUG 20964 --- [0.0-8088-exec-1] org.hibernate.SQL                        : 
-    select
-        na1_0.id,
-        na1_0.author,
-        na1_0.category_id,
-        na1_0.content,
-        na1_0.created_at,
-        na1_0.project_id,
-        na1_0.published_at,
-        na1_0.slug,
-        na1_0.status,
-        na1_0.summary,
-        na1_0.tags,
-        na1_0.thumbnail,
-        na1_0.title,
-        na1_0.updated_at,
-        na1_0.view_count 
-    from
-        salepro.news_articles na1_0 
-    order by
-        na1_0.published_at desc
-Hibernate: 
-    select
-        na1_0.id,
-        na1_0.author,
-        na1_0.category_id,
-        na1_0.content,
-        na1_0.created_at,
-        na1_0.project_id,
-        na1_0.published_at,
-        na1_0.slug,
-        na1_0.status,
-        na1_0.summary,
-        na1_0.tags,
-        na1_0.thumbnail,
-        na1_0.title,
-        na1_0.updated_at,
-        na1_0.view_count 
-    from
-        salepro.news_articles na1_0 
-    order by
-        na1_0.published_at desc
-2026-06-12T09:13:23.276+07:00 DEBUG 20964 --- [0.0-8088-exec-5] org.hibernate.SQL                        : 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-Hibernate: 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-2026-06-12T09:13:23.278+07:00 DEBUG 20964 --- [0.0-8088-exec-5] org.hibernate.SQL                        : 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-Hibernate: 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-2026-06-12T09:13:23.282+07:00 DEBUG 20964 --- [0.0-8088-exec-5] org.hibernate.SQL                        : 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-Hibernate: 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-2026-06-12T09:13:23.285+07:00 DEBUG 20964 --- [0.0-8088-exec-5] org.hibernate.SQL                        : 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-Hibernate: 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-2026-06-12T09:13:23.288+07:00 DEBUG 20964 --- [0.0-8088-exec-5] org.hibernate.SQL                        : 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-Hibernate: 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-2026-06-12T09:13:23.294+07:00 DEBUG 20964 --- [0.0-8088-exec-5] org.hibernate.SQL                        : 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-Hibernate: 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-========== [INCOMING REQUEST] ==========
-Method: GET
-URI: /api/v1/news/categories
-Content-Type: application/json
-Content-Length: -1
-========================================
-2026-06-12T09:13:23.304+07:00 DEBUG 20964 --- [0.0-8088-exec-6] org.hibernate.SQL                        : 
-    select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
-    from
-        salepro.news_categories nc1_0 
-    order by
-        nc1_0.sort_order
-Hibernate: 
-    select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
-    from
-        salepro.news_categories nc1_0 
-    order by
-        nc1_0.sort_order
-2026-06-12T09:13:23.307+07:00 DEBUG 20964 --- [0.0-8088-exec-6] org.hibernate.SQL                        : 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-Hibernate: 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-2026-06-12T09:13:23.309+07:00 DEBUG 20964 --- [0.0-8088-exec-6] org.hibernate.SQL                        : 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-Hibernate: 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-2026-06-12T09:13:23.310+07:00 DEBUG 20964 --- [0.0-8088-exec-6] org.hibernate.SQL                        : 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-Hibernate: 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-2026-06-12T09:13:23.312+07:00 DEBUG 20964 --- [0.0-8088-exec-6] org.hibernate.SQL                        : 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-Hibernate: 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-2026-06-12T09:13:23.313+07:00 DEBUG 20964 --- [0.0-8088-exec-6] org.hibernate.SQL                        : 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-Hibernate: 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-2026-06-12T09:13:23.314+07:00 DEBUG 20964 --- [0.0-8088-exec-6] org.hibernate.SQL                        : 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-Hibernate: 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-2026-06-12T09:13:23.315+07:00 DEBUG 20964 --- [0.0-8088-exec-6] org.hibernate.SQL                        : 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-Hibernate: 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-2026-06-12T09:13:23.317+07:00 DEBUG 20964 --- [0.0-8088-exec-6] org.hibernate.SQL                        : 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-Hibernate: 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-2026-06-12T09:13:23.317+07:00 DEBUG 20964 --- [0.0-8088-exec-6] org.hibernate.SQL                        : 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-Hibernate: 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-2026-06-12T09:13:23.318+07:00 DEBUG 20964 --- [0.0-8088-exec-6] org.hibernate.SQL                        : 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-Hibernate: 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-2026-06-12T09:13:27.495+07:00  INFO 20964 --- [MessageBroker-1] o.s.w.s.c.WebSocketMessageBrokerStats    : WebSocketSession[0 current WS(0)-HttpStream(0)-HttpPoll(0), 0 total, 0 closed abnormally (0 connect failure, 0 send limit, 0 transport error)], stompSubProtocol[processed CONNECT(0)-CONNECTED(0)-DISCONNECT(0)], stompBrokerRelay[null], inboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 0], outboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 0], sockJsScheduler[pool size = 3, active threads = 1, queued tasks = 2, completed tasks = 0]
-2026-06-12T09:13:27.544+07:00 DEBUG 20964 --- [MessageBroker-2] org.hibernate.SQL                        : 
+        bfp1_0.sort_order
+2026-06-12T15:05:45.416+07:00 DEBUG 15820 --- [0.0-8088-exec-4] org.hibernate.SQL                        : 
+    select
+        sa1_0.id,
+        sa1_0.avatar_url,
+        sa1_0.created_at,
+        sa1_0.email,
+        sa1_0.full_name,
+        sa1_0.phone,
+        sa1_0.title,
+        sa1_0.updated_at,
+        sa1_0.zalo_link 
+    from
+        salepro.sales_agents sa1_0 
+    where
+        sa1_0.id=?
+Hibernate: 
+    select
+        sa1_0.id,
+        sa1_0.avatar_url,
+        sa1_0.created_at,
+        sa1_0.email,
+        sa1_0.full_name,
+        sa1_0.phone,
+        sa1_0.title,
+        sa1_0.updated_at,
+        sa1_0.zalo_link 
+    from
+        salepro.sales_agents sa1_0 
+    where
+        sa1_0.id=?
+2026-06-12T15:06:02.693+07:00  INFO 15820 --- [MessageBroker-1] o.s.w.s.c.WebSocketMessageBrokerStats    : WebSocketSession[0 current WS(0)-HttpStream(0)-HttpPoll(0), 0 total, 0 closed abnormally (0 connect failure, 0 send limit, 0 transport error)], stompSubProtocol[processed CONNECT(0)-CONNECTED(0)-DISCONNECT(0)], stompBrokerRelay[null], inboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 0], outboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 0], sockJsScheduler[pool size = 3, active threads = 1, queued tasks = 2, completed tasks = 0]
+2026-06-12T15:06:02.760+07:00 DEBUG 15820 --- [MessageBroker-2] org.hibernate.SQL                        : 
     select
         ts1_0.id,
         ts1_0.description,
@@ -3070,606 +803,1819 @@ Hibernate:
     where
         ts1_0.status='UPCOMING' 
         and ts1_0.start_time<?
-2026-06-12T09:13:27.548+07:00  INFO 20964 --- [MessageBroker-2] .t.k.m.t.s.TrainingAutoCompleteScheduler : [TrainingScheduler][Startup check] Kh�ng c� bu?i h?c n�o c?n t? ??ng k?t th�c.
+2026-06-12T15:06:02.770+07:00  INFO 15820 --- [MessageBroker-2] .t.k.m.t.s.TrainingAutoCompleteScheduler : [TrainingScheduler][Startup check] Kh�ng c� bu?i h?c n�o c?n t? ??ng k?t th�c.
 ========== [INCOMING REQUEST] ==========
 Method: GET
-URI: /api/v1/news/1
-Content-Type: application/json
+URI: /api/v1/salepro/projects/1
+Content-Type: null
 Content-Length: -1
 ========================================
-2026-06-12T09:31:33.191+07:00 DEBUG 20964 --- [.0-8088-exec-10] org.hibernate.SQL                        : 
+2026-06-12T15:09:01.052+07:00 DEBUG 15820 --- [0.0-8088-exec-9] org.hibernate.SQL                        : 
     select
-        na1_0.id,
-        na1_0.author,
-        na1_0.category_id,
-        na1_0.content,
-        na1_0.created_at,
-        na1_0.project_id,
-        na1_0.published_at,
-        na1_0.slug,
-        na1_0.status,
-        na1_0.summary,
-        na1_0.tags,
-        na1_0.thumbnail,
-        na1_0.title,
-        na1_0.updated_at,
-        na1_0.view_count 
+        p1_0.id,
+        p1_0.created_at,
+        p1_0.details,
+        p1_0.managing_agent_id,
+        p1_0.name,
+        p1_0.project_type,
+        p1_0.status,
+        p1_0.updated_at 
     from
-        salepro.news_articles na1_0 
+        salepro.projects p1_0 
     where
-        na1_0.id=?
+        p1_0.id=?
 Hibernate: 
     select
-        na1_0.id,
-        na1_0.author,
-        na1_0.category_id,
-        na1_0.content,
-        na1_0.created_at,
-        na1_0.project_id,
-        na1_0.published_at,
-        na1_0.slug,
-        na1_0.status,
-        na1_0.summary,
-        na1_0.tags,
-        na1_0.thumbnail,
-        na1_0.title,
-        na1_0.updated_at,
-        na1_0.view_count 
+        p1_0.id,
+        p1_0.created_at,
+        p1_0.details,
+        p1_0.managing_agent_id,
+        p1_0.name,
+        p1_0.project_type,
+        p1_0.status,
+        p1_0.updated_at 
     from
-        salepro.news_articles na1_0 
+        salepro.projects p1_0 
     where
-        na1_0.id=?
-2026-06-12T09:31:33.195+07:00 DEBUG 20964 --- [.0-8088-exec-10] org.hibernate.SQL                        : 
+        p1_0.id=?
+2026-06-12T15:09:01.060+07:00 DEBUG 15820 --- [0.0-8088-exec-9] org.hibernate.SQL                        : 
     select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
+        sa1_0.id,
+        sa1_0.avatar_url,
+        sa1_0.created_at,
+        sa1_0.email,
+        sa1_0.full_name,
+        sa1_0.phone,
+        sa1_0.title,
+        sa1_0.updated_at,
+        sa1_0.zalo_link 
     from
-        salepro.news_categories nc1_0 
+        salepro.sales_agents sa1_0 
     where
-        nc1_0.id=?
+        sa1_0.id=?
 Hibernate: 
     select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
+        sa1_0.id,
+        sa1_0.avatar_url,
+        sa1_0.created_at,
+        sa1_0.email,
+        sa1_0.full_name,
+        sa1_0.phone,
+        sa1_0.title,
+        sa1_0.updated_at,
+        sa1_0.zalo_link 
     from
-        salepro.news_categories nc1_0 
+        salepro.sales_agents sa1_0 
     where
-        nc1_0.id=?
-2026-06-12T09:31:33.197+07:00 DEBUG 20964 --- [.0-8088-exec-10] org.hibernate.SQL                        : 
-    update
-        salepro.news_articles 
-    set
-        author=?,
-        category_id=?,
-        content=?,
-        project_id=?,
-        published_at=?,
-        slug=?,
-        status=?,
-        summary=?,
-        tags=?,
-        thumbnail=?,
-        title=?,
-        updated_at=?,
-        view_count=? 
-    where
-        id=?
-Hibernate: 
-    update
-        salepro.news_articles 
-    set
-        author=?,
-        category_id=?,
-        content=?,
-        project_id=?,
-        published_at=?,
-        slug=?,
-        status=?,
-        summary=?,
-        tags=?,
-        thumbnail=?,
-        title=?,
-        updated_at=?,
-        view_count=? 
-    where
-        id=?
+        sa1_0.id=?
 ========== [INCOMING REQUEST] ==========
 Method: GET
-URI: /api/v1/news
-Content-Type: application/json
-Content-Length: -1
-========================================
-2026-06-12T09:31:33.203+07:00 DEBUG 20964 --- [0.0-8088-exec-1] org.hibernate.SQL                        : 
-    select
-        na1_0.id,
-        na1_0.author,
-        na1_0.category_id,
-        na1_0.content,
-        na1_0.created_at,
-        na1_0.project_id,
-        na1_0.published_at,
-        na1_0.slug,
-        na1_0.status,
-        na1_0.summary,
-        na1_0.tags,
-        na1_0.thumbnail,
-        na1_0.title,
-        na1_0.updated_at,
-        na1_0.view_count 
-    from
-        salepro.news_articles na1_0 
-    order by
-        na1_0.published_at desc
-Hibernate: 
-    select
-        na1_0.id,
-        na1_0.author,
-        na1_0.category_id,
-        na1_0.content,
-        na1_0.created_at,
-        na1_0.project_id,
-        na1_0.published_at,
-        na1_0.slug,
-        na1_0.status,
-        na1_0.summary,
-        na1_0.tags,
-        na1_0.thumbnail,
-        na1_0.title,
-        na1_0.updated_at,
-        na1_0.view_count 
-    from
-        salepro.news_articles na1_0 
-    order by
-        na1_0.published_at desc
-2026-06-12T09:31:33.203+07:00 DEBUG 20964 --- [0.0-8088-exec-1] org.hibernate.SQL                        : 
-    select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
-    from
-        salepro.news_categories nc1_0 
-    where
-        nc1_0.id=?
-Hibernate: 
-    select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
-    from
-        salepro.news_categories nc1_0 
-    where
-        nc1_0.id=?
-========== [INCOMING REQUEST] ==========
-Method: GET
-URI: /api/v1/news/categories
+URI: /api/v1/salepro/projects/1
 Content-Type: application/json
 Content-Length: -1
 ========================================
 ========== [INCOMING REQUEST] ==========
 Method: GET
-URI: /api/v1/news/tags
+URI: /api/v1/salepro/projects/1/buildings
 Content-Type: application/json
 Content-Length: -1
 ========================================
-2026-06-12T09:31:33.243+07:00 DEBUG 20964 --- [0.0-8088-exec-5] org.hibernate.SQL                        : 
+2026-06-12T15:09:10.769+07:00 DEBUG 15820 --- [0.0-8088-exec-7] org.hibernate.SQL                        : 
     select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
+        p1_0.id,
+        p1_0.created_at,
+        p1_0.details,
+        p1_0.managing_agent_id,
+        p1_0.name,
+        p1_0.project_type,
+        p1_0.status,
+        p1_0.updated_at 
     from
-        salepro.news_categories nc1_0 
-    order by
-        nc1_0.sort_order
+        salepro.projects p1_0 
+    where
+        p1_0.id=?
 Hibernate: 
     select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
+        p1_0.id,
+        p1_0.created_at,
+        p1_0.details,
+        p1_0.managing_agent_id,
+        p1_0.name,
+        p1_0.project_type,
+        p1_0.status,
+        p1_0.updated_at 
     from
-        salepro.news_categories nc1_0 
-    order by
-        nc1_0.sort_order
-2026-06-12T09:31:33.243+07:00 DEBUG 20964 --- [0.0-8088-exec-6] org.hibernate.SQL                        : 
+        salepro.projects p1_0 
+    where
+        p1_0.id=?
+2026-06-12T15:09:10.769+07:00 DEBUG 15820 --- [.0-8088-exec-10] org.hibernate.SQL                        : 
     select
-        na1_0.id,
-        na1_0.author,
-        na1_0.category_id,
-        na1_0.content,
-        na1_0.created_at,
-        na1_0.project_id,
-        na1_0.published_at,
-        na1_0.slug,
-        na1_0.status,
-        na1_0.summary,
-        na1_0.tags,
-        na1_0.thumbnail,
-        na1_0.title,
-        na1_0.updated_at,
-        na1_0.view_count 
+        b1_0.id,
+        b1_0.handover_standard,
+        b1_0.building_name,
+        b1_0.construction_progress,
+        b1_0.description,
+        b1_0.elevator_count,
+        b1_0.image_url,
+        b1_0.marker_lat,
+        b1_0.marker_lng,
+        b1_0.ownership_type,
+        b1_0.project_id,
+        b1_0.sales_policy,
+        b1_0.subdivision_name,
+        b1_0.total_apartments,
+        b1_0.total_area,
+        b1_0.total_floors 
     from
-        salepro.news_articles na1_0 
-    order by
-        na1_0.published_at desc
+        salepro.buildings b1_0 
+    where
+        b1_0.project_id=?
 Hibernate: 
     select
-        na1_0.id,
-        na1_0.author,
-        na1_0.category_id,
-        na1_0.content,
-        na1_0.created_at,
-        na1_0.project_id,
-        na1_0.published_at,
-        na1_0.slug,
-        na1_0.status,
-        na1_0.summary,
-        na1_0.tags,
-        na1_0.thumbnail,
-        na1_0.title,
-        na1_0.updated_at,
-        na1_0.view_count 
+        b1_0.id,
+        b1_0.handover_standard,
+        b1_0.building_name,
+        b1_0.construction_progress,
+        b1_0.description,
+        b1_0.elevator_count,
+        b1_0.image_url,
+        b1_0.marker_lat,
+        b1_0.marker_lng,
+        b1_0.ownership_type,
+        b1_0.project_id,
+        b1_0.sales_policy,
+        b1_0.subdivision_name,
+        b1_0.total_apartments,
+        b1_0.total_area,
+        b1_0.total_floors 
     from
-        salepro.news_articles na1_0 
-    order by
-        na1_0.published_at desc
-2026-06-12T09:31:33.244+07:00 DEBUG 20964 --- [0.0-8088-exec-5] org.hibernate.SQL                        : 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
+        salepro.buildings b1_0 
     where
-        na1_0.category_id=?
+        b1_0.project_id=?
+2026-06-12T15:09:10.774+07:00 DEBUG 15820 --- [0.0-8088-exec-7] org.hibernate.SQL                        : 
+    select
+        sa1_0.id,
+        sa1_0.avatar_url,
+        sa1_0.created_at,
+        sa1_0.email,
+        sa1_0.full_name,
+        sa1_0.phone,
+        sa1_0.title,
+        sa1_0.updated_at,
+        sa1_0.zalo_link 
+    from
+        salepro.sales_agents sa1_0 
+    where
+        sa1_0.id=?
 Hibernate: 
     select
-        count(na1_0.id) 
+        sa1_0.id,
+        sa1_0.avatar_url,
+        sa1_0.created_at,
+        sa1_0.email,
+        sa1_0.full_name,
+        sa1_0.phone,
+        sa1_0.title,
+        sa1_0.updated_at,
+        sa1_0.zalo_link 
     from
-        salepro.news_articles na1_0 
+        salepro.sales_agents sa1_0 
     where
-        na1_0.category_id=?
-2026-06-12T09:31:33.245+07:00 DEBUG 20964 --- [0.0-8088-exec-5] org.hibernate.SQL                        : 
+        sa1_0.id=?
+2026-06-12T15:09:10.776+07:00 DEBUG 15820 --- [.0-8088-exec-10] org.hibernate.SQL                        : 
     select
-        count(na1_0.id) 
+        count(a1_0.id) 
     from
-        salepro.news_articles na1_0 
+        salepro.apartments a1_0 
     where
-        na1_0.category_id=?
+        a1_0.building_id=?
 Hibernate: 
     select
-        count(na1_0.id) 
+        count(a1_0.id) 
     from
-        salepro.news_articles na1_0 
+        salepro.apartments a1_0 
     where
-        na1_0.category_id=?
-2026-06-12T09:31:33.246+07:00 DEBUG 20964 --- [0.0-8088-exec-5] org.hibernate.SQL                        : 
+        a1_0.building_id=?
+2026-06-12T15:09:10.782+07:00 DEBUG 15820 --- [.0-8088-exec-10] org.hibernate.SQL                        : 
     select
-        count(na1_0.id) 
+        count(a1_0.id) 
     from
-        salepro.news_articles na1_0 
+        salepro.apartments a1_0 
     where
-        na1_0.category_id=?
+        a1_0.building_id=? 
+        and a1_0.status=?
 Hibernate: 
     select
-        count(na1_0.id) 
+        count(a1_0.id) 
     from
-        salepro.news_articles na1_0 
+        salepro.apartments a1_0 
     where
-        na1_0.category_id=?
-2026-06-12T09:31:33.246+07:00 DEBUG 20964 --- [0.0-8088-exec-5] org.hibernate.SQL                        : 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-Hibernate: 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-2026-06-12T09:31:33.247+07:00 DEBUG 20964 --- [0.0-8088-exec-5] org.hibernate.SQL                        : 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-Hibernate: 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-2026-06-12T09:31:33.248+07:00 DEBUG 20964 --- [0.0-8088-exec-5] org.hibernate.SQL                        : 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-Hibernate: 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-2026-06-12T09:31:33.248+07:00 DEBUG 20964 --- [0.0-8088-exec-5] org.hibernate.SQL                        : 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-Hibernate: 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
+        a1_0.building_id=? 
+        and a1_0.status=?
 ========== [INCOMING REQUEST] ==========
 Method: GET
-URI: /api/v1/news/tags
+URI: /api/v1/salepro/projects/1
 Content-Type: application/json
 Content-Length: -1
 ========================================
-2026-06-12T09:31:33.249+07:00 DEBUG 20964 --- [0.0-8088-exec-5] org.hibernate.SQL                        : 
+2026-06-12T15:09:10.787+07:00 DEBUG 15820 --- [.0-8088-exec-10] org.hibernate.SQL                        : 
     select
-        count(na1_0.id) 
+        bfp1_0.id,
+        bfp1_0.building_id,
+        bfp1_0.floor_label,
+        bfp1_0.image_url,
+        bfp1_0.note,
+        bfp1_0.sort_order 
     from
-        salepro.news_articles na1_0 
+        salepro.building_floor_plans bfp1_0 
     where
-        na1_0.category_id=?
-Hibernate: 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-2026-06-12T09:31:33.249+07:00 DEBUG 20964 --- [0.0-8088-exec-5] org.hibernate.SQL                        : 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-Hibernate: 
-    select
-        count(na1_0.id) 
-    from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-2026-06-12T09:31:33.250+07:00 DEBUG 20964 --- [0.0-8088-exec-4] org.hibernate.SQL                        : 
-    select
-        na1_0.id,
-        na1_0.author,
-        na1_0.category_id,
-        na1_0.content,
-        na1_0.created_at,
-        na1_0.project_id,
-        na1_0.published_at,
-        na1_0.slug,
-        na1_0.status,
-        na1_0.summary,
-        na1_0.tags,
-        na1_0.thumbnail,
-        na1_0.title,
-        na1_0.updated_at,
-        na1_0.view_count 
-    from
-        salepro.news_articles na1_0 
+        bfp1_0.building_id=? 
     order by
-        na1_0.published_at desc
+        bfp1_0.sort_order
 Hibernate: 
     select
-        na1_0.id,
-        na1_0.author,
-        na1_0.category_id,
-        na1_0.content,
-        na1_0.created_at,
-        na1_0.project_id,
-        na1_0.published_at,
-        na1_0.slug,
-        na1_0.status,
-        na1_0.summary,
-        na1_0.tags,
-        na1_0.thumbnail,
-        na1_0.title,
-        na1_0.updated_at,
-        na1_0.view_count 
+        bfp1_0.id,
+        bfp1_0.building_id,
+        bfp1_0.floor_label,
+        bfp1_0.image_url,
+        bfp1_0.note,
+        bfp1_0.sort_order 
     from
-        salepro.news_articles na1_0 
+        salepro.building_floor_plans bfp1_0 
+    where
+        bfp1_0.building_id=? 
     order by
-        na1_0.published_at desc
-2026-06-12T09:31:33.250+07:00 DEBUG 20964 --- [0.0-8088-exec-5] org.hibernate.SQL                        : 
+        bfp1_0.sort_order
+2026-06-12T15:09:10.788+07:00 DEBUG 15820 --- [0.0-8088-exec-2] org.hibernate.SQL                        : 
     select
-        count(na1_0.id) 
+        p1_0.id,
+        p1_0.created_at,
+        p1_0.details,
+        p1_0.managing_agent_id,
+        p1_0.name,
+        p1_0.project_type,
+        p1_0.status,
+        p1_0.updated_at 
     from
-        salepro.news_articles na1_0 
+        salepro.projects p1_0 
     where
-        na1_0.category_id=?
+        p1_0.id=?
 Hibernate: 
     select
-        count(na1_0.id) 
+        p1_0.id,
+        p1_0.created_at,
+        p1_0.details,
+        p1_0.managing_agent_id,
+        p1_0.name,
+        p1_0.project_type,
+        p1_0.status,
+        p1_0.updated_at 
     from
-        salepro.news_articles na1_0 
+        salepro.projects p1_0 
     where
-        na1_0.category_id=?
+        p1_0.id=?
+2026-06-12T15:09:10.792+07:00 DEBUG 15820 --- [.0-8088-exec-10] org.hibernate.SQL                        : 
+    select
+        count(a1_0.id) 
+    from
+        salepro.apartments a1_0 
+    where
+        a1_0.building_id=?
+Hibernate: 
+    select
+        count(a1_0.id) 
+    from
+        salepro.apartments a1_0 
+    where
+        a1_0.building_id=?
+2026-06-12T15:09:10.795+07:00 DEBUG 15820 --- [.0-8088-exec-10] org.hibernate.SQL                        : 
+    select
+        count(a1_0.id) 
+    from
+        salepro.apartments a1_0 
+    where
+        a1_0.building_id=? 
+        and a1_0.status=?
+Hibernate: 
+    select
+        count(a1_0.id) 
+    from
+        salepro.apartments a1_0 
+    where
+        a1_0.building_id=? 
+        and a1_0.status=?
+2026-06-12T15:09:10.795+07:00 DEBUG 15820 --- [0.0-8088-exec-2] org.hibernate.SQL                        : 
+    select
+        sa1_0.id,
+        sa1_0.avatar_url,
+        sa1_0.created_at,
+        sa1_0.email,
+        sa1_0.full_name,
+        sa1_0.phone,
+        sa1_0.title,
+        sa1_0.updated_at,
+        sa1_0.zalo_link 
+    from
+        salepro.sales_agents sa1_0 
+    where
+        sa1_0.id=?
+Hibernate: 
+    select
+        sa1_0.id,
+        sa1_0.avatar_url,
+        sa1_0.created_at,
+        sa1_0.email,
+        sa1_0.full_name,
+        sa1_0.phone,
+        sa1_0.title,
+        sa1_0.updated_at,
+        sa1_0.zalo_link 
+    from
+        salepro.sales_agents sa1_0 
+    where
+        sa1_0.id=?
+2026-06-12T15:09:10.796+07:00 DEBUG 15820 --- [.0-8088-exec-10] org.hibernate.SQL                        : 
+    select
+        bfp1_0.id,
+        bfp1_0.building_id,
+        bfp1_0.floor_label,
+        bfp1_0.image_url,
+        bfp1_0.note,
+        bfp1_0.sort_order 
+    from
+        salepro.building_floor_plans bfp1_0 
+    where
+        bfp1_0.building_id=? 
+    order by
+        bfp1_0.sort_order
+Hibernate: 
+    select
+        bfp1_0.id,
+        bfp1_0.building_id,
+        bfp1_0.floor_label,
+        bfp1_0.image_url,
+        bfp1_0.note,
+        bfp1_0.sort_order 
+    from
+        salepro.building_floor_plans bfp1_0 
+    where
+        bfp1_0.building_id=? 
+    order by
+        bfp1_0.sort_order
 ========== [INCOMING REQUEST] ==========
 Method: GET
-URI: /api/v1/news/categories
+URI: /api/v1/salepro/projects/1/buildings
 Content-Type: application/json
 Content-Length: -1
 ========================================
-2026-06-12T09:31:33.254+07:00 DEBUG 20964 --- [0.0-8088-exec-7] org.hibernate.SQL                        : 
+2026-06-12T15:09:10.802+07:00 DEBUG 15820 --- [0.0-8088-exec-1] org.hibernate.SQL                        : 
     select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
+        b1_0.id,
+        b1_0.handover_standard,
+        b1_0.building_name,
+        b1_0.construction_progress,
+        b1_0.description,
+        b1_0.elevator_count,
+        b1_0.image_url,
+        b1_0.marker_lat,
+        b1_0.marker_lng,
+        b1_0.ownership_type,
+        b1_0.project_id,
+        b1_0.sales_policy,
+        b1_0.subdivision_name,
+        b1_0.total_apartments,
+        b1_0.total_area,
+        b1_0.total_floors 
     from
-        salepro.news_categories nc1_0 
+        salepro.buildings b1_0 
+    where
+        b1_0.project_id=?
+Hibernate: 
+    select
+        b1_0.id,
+        b1_0.handover_standard,
+        b1_0.building_name,
+        b1_0.construction_progress,
+        b1_0.description,
+        b1_0.elevator_count,
+        b1_0.image_url,
+        b1_0.marker_lat,
+        b1_0.marker_lng,
+        b1_0.ownership_type,
+        b1_0.project_id,
+        b1_0.sales_policy,
+        b1_0.subdivision_name,
+        b1_0.total_apartments,
+        b1_0.total_area,
+        b1_0.total_floors 
+    from
+        salepro.buildings b1_0 
+    where
+        b1_0.project_id=?
+2026-06-12T15:09:10.809+07:00 DEBUG 15820 --- [0.0-8088-exec-1] org.hibernate.SQL                        : 
+    select
+        count(a1_0.id) 
+    from
+        salepro.apartments a1_0 
+    where
+        a1_0.building_id=?
+Hibernate: 
+    select
+        count(a1_0.id) 
+    from
+        salepro.apartments a1_0 
+    where
+        a1_0.building_id=?
+2026-06-12T15:09:10.809+07:00 DEBUG 15820 --- [0.0-8088-exec-1] org.hibernate.SQL                        : 
+    select
+        count(a1_0.id) 
+    from
+        salepro.apartments a1_0 
+    where
+        a1_0.building_id=? 
+        and a1_0.status=?
+Hibernate: 
+    select
+        count(a1_0.id) 
+    from
+        salepro.apartments a1_0 
+    where
+        a1_0.building_id=? 
+        and a1_0.status=?
+2026-06-12T15:09:10.809+07:00 DEBUG 15820 --- [0.0-8088-exec-1] org.hibernate.SQL                        : 
+    select
+        bfp1_0.id,
+        bfp1_0.building_id,
+        bfp1_0.floor_label,
+        bfp1_0.image_url,
+        bfp1_0.note,
+        bfp1_0.sort_order 
+    from
+        salepro.building_floor_plans bfp1_0 
+    where
+        bfp1_0.building_id=? 
     order by
-        nc1_0.sort_order
+        bfp1_0.sort_order
 Hibernate: 
     select
-        nc1_0.id,
-        nc1_0.name,
-        nc1_0.slug,
-        nc1_0.sort_order 
+        bfp1_0.id,
+        bfp1_0.building_id,
+        bfp1_0.floor_label,
+        bfp1_0.image_url,
+        bfp1_0.note,
+        bfp1_0.sort_order 
     from
-        salepro.news_categories nc1_0 
+        salepro.building_floor_plans bfp1_0 
+    where
+        bfp1_0.building_id=? 
     order by
-        nc1_0.sort_order
-2026-06-12T09:31:33.256+07:00 DEBUG 20964 --- [0.0-8088-exec-7] org.hibernate.SQL                        : 
+        bfp1_0.sort_order
+2026-06-12T15:09:10.809+07:00 DEBUG 15820 --- [0.0-8088-exec-1] org.hibernate.SQL                        : 
     select
-        count(na1_0.id) 
+        count(a1_0.id) 
     from
-        salepro.news_articles na1_0 
+        salepro.apartments a1_0 
     where
-        na1_0.category_id=?
+        a1_0.building_id=?
 Hibernate: 
     select
-        count(na1_0.id) 
+        count(a1_0.id) 
     from
-        salepro.news_articles na1_0 
+        salepro.apartments a1_0 
     where
-        na1_0.category_id=?
-2026-06-12T09:31:33.256+07:00 DEBUG 20964 --- [0.0-8088-exec-7] org.hibernate.SQL                        : 
+        a1_0.building_id=?
+2026-06-12T15:09:10.814+07:00 DEBUG 15820 --- [0.0-8088-exec-1] org.hibernate.SQL                        : 
     select
-        count(na1_0.id) 
+        count(a1_0.id) 
     from
-        salepro.news_articles na1_0 
+        salepro.apartments a1_0 
     where
-        na1_0.category_id=?
+        a1_0.building_id=? 
+        and a1_0.status=?
 Hibernate: 
     select
-        count(na1_0.id) 
+        count(a1_0.id) 
     from
-        salepro.news_articles na1_0 
+        salepro.apartments a1_0 
     where
-        na1_0.category_id=?
-2026-06-12T09:31:33.257+07:00 DEBUG 20964 --- [0.0-8088-exec-7] org.hibernate.SQL                        : 
+        a1_0.building_id=? 
+        and a1_0.status=?
+2026-06-12T15:09:10.815+07:00 DEBUG 15820 --- [0.0-8088-exec-1] org.hibernate.SQL                        : 
     select
-        count(na1_0.id) 
+        bfp1_0.id,
+        bfp1_0.building_id,
+        bfp1_0.floor_label,
+        bfp1_0.image_url,
+        bfp1_0.note,
+        bfp1_0.sort_order 
     from
-        salepro.news_articles na1_0 
+        salepro.building_floor_plans bfp1_0 
     where
-        na1_0.category_id=?
+        bfp1_0.building_id=? 
+    order by
+        bfp1_0.sort_order
 Hibernate: 
     select
-        count(na1_0.id) 
+        bfp1_0.id,
+        bfp1_0.building_id,
+        bfp1_0.floor_label,
+        bfp1_0.image_url,
+        bfp1_0.note,
+        bfp1_0.sort_order 
     from
-        salepro.news_articles na1_0 
+        salepro.building_floor_plans bfp1_0 
     where
-        na1_0.category_id=?
-2026-06-12T09:31:33.257+07:00 DEBUG 20964 --- [0.0-8088-exec-7] org.hibernate.SQL                        : 
+        bfp1_0.building_id=? 
+    order by
+        bfp1_0.sort_order
+========== [INCOMING REQUEST] ==========
+Method: OPTIONS
+URI: /api/v1/salepro/projects
+Content-Type: null
+Content-Length: -1
+========================================
+========== [INCOMING REQUEST] ==========
+Method: GET
+URI: /api/v1/salepro/projects
+Content-Type: application/json
+Content-Length: -1
+========================================
+2026-06-12T15:10:30.519+07:00 DEBUG 15820 --- [0.0-8088-exec-9] org.hibernate.SQL                        : 
     select
-        count(na1_0.id) 
+        p1_0.id,
+        p1_0.created_at,
+        p1_0.details,
+        p1_0.managing_agent_id,
+        p1_0.name,
+        p1_0.project_type,
+        p1_0.status,
+        p1_0.updated_at 
     from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
+        salepro.projects p1_0
 Hibernate: 
     select
-        count(na1_0.id) 
+        p1_0.id,
+        p1_0.created_at,
+        p1_0.details,
+        p1_0.managing_agent_id,
+        p1_0.name,
+        p1_0.project_type,
+        p1_0.status,
+        p1_0.updated_at 
     from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-2026-06-12T09:31:33.258+07:00 DEBUG 20964 --- [0.0-8088-exec-7] org.hibernate.SQL                        : 
+        salepro.projects p1_0
+2026-06-12T15:10:30.529+07:00 DEBUG 15820 --- [0.0-8088-exec-9] org.hibernate.SQL                        : 
     select
-        count(na1_0.id) 
+        sa1_0.id,
+        sa1_0.avatar_url,
+        sa1_0.created_at,
+        sa1_0.email,
+        sa1_0.full_name,
+        sa1_0.phone,
+        sa1_0.title,
+        sa1_0.updated_at,
+        sa1_0.zalo_link 
     from
-        salepro.news_articles na1_0 
+        salepro.sales_agents sa1_0 
     where
-        na1_0.category_id=?
+        sa1_0.id=?
 Hibernate: 
     select
-        count(na1_0.id) 
+        sa1_0.id,
+        sa1_0.avatar_url,
+        sa1_0.created_at,
+        sa1_0.email,
+        sa1_0.full_name,
+        sa1_0.phone,
+        sa1_0.title,
+        sa1_0.updated_at,
+        sa1_0.zalo_link 
     from
-        salepro.news_articles na1_0 
+        salepro.sales_agents sa1_0 
     where
-        na1_0.category_id=?
-2026-06-12T09:31:33.258+07:00 DEBUG 20964 --- [0.0-8088-exec-7] org.hibernate.SQL                        : 
+        sa1_0.id=?
+========== [INCOMING REQUEST] ==========
+Method: GET
+URI: /api/v1/salepro/projects
+Content-Type: application/json
+Content-Length: -1
+========================================
+2026-06-12T15:10:30.537+07:00 DEBUG 15820 --- [0.0-8088-exec-6] org.hibernate.SQL                        : 
     select
-        count(na1_0.id) 
+        p1_0.id,
+        p1_0.created_at,
+        p1_0.details,
+        p1_0.managing_agent_id,
+        p1_0.name,
+        p1_0.project_type,
+        p1_0.status,
+        p1_0.updated_at 
     from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
+        salepro.projects p1_0
 Hibernate: 
     select
-        count(na1_0.id) 
+        p1_0.id,
+        p1_0.created_at,
+        p1_0.details,
+        p1_0.managing_agent_id,
+        p1_0.name,
+        p1_0.project_type,
+        p1_0.status,
+        p1_0.updated_at 
     from
-        salepro.news_articles na1_0 
-    where
-        na1_0.category_id=?
-2026-06-12T09:31:33.259+07:00 DEBUG 20964 --- [0.0-8088-exec-7] org.hibernate.SQL                        : 
+        salepro.projects p1_0
+2026-06-12T15:10:30.540+07:00 DEBUG 15820 --- [0.0-8088-exec-6] org.hibernate.SQL                        : 
     select
-        count(na1_0.id) 
+        sa1_0.id,
+        sa1_0.avatar_url,
+        sa1_0.created_at,
+        sa1_0.email,
+        sa1_0.full_name,
+        sa1_0.phone,
+        sa1_0.title,
+        sa1_0.updated_at,
+        sa1_0.zalo_link 
     from
-        salepro.news_articles na1_0 
+        salepro.sales_agents sa1_0 
     where
-        na1_0.category_id=?
+        sa1_0.id=?
 Hibernate: 
     select
-        count(na1_0.id) 
+        sa1_0.id,
+        sa1_0.avatar_url,
+        sa1_0.created_at,
+        sa1_0.email,
+        sa1_0.full_name,
+        sa1_0.phone,
+        sa1_0.title,
+        sa1_0.updated_at,
+        sa1_0.zalo_link 
     from
-        salepro.news_articles na1_0 
+        salepro.sales_agents sa1_0 
     where
-        na1_0.category_id=?
-2026-06-12T09:31:33.259+07:00 DEBUG 20964 --- [0.0-8088-exec-7] org.hibernate.SQL                        : 
+        sa1_0.id=?
+========== [INCOMING REQUEST] ==========
+Method: GET
+URI: /api/v1/salepro/projects/1
+Content-Type: application/json
+Content-Length: -1
+========================================
+2026-06-12T15:10:53.719+07:00 DEBUG 15820 --- [0.0-8088-exec-7] org.hibernate.SQL                        : 
     select
-        count(na1_0.id) 
+        p1_0.id,
+        p1_0.created_at,
+        p1_0.details,
+        p1_0.managing_agent_id,
+        p1_0.name,
+        p1_0.project_type,
+        p1_0.status,
+        p1_0.updated_at 
     from
-        salepro.news_articles na1_0 
+        salepro.projects p1_0 
     where
-        na1_0.category_id=?
+        p1_0.id=?
 Hibernate: 
     select
-        count(na1_0.id) 
+        p1_0.id,
+        p1_0.created_at,
+        p1_0.details,
+        p1_0.managing_agent_id,
+        p1_0.name,
+        p1_0.project_type,
+        p1_0.status,
+        p1_0.updated_at 
     from
-        salepro.news_articles na1_0 
+        salepro.projects p1_0 
     where
-        na1_0.category_id=?
-2026-06-12T09:31:33.260+07:00 DEBUG 20964 --- [0.0-8088-exec-7] org.hibernate.SQL                        : 
+        p1_0.id=?
+========== [INCOMING REQUEST] ==========
+Method: GET
+URI: /api/v1/salepro/projects/1/buildings
+Content-Type: application/json
+Content-Length: -1
+========================================
+2026-06-12T15:10:53.722+07:00 DEBUG 15820 --- [0.0-8088-exec-2] org.hibernate.SQL                        : 
     select
-        count(na1_0.id) 
+        b1_0.id,
+        b1_0.handover_standard,
+        b1_0.building_name,
+        b1_0.construction_progress,
+        b1_0.description,
+        b1_0.elevator_count,
+        b1_0.image_url,
+        b1_0.marker_lat,
+        b1_0.marker_lng,
+        b1_0.ownership_type,
+        b1_0.project_id,
+        b1_0.sales_policy,
+        b1_0.subdivision_name,
+        b1_0.total_apartments,
+        b1_0.total_area,
+        b1_0.total_floors 
     from
-        salepro.news_articles na1_0 
+        salepro.buildings b1_0 
     where
-        na1_0.category_id=?
+        b1_0.project_id=?
 Hibernate: 
     select
-        count(na1_0.id) 
+        b1_0.id,
+        b1_0.handover_standard,
+        b1_0.building_name,
+        b1_0.construction_progress,
+        b1_0.description,
+        b1_0.elevator_count,
+        b1_0.image_url,
+        b1_0.marker_lat,
+        b1_0.marker_lng,
+        b1_0.ownership_type,
+        b1_0.project_id,
+        b1_0.sales_policy,
+        b1_0.subdivision_name,
+        b1_0.total_apartments,
+        b1_0.total_area,
+        b1_0.total_floors 
     from
-        salepro.news_articles na1_0 
+        salepro.buildings b1_0 
     where
-        na1_0.category_id=?
-2026-06-12T09:31:33.261+07:00 DEBUG 20964 --- [0.0-8088-exec-7] org.hibernate.SQL                        : 
+        b1_0.project_id=?
+2026-06-12T15:10:53.723+07:00 DEBUG 15820 --- [0.0-8088-exec-7] org.hibernate.SQL                        : 
     select
-        count(na1_0.id) 
+        sa1_0.id,
+        sa1_0.avatar_url,
+        sa1_0.created_at,
+        sa1_0.email,
+        sa1_0.full_name,
+        sa1_0.phone,
+        sa1_0.title,
+        sa1_0.updated_at,
+        sa1_0.zalo_link 
     from
-        salepro.news_articles na1_0 
+        salepro.sales_agents sa1_0 
     where
-        na1_0.category_id=?
+        sa1_0.id=?
 Hibernate: 
     select
-        count(na1_0.id) 
+        sa1_0.id,
+        sa1_0.avatar_url,
+        sa1_0.created_at,
+        sa1_0.email,
+        sa1_0.full_name,
+        sa1_0.phone,
+        sa1_0.title,
+        sa1_0.updated_at,
+        sa1_0.zalo_link 
     from
-        salepro.news_articles na1_0 
+        salepro.sales_agents sa1_0 
     where
-        na1_0.category_id=?
+        sa1_0.id=?
+2026-06-12T15:10:53.723+07:00 DEBUG 15820 --- [0.0-8088-exec-2] org.hibernate.SQL                        : 
+    select
+        count(a1_0.id) 
+    from
+        salepro.apartments a1_0 
+    where
+        a1_0.building_id=?
+Hibernate: 
+    select
+        count(a1_0.id) 
+    from
+        salepro.apartments a1_0 
+    where
+        a1_0.building_id=?
+2026-06-12T15:10:53.724+07:00 DEBUG 15820 --- [0.0-8088-exec-2] org.hibernate.SQL                        : 
+    select
+        count(a1_0.id) 
+    from
+        salepro.apartments a1_0 
+    where
+        a1_0.building_id=? 
+        and a1_0.status=?
+Hibernate: 
+    select
+        count(a1_0.id) 
+    from
+        salepro.apartments a1_0 
+    where
+        a1_0.building_id=? 
+        and a1_0.status=?
+2026-06-12T15:10:53.725+07:00 DEBUG 15820 --- [0.0-8088-exec-2] org.hibernate.SQL                        : 
+    select
+        bfp1_0.id,
+        bfp1_0.building_id,
+        bfp1_0.floor_label,
+        bfp1_0.image_url,
+        bfp1_0.note,
+        bfp1_0.sort_order 
+    from
+        salepro.building_floor_plans bfp1_0 
+    where
+        bfp1_0.building_id=? 
+    order by
+        bfp1_0.sort_order
+Hibernate: 
+    select
+        bfp1_0.id,
+        bfp1_0.building_id,
+        bfp1_0.floor_label,
+        bfp1_0.image_url,
+        bfp1_0.note,
+        bfp1_0.sort_order 
+    from
+        salepro.building_floor_plans bfp1_0 
+    where
+        bfp1_0.building_id=? 
+    order by
+        bfp1_0.sort_order
+2026-06-12T15:10:53.726+07:00 DEBUG 15820 --- [0.0-8088-exec-2] org.hibernate.SQL                        : 
+    select
+        count(a1_0.id) 
+    from
+        salepro.apartments a1_0 
+    where
+        a1_0.building_id=?
+Hibernate: 
+    select
+        count(a1_0.id) 
+    from
+        salepro.apartments a1_0 
+    where
+        a1_0.building_id=?
+========== [INCOMING REQUEST] ==========
+Method: GET
+URI: /api/v1/salepro/projects/1
+Content-Type: application/json
+Content-Length: -1
+========================================
+2026-06-12T15:10:53.727+07:00 DEBUG 15820 --- [0.0-8088-exec-2] org.hibernate.SQL                        : 
+    select
+        count(a1_0.id) 
+    from
+        salepro.apartments a1_0 
+    where
+        a1_0.building_id=? 
+        and a1_0.status=?
+Hibernate: 
+    select
+        count(a1_0.id) 
+    from
+        salepro.apartments a1_0 
+    where
+        a1_0.building_id=? 
+        and a1_0.status=?
+2026-06-12T15:10:53.728+07:00 DEBUG 15820 --- [0.0-8088-exec-2] org.hibernate.SQL                        : 
+    select
+        bfp1_0.id,
+        bfp1_0.building_id,
+        bfp1_0.floor_label,
+        bfp1_0.image_url,
+        bfp1_0.note,
+        bfp1_0.sort_order 
+    from
+        salepro.building_floor_plans bfp1_0 
+    where
+        bfp1_0.building_id=? 
+    order by
+        bfp1_0.sort_order
+Hibernate: 
+    select
+        bfp1_0.id,
+        bfp1_0.building_id,
+        bfp1_0.floor_label,
+        bfp1_0.image_url,
+        bfp1_0.note,
+        bfp1_0.sort_order 
+    from
+        salepro.building_floor_plans bfp1_0 
+    where
+        bfp1_0.building_id=? 
+    order by
+        bfp1_0.sort_order
+2026-06-12T15:10:53.729+07:00 DEBUG 15820 --- [.0-8088-exec-10] org.hibernate.SQL                        : 
+    select
+        p1_0.id,
+        p1_0.created_at,
+        p1_0.details,
+        p1_0.managing_agent_id,
+        p1_0.name,
+        p1_0.project_type,
+        p1_0.status,
+        p1_0.updated_at 
+    from
+        salepro.projects p1_0 
+    where
+        p1_0.id=?
+Hibernate: 
+    select
+        p1_0.id,
+        p1_0.created_at,
+        p1_0.details,
+        p1_0.managing_agent_id,
+        p1_0.name,
+        p1_0.project_type,
+        p1_0.status,
+        p1_0.updated_at 
+    from
+        salepro.projects p1_0 
+    where
+        p1_0.id=?
+========== [INCOMING REQUEST] ==========
+Method: GET
+URI: /api/v1/salepro/projects/1/buildings
+Content-Type: application/json
+Content-Length: -1
+========================================
+2026-06-12T15:10:53.732+07:00 DEBUG 15820 --- [.0-8088-exec-10] org.hibernate.SQL                        : 
+    select
+        sa1_0.id,
+        sa1_0.avatar_url,
+        sa1_0.created_at,
+        sa1_0.email,
+        sa1_0.full_name,
+        sa1_0.phone,
+        sa1_0.title,
+        sa1_0.updated_at,
+        sa1_0.zalo_link 
+    from
+        salepro.sales_agents sa1_0 
+    where
+        sa1_0.id=?
+Hibernate: 
+    select
+        sa1_0.id,
+        sa1_0.avatar_url,
+        sa1_0.created_at,
+        sa1_0.email,
+        sa1_0.full_name,
+        sa1_0.phone,
+        sa1_0.title,
+        sa1_0.updated_at,
+        sa1_0.zalo_link 
+    from
+        salepro.sales_agents sa1_0 
+    where
+        sa1_0.id=?
+2026-06-12T15:10:53.733+07:00 DEBUG 15820 --- [0.0-8088-exec-1] org.hibernate.SQL                        : 
+    select
+        b1_0.id,
+        b1_0.handover_standard,
+        b1_0.building_name,
+        b1_0.construction_progress,
+        b1_0.description,
+        b1_0.elevator_count,
+        b1_0.image_url,
+        b1_0.marker_lat,
+        b1_0.marker_lng,
+        b1_0.ownership_type,
+        b1_0.project_id,
+        b1_0.sales_policy,
+        b1_0.subdivision_name,
+        b1_0.total_apartments,
+        b1_0.total_area,
+        b1_0.total_floors 
+    from
+        salepro.buildings b1_0 
+    where
+        b1_0.project_id=?
+Hibernate: 
+    select
+        b1_0.id,
+        b1_0.handover_standard,
+        b1_0.building_name,
+        b1_0.construction_progress,
+        b1_0.description,
+        b1_0.elevator_count,
+        b1_0.image_url,
+        b1_0.marker_lat,
+        b1_0.marker_lng,
+        b1_0.ownership_type,
+        b1_0.project_id,
+        b1_0.sales_policy,
+        b1_0.subdivision_name,
+        b1_0.total_apartments,
+        b1_0.total_area,
+        b1_0.total_floors 
+    from
+        salepro.buildings b1_0 
+    where
+        b1_0.project_id=?
+2026-06-12T15:10:53.734+07:00 DEBUG 15820 --- [0.0-8088-exec-1] org.hibernate.SQL                        : 
+    select
+        count(a1_0.id) 
+    from
+        salepro.apartments a1_0 
+    where
+        a1_0.building_id=?
+Hibernate: 
+    select
+        count(a1_0.id) 
+    from
+        salepro.apartments a1_0 
+    where
+        a1_0.building_id=?
+2026-06-12T15:10:53.735+07:00 DEBUG 15820 --- [0.0-8088-exec-1] org.hibernate.SQL                        : 
+    select
+        count(a1_0.id) 
+    from
+        salepro.apartments a1_0 
+    where
+        a1_0.building_id=? 
+        and a1_0.status=?
+Hibernate: 
+    select
+        count(a1_0.id) 
+    from
+        salepro.apartments a1_0 
+    where
+        a1_0.building_id=? 
+        and a1_0.status=?
+2026-06-12T15:10:53.736+07:00 DEBUG 15820 --- [0.0-8088-exec-1] org.hibernate.SQL                        : 
+    select
+        bfp1_0.id,
+        bfp1_0.building_id,
+        bfp1_0.floor_label,
+        bfp1_0.image_url,
+        bfp1_0.note,
+        bfp1_0.sort_order 
+    from
+        salepro.building_floor_plans bfp1_0 
+    where
+        bfp1_0.building_id=? 
+    order by
+        bfp1_0.sort_order
+Hibernate: 
+    select
+        bfp1_0.id,
+        bfp1_0.building_id,
+        bfp1_0.floor_label,
+        bfp1_0.image_url,
+        bfp1_0.note,
+        bfp1_0.sort_order 
+    from
+        salepro.building_floor_plans bfp1_0 
+    where
+        bfp1_0.building_id=? 
+    order by
+        bfp1_0.sort_order
+2026-06-12T15:10:53.737+07:00 DEBUG 15820 --- [0.0-8088-exec-1] org.hibernate.SQL                        : 
+    select
+        count(a1_0.id) 
+    from
+        salepro.apartments a1_0 
+    where
+        a1_0.building_id=?
+Hibernate: 
+    select
+        count(a1_0.id) 
+    from
+        salepro.apartments a1_0 
+    where
+        a1_0.building_id=?
+2026-06-12T15:10:53.738+07:00 DEBUG 15820 --- [0.0-8088-exec-1] org.hibernate.SQL                        : 
+    select
+        count(a1_0.id) 
+    from
+        salepro.apartments a1_0 
+    where
+        a1_0.building_id=? 
+        and a1_0.status=?
+Hibernate: 
+    select
+        count(a1_0.id) 
+    from
+        salepro.apartments a1_0 
+    where
+        a1_0.building_id=? 
+        and a1_0.status=?
+2026-06-12T15:10:53.738+07:00 DEBUG 15820 --- [0.0-8088-exec-1] org.hibernate.SQL                        : 
+    select
+        bfp1_0.id,
+        bfp1_0.building_id,
+        bfp1_0.floor_label,
+        bfp1_0.image_url,
+        bfp1_0.note,
+        bfp1_0.sort_order 
+    from
+        salepro.building_floor_plans bfp1_0 
+    where
+        bfp1_0.building_id=? 
+    order by
+        bfp1_0.sort_order
+Hibernate: 
+    select
+        bfp1_0.id,
+        bfp1_0.building_id,
+        bfp1_0.floor_label,
+        bfp1_0.image_url,
+        bfp1_0.note,
+        bfp1_0.sort_order 
+    from
+        salepro.building_floor_plans bfp1_0 
+    where
+        bfp1_0.building_id=? 
+    order by
+        bfp1_0.sort_order
+2026-06-12T15:36:02.702+07:00  INFO 15820 --- [MessageBroker-3] o.s.w.s.c.WebSocketMessageBrokerStats    : WebSocketSession[0 current WS(0)-HttpStream(0)-HttpPoll(0), 0 total, 0 closed abnormally (0 connect failure, 0 send limit, 0 transport error)], stompSubProtocol[processed CONNECT(0)-CONNECTED(0)-DISCONNECT(0)], stompBrokerRelay[null], inboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 0], outboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 0], sockJsScheduler[pool size = 5, active threads = 1, queued tasks = 2, completed tasks = 2]
+2026-06-12T16:06:02.712+07:00  INFO 15820 --- [MessageBroker-4] o.s.w.s.c.WebSocketMessageBrokerStats    : WebSocketSession[0 current WS(0)-HttpStream(0)-HttpPoll(0), 0 total, 0 closed abnormally (0 connect failure, 0 send limit, 0 transport error)], stompSubProtocol[processed CONNECT(0)-CONNECTED(0)-DISCONNECT(0)], stompBrokerRelay[null], inboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 0], outboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 0], sockJsScheduler[pool size = 6, active threads = 1, queued tasks = 2, completed tasks = 3]
+========== [INCOMING REQUEST] ==========
+========== [INCOMING REQUEST] ==========
+Method: OPTIONS
+URI: /api/v1/salepro/projects/1/buildings
+Content-Type: null
+Method: OPTIONS
+URI: /api/v1/salepro/projects/1
+Content-Type: null
+Content-Length: -1
+========================================
+Content-Length: -1
+========================================
+========== [INCOMING REQUEST] ==========
+Method: GET
+========== [INCOMING REQUEST] ==========
+Method: GET
+URI: /api/v1/salepro/projects/1
+URI: /api/v1/salepro/projects/1/buildings
+Content-Type: application/json
+Content-Type: application/json
+Content-Length: -1
+========================================
+Content-Length: -1
+========================================
+2026-06-12T16:11:35.159+07:00 DEBUG 15820 --- [0.0-8088-exec-6] org.hibernate.SQL                        : 
+    select
+        b1_0.id,
+        b1_0.handover_standard,
+        b1_0.building_name,
+        b1_0.construction_progress,
+        b1_0.description,
+        b1_0.elevator_count,
+        b1_0.image_url,
+        b1_0.marker_lat,
+        b1_0.marker_lng,
+        b1_0.ownership_type,
+        b1_0.project_id,
+        b1_0.sales_policy,
+        b1_0.subdivision_name,
+        b1_0.total_apartments,
+        b1_0.total_area,
+        b1_0.total_floors 
+    from
+        salepro.buildings b1_0 
+    where
+        b1_0.project_id=?
+Hibernate: 
+    select
+        b1_0.id,
+        b1_0.handover_standard,
+        b1_0.building_name,
+        b1_0.construction_progress,
+        b1_0.description,
+        b1_0.elevator_count,
+        b1_0.image_url,
+        b1_0.marker_lat,
+        b1_0.marker_lng,
+        b1_0.ownership_type,
+        b1_0.project_id,
+        b1_0.sales_policy,
+        b1_0.subdivision_name,
+        b1_0.total_apartments,
+        b1_0.total_area,
+        b1_0.total_floors 
+    from
+        salepro.buildings b1_0 
+    where
+        b1_0.project_id=?
+2026-06-12T16:11:35.159+07:00 DEBUG 15820 --- [0.0-8088-exec-7] org.hibernate.SQL                        : 
+    select
+        p1_0.id,
+        p1_0.created_at,
+        p1_0.details,
+        p1_0.managing_agent_id,
+        p1_0.name,
+        p1_0.project_type,
+        p1_0.status,
+        p1_0.updated_at 
+    from
+        salepro.projects p1_0 
+    where
+        p1_0.id=?
+Hibernate: 
+    select
+        p1_0.id,
+        p1_0.created_at,
+        p1_0.details,
+        p1_0.managing_agent_id,
+        p1_0.name,
+        p1_0.project_type,
+        p1_0.status,
+        p1_0.updated_at 
+    from
+        salepro.projects p1_0 
+    where
+        p1_0.id=?
+2026-06-12T16:11:35.170+07:00 DEBUG 15820 --- [0.0-8088-exec-6] org.hibernate.SQL                        : 
+    select
+        count(a1_0.id) 
+    from
+        salepro.apartments a1_0 
+    where
+        a1_0.building_id=?
+Hibernate: 
+    select
+        count(a1_0.id) 
+    from
+        salepro.apartments a1_0 
+    where
+        a1_0.building_id=?
+2026-06-12T16:11:35.172+07:00 DEBUG 15820 --- [0.0-8088-exec-6] org.hibernate.SQL                        : 
+    select
+        count(a1_0.id) 
+    from
+        salepro.apartments a1_0 
+    where
+        a1_0.building_id=? 
+        and a1_0.status=?
+Hibernate: 
+    select
+        count(a1_0.id) 
+    from
+        salepro.apartments a1_0 
+    where
+        a1_0.building_id=? 
+        and a1_0.status=?
+2026-06-12T16:11:35.173+07:00 DEBUG 15820 --- [0.0-8088-exec-6] org.hibernate.SQL                        : 
+    select
+        bfp1_0.id,
+        bfp1_0.building_id,
+        bfp1_0.floor_label,
+        bfp1_0.image_url,
+        bfp1_0.note,
+        bfp1_0.sort_order 
+    from
+        salepro.building_floor_plans bfp1_0 
+    where
+        bfp1_0.building_id=? 
+    order by
+        bfp1_0.sort_order
+Hibernate: 
+    select
+        bfp1_0.id,
+        bfp1_0.building_id,
+        bfp1_0.floor_label,
+        bfp1_0.image_url,
+        bfp1_0.note,
+        bfp1_0.sort_order 
+    from
+        salepro.building_floor_plans bfp1_0 
+    where
+        bfp1_0.building_id=? 
+    order by
+        bfp1_0.sort_order
+2026-06-12T16:11:35.175+07:00 DEBUG 15820 --- [0.0-8088-exec-6] org.hibernate.SQL                        : 
+    select
+        count(a1_0.id) 
+    from
+        salepro.apartments a1_0 
+    where
+        a1_0.building_id=?
+Hibernate: 
+    select
+        count(a1_0.id) 
+    from
+        salepro.apartments a1_0 
+    where
+        a1_0.building_id=?
+2026-06-12T16:11:35.176+07:00 DEBUG 15820 --- [0.0-8088-exec-6] org.hibernate.SQL                        : 
+    select
+        count(a1_0.id) 
+    from
+        salepro.apartments a1_0 
+    where
+        a1_0.building_id=? 
+        and a1_0.status=?
+Hibernate: 
+    select
+        count(a1_0.id) 
+    from
+        salepro.apartments a1_0 
+    where
+        a1_0.building_id=? 
+        and a1_0.status=?
+2026-06-12T16:11:35.176+07:00 DEBUG 15820 --- [0.0-8088-exec-6] org.hibernate.SQL                        : 
+    select
+        bfp1_0.id,
+        bfp1_0.building_id,
+        bfp1_0.floor_label,
+        bfp1_0.image_url,
+        bfp1_0.note,
+        bfp1_0.sort_order 
+    from
+        salepro.building_floor_plans bfp1_0 
+    where
+        bfp1_0.building_id=? 
+    order by
+        bfp1_0.sort_order
+Hibernate: 
+    select
+        bfp1_0.id,
+        bfp1_0.building_id,
+        bfp1_0.floor_label,
+        bfp1_0.image_url,
+        bfp1_0.note,
+        bfp1_0.sort_order 
+    from
+        salepro.building_floor_plans bfp1_0 
+    where
+        bfp1_0.building_id=? 
+    order by
+        bfp1_0.sort_order
+2026-06-12T16:11:35.177+07:00 DEBUG 15820 --- [0.0-8088-exec-7] org.hibernate.SQL                        : 
+    select
+        sa1_0.id,
+        sa1_0.avatar_url,
+        sa1_0.created_at,
+        sa1_0.email,
+        sa1_0.full_name,
+        sa1_0.phone,
+        sa1_0.title,
+        sa1_0.updated_at,
+        sa1_0.zalo_link 
+    from
+        salepro.sales_agents sa1_0 
+    where
+        sa1_0.id=?
+Hibernate: 
+    select
+        sa1_0.id,
+        sa1_0.avatar_url,
+        sa1_0.created_at,
+        sa1_0.email,
+        sa1_0.full_name,
+        sa1_0.phone,
+        sa1_0.title,
+        sa1_0.updated_at,
+        sa1_0.zalo_link 
+    from
+        salepro.sales_agents sa1_0 
+    where
+        sa1_0.id=?
+========== [INCOMING REQUEST] ==========
+Method: GET
+URI: /api/v1/salepro/projects/1
+Content-Type: application/json
+Content-Length: -1
+========================================
+========== [INCOMING REQUEST] ==========
+Method: GET
+URI: /api/v1/salepro/projects/1/buildings
+Content-Type: application/json
+Content-Length: -1
+========================================
+2026-06-12T16:23:54.149+07:00 DEBUG 15820 --- [0.0-8088-exec-1] org.hibernate.SQL                        : 
+    select
+        p1_0.id,
+        p1_0.created_at,
+        p1_0.details,
+        p1_0.managing_agent_id,
+        p1_0.name,
+        p1_0.project_type,
+        p1_0.status,
+        p1_0.updated_at 
+    from
+        salepro.projects p1_0 
+    where
+        p1_0.id=?
+Hibernate: 
+    select
+        p1_0.id,
+        p1_0.created_at,
+        p1_0.details,
+        p1_0.managing_agent_id,
+        p1_0.name,
+        p1_0.project_type,
+        p1_0.status,
+        p1_0.updated_at 
+    from
+        salepro.projects p1_0 
+    where
+        p1_0.id=?
+2026-06-12T16:23:54.149+07:00 DEBUG 15820 --- [0.0-8088-exec-8] org.hibernate.SQL                        : 
+    select
+        b1_0.id,
+        b1_0.handover_standard,
+        b1_0.building_name,
+        b1_0.construction_progress,
+        b1_0.description,
+        b1_0.elevator_count,
+        b1_0.image_url,
+        b1_0.marker_lat,
+        b1_0.marker_lng,
+        b1_0.ownership_type,
+        b1_0.project_id,
+        b1_0.sales_policy,
+        b1_0.subdivision_name,
+        b1_0.total_apartments,
+        b1_0.total_area,
+        b1_0.total_floors 
+    from
+        salepro.buildings b1_0 
+    where
+        b1_0.project_id=?
+Hibernate: 
+    select
+        b1_0.id,
+        b1_0.handover_standard,
+        b1_0.building_name,
+        b1_0.construction_progress,
+        b1_0.description,
+        b1_0.elevator_count,
+        b1_0.image_url,
+        b1_0.marker_lat,
+        b1_0.marker_lng,
+        b1_0.ownership_type,
+        b1_0.project_id,
+        b1_0.sales_policy,
+        b1_0.subdivision_name,
+        b1_0.total_apartments,
+        b1_0.total_area,
+        b1_0.total_floors 
+    from
+        salepro.buildings b1_0 
+    where
+        b1_0.project_id=?
+2026-06-12T16:23:54.152+07:00 DEBUG 15820 --- [0.0-8088-exec-8] org.hibernate.SQL                        : 
+    select
+        count(a1_0.id) 
+    from
+        salepro.apartments a1_0 
+    where
+        a1_0.building_id=?
+Hibernate: 
+    select
+        count(a1_0.id) 
+    from
+        salepro.apartments a1_0 
+    where
+        a1_0.building_id=?
+2026-06-12T16:23:54.156+07:00 DEBUG 15820 --- [0.0-8088-exec-8] org.hibernate.SQL                        : 
+    select
+        count(a1_0.id) 
+    from
+        salepro.apartments a1_0 
+    where
+        a1_0.building_id=? 
+        and a1_0.status=?
+Hibernate: 
+    select
+        count(a1_0.id) 
+    from
+        salepro.apartments a1_0 
+    where
+        a1_0.building_id=? 
+        and a1_0.status=?
+2026-06-12T16:23:54.156+07:00 DEBUG 15820 --- [0.0-8088-exec-8] org.hibernate.SQL                        : 
+    select
+        bfp1_0.id,
+        bfp1_0.building_id,
+        bfp1_0.floor_label,
+        bfp1_0.image_url,
+        bfp1_0.note,
+        bfp1_0.sort_order 
+    from
+        salepro.building_floor_plans bfp1_0 
+    where
+        bfp1_0.building_id=? 
+    order by
+        bfp1_0.sort_order
+Hibernate: 
+    select
+        bfp1_0.id,
+        bfp1_0.building_id,
+        bfp1_0.floor_label,
+        bfp1_0.image_url,
+        bfp1_0.note,
+        bfp1_0.sort_order 
+    from
+        salepro.building_floor_plans bfp1_0 
+    where
+        bfp1_0.building_id=? 
+    order by
+        bfp1_0.sort_order
+2026-06-12T16:23:54.157+07:00 DEBUG 15820 --- [0.0-8088-exec-1] org.hibernate.SQL                        : 
+    select
+        sa1_0.id,
+        sa1_0.avatar_url,
+        sa1_0.created_at,
+        sa1_0.email,
+        sa1_0.full_name,
+        sa1_0.phone,
+        sa1_0.title,
+        sa1_0.updated_at,
+        sa1_0.zalo_link 
+    from
+        salepro.sales_agents sa1_0 
+    where
+        sa1_0.id=?
+Hibernate: 
+    select
+        sa1_0.id,
+        sa1_0.avatar_url,
+        sa1_0.created_at,
+        sa1_0.email,
+        sa1_0.full_name,
+        sa1_0.phone,
+        sa1_0.title,
+        sa1_0.updated_at,
+        sa1_0.zalo_link 
+    from
+        salepro.sales_agents sa1_0 
+    where
+        sa1_0.id=?
+2026-06-12T16:23:54.159+07:00 DEBUG 15820 --- [0.0-8088-exec-8] org.hibernate.SQL                        : 
+    select
+        count(a1_0.id) 
+    from
+        salepro.apartments a1_0 
+    where
+        a1_0.building_id=?
+Hibernate: 
+    select
+        count(a1_0.id) 
+    from
+        salepro.apartments a1_0 
+    where
+        a1_0.building_id=?
+2026-06-12T16:23:54.163+07:00 DEBUG 15820 --- [0.0-8088-exec-8] org.hibernate.SQL                        : 
+    select
+        count(a1_0.id) 
+    from
+        salepro.apartments a1_0 
+    where
+        a1_0.building_id=? 
+        and a1_0.status=?
+Hibernate: 
+    select
+        count(a1_0.id) 
+    from
+        salepro.apartments a1_0 
+    where
+        a1_0.building_id=? 
+        and a1_0.status=?
+2026-06-12T16:23:54.164+07:00 DEBUG 15820 --- [0.0-8088-exec-8] org.hibernate.SQL                        : 
+    select
+        bfp1_0.id,
+        bfp1_0.building_id,
+        bfp1_0.floor_label,
+        bfp1_0.image_url,
+        bfp1_0.note,
+        bfp1_0.sort_order 
+    from
+        salepro.building_floor_plans bfp1_0 
+    where
+        bfp1_0.building_id=? 
+    order by
+        bfp1_0.sort_order
+Hibernate: 
+    select
+        bfp1_0.id,
+        bfp1_0.building_id,
+        bfp1_0.floor_label,
+        bfp1_0.image_url,
+        bfp1_0.note,
+        bfp1_0.sort_order 
+    from
+        salepro.building_floor_plans bfp1_0 
+    where
+        bfp1_0.building_id=? 
+    order by
+        bfp1_0.sort_order
+========== [INCOMING REQUEST] ==========
+Method: GET
+URI: /api/v1/salepro/projects/1
+Content-Type: application/json
+Content-Length: -1
+========================================
+========== [INCOMING REQUEST] ==========
+Method: GET
+URI: /api/v1/salepro/projects/1/buildings
+Content-Type: application/json
+Content-Length: -1
+========================================
+2026-06-12T16:24:01.136+07:00 DEBUG 15820 --- [0.0-8088-exec-4] org.hibernate.SQL                        : 
+    select
+        b1_0.id,
+        b1_0.handover_standard,
+        b1_0.building_name,
+        b1_0.construction_progress,
+        b1_0.description,
+        b1_0.elevator_count,
+        b1_0.image_url,
+        b1_0.marker_lat,
+        b1_0.marker_lng,
+        b1_0.ownership_type,
+        b1_0.project_id,
+        b1_0.sales_policy,
+        b1_0.subdivision_name,
+        b1_0.total_apartments,
+        b1_0.total_area,
+        b1_0.total_floors 
+    from
+        salepro.buildings b1_0 
+    where
+        b1_0.project_id=?
+Hibernate: 
+    select
+        b1_0.id,
+        b1_0.handover_standard,
+        b1_0.building_name,
+        b1_0.construction_progress,
+        b1_0.description,
+        b1_0.elevator_count,
+        b1_0.image_url,
+        b1_0.marker_lat,
+        b1_0.marker_lng,
+        b1_0.ownership_type,
+        b1_0.project_id,
+        b1_0.sales_policy,
+        b1_0.subdivision_name,
+        b1_0.total_apartments,
+        b1_0.total_area,
+        b1_0.total_floors 
+    from
+        salepro.buildings b1_0 
+    where
+        b1_0.project_id=?
+2026-06-12T16:24:01.137+07:00 DEBUG 15820 --- [0.0-8088-exec-3] org.hibernate.SQL                        : 
+    select
+        p1_0.id,
+        p1_0.created_at,
+        p1_0.details,
+        p1_0.managing_agent_id,
+        p1_0.name,
+        p1_0.project_type,
+        p1_0.status,
+        p1_0.updated_at 
+    from
+        salepro.projects p1_0 
+    where
+        p1_0.id=?
+Hibernate: 
+    select
+        p1_0.id,
+        p1_0.created_at,
+        p1_0.details,
+        p1_0.managing_agent_id,
+        p1_0.name,
+        p1_0.project_type,
+        p1_0.status,
+        p1_0.updated_at 
+    from
+        salepro.projects p1_0 
+    where
+        p1_0.id=?
+2026-06-12T16:24:01.138+07:00 DEBUG 15820 --- [0.0-8088-exec-4] org.hibernate.SQL                        : 
+    select
+        count(a1_0.id) 
+    from
+        salepro.apartments a1_0 
+    where
+        a1_0.building_id=?
+Hibernate: 
+    select
+        count(a1_0.id) 
+    from
+        salepro.apartments a1_0 
+    where
+        a1_0.building_id=?
+2026-06-12T16:24:01.140+07:00 DEBUG 15820 --- [0.0-8088-exec-4] org.hibernate.SQL                        : 
+    select
+        count(a1_0.id) 
+    from
+        salepro.apartments a1_0 
+    where
+        a1_0.building_id=? 
+        and a1_0.status=?
+Hibernate: 
+    select
+        count(a1_0.id) 
+    from
+        salepro.apartments a1_0 
+    where
+        a1_0.building_id=? 
+        and a1_0.status=?
+2026-06-12T16:24:01.141+07:00 DEBUG 15820 --- [0.0-8088-exec-4] org.hibernate.SQL                        : 
+    select
+        bfp1_0.id,
+        bfp1_0.building_id,
+        bfp1_0.floor_label,
+        bfp1_0.image_url,
+        bfp1_0.note,
+        bfp1_0.sort_order 
+    from
+        salepro.building_floor_plans bfp1_0 
+    where
+        bfp1_0.building_id=? 
+    order by
+        bfp1_0.sort_order
+Hibernate: 
+    select
+        bfp1_0.id,
+        bfp1_0.building_id,
+        bfp1_0.floor_label,
+        bfp1_0.image_url,
+        bfp1_0.note,
+        bfp1_0.sort_order 
+    from
+        salepro.building_floor_plans bfp1_0 
+    where
+        bfp1_0.building_id=? 
+    order by
+        bfp1_0.sort_order
+2026-06-12T16:24:01.143+07:00 DEBUG 15820 --- [0.0-8088-exec-4] org.hibernate.SQL                        : 
+    select
+        count(a1_0.id) 
+    from
+        salepro.apartments a1_0 
+    where
+        a1_0.building_id=?
+Hibernate: 
+    select
+        count(a1_0.id) 
+    from
+        salepro.apartments a1_0 
+    where
+        a1_0.building_id=?
+2026-06-12T16:24:01.144+07:00 DEBUG 15820 --- [0.0-8088-exec-4] org.hibernate.SQL                        : 
+    select
+        count(a1_0.id) 
+    from
+        salepro.apartments a1_0 
+    where
+        a1_0.building_id=? 
+        and a1_0.status=?
+Hibernate: 
+    select
+        count(a1_0.id) 
+    from
+        salepro.apartments a1_0 
+    where
+        a1_0.building_id=? 
+        and a1_0.status=?
+2026-06-12T16:24:01.144+07:00 DEBUG 15820 --- [0.0-8088-exec-4] org.hibernate.SQL                        : 
+    select
+        bfp1_0.id,
+        bfp1_0.building_id,
+        bfp1_0.floor_label,
+        bfp1_0.image_url,
+        bfp1_0.note,
+        bfp1_0.sort_order 
+    from
+        salepro.building_floor_plans bfp1_0 
+    where
+        bfp1_0.building_id=? 
+    order by
+        bfp1_0.sort_order
+Hibernate: 
+    select
+        bfp1_0.id,
+        bfp1_0.building_id,
+        bfp1_0.floor_label,
+        bfp1_0.image_url,
+        bfp1_0.note,
+        bfp1_0.sort_order 
+    from
+        salepro.building_floor_plans bfp1_0 
+    where
+        bfp1_0.building_id=? 
+    order by
+        bfp1_0.sort_order
+2026-06-12T16:24:01.148+07:00 DEBUG 15820 --- [0.0-8088-exec-3] org.hibernate.SQL                        : 
+    select
+        sa1_0.id,
+        sa1_0.avatar_url,
+        sa1_0.created_at,
+        sa1_0.email,
+        sa1_0.full_name,
+        sa1_0.phone,
+        sa1_0.title,
+        sa1_0.updated_at,
+        sa1_0.zalo_link 
+    from
+        salepro.sales_agents sa1_0 
+    where
+        sa1_0.id=?
+Hibernate: 
+    select
+        sa1_0.id,
+        sa1_0.avatar_url,
+        sa1_0.created_at,
+        sa1_0.email,
+        sa1_0.full_name,
+        sa1_0.phone,
+        sa1_0.title,
+        sa1_0.updated_at,
+        sa1_0.zalo_link 
+    from
+        salepro.sales_agents sa1_0 
+    where
+        sa1_0.id=?
+2026-06-12T16:36:02.717+07:00  INFO 15820 --- [MessageBroker-5] o.s.w.s.c.WebSocketMessageBrokerStats    : WebSocketSession[0 current WS(0)-HttpStream(0)-HttpPoll(0), 0 total, 0 closed abnormally (0 connect failure, 0 send limit, 0 transport error)], stompSubProtocol[processed CONNECT(0)-CONNECTED(0)-DISCONNECT(0)], stompBrokerRelay[null], inboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 0], outboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 0], sockJsScheduler[pool size = 7, active threads = 1, queued tasks = 2, completed tasks = 4]

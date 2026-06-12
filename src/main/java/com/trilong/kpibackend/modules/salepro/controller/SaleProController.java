@@ -50,6 +50,15 @@ public class SaleProController {
         ));
     }
 
+    @Operation(summary = "Thông tin liên hệ của sale giới thiệu (link chia sẻ ?ref=<userId>)")
+    @GetMapping("/referrer/{userId}")
+    public ResponseEntity<?> getReferrer(@PathVariable Long userId) {
+        return ResponseEntity.ok(Map.of(
+                "status", "SUCCESS",
+                "data", saleProService.getReferrer(userId)
+        ));
+    }
+
     @Operation(summary = "Lấy danh sách phân khu / tòa nhà của dự án")
     @GetMapping("/projects/{projectId}/buildings")
     public ResponseEntity<?> getBuildingsByProjectId(@PathVariable Long projectId) {

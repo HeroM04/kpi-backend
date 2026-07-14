@@ -59,24 +59,6 @@ public class SecurityConfig {
                         // 3. Serve ảnh upload local (public)
                         .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
 
-                        // 3.0. SalePro admin (CRUD setup) — chỉ ADMIN, đặt TRƯỚC rule GET public
-                        .requestMatchers("/api/v1/salepro/admin/**").hasRole("ADMIN")
-
-                        // 3.1. Public truy cập API xem bảng hàng SalePro
-                        .requestMatchers(HttpMethod.GET, "/api/v1/salepro/**").permitAll()
-
-                        // 3.2. Public truy cập Sự kiện & Tin tức của cổng SaleWeb
-                        .requestMatchers(HttpMethod.GET, "/api/v1/events/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/v1/news/**").permitAll()
-
-                        // 3.3. Admin quản lý Sự kiện & Tin tức
-                        .requestMatchers(HttpMethod.POST, "/api/v1/events/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.PUT, "/api/v1/events/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.DELETE, "/api/v1/events/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.POST, "/api/v1/news/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.PUT, "/api/v1/news/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.DELETE, "/api/v1/news/**").hasRole("ADMIN")
-
                         // ================== NGHIỆP VỤ HỆ THỐNG (PHÂN QUYỀN QUA @PreAuthorize Ở CONTROLLER) ==================
                         .requestMatchers("/api/v1/feedbacks/**").authenticated()
                         .requestMatchers("/api/v1/deals/**").authenticated()

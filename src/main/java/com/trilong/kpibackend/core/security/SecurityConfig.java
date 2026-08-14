@@ -66,6 +66,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/field-battle/**").authenticated()
                         .requestMatchers("/api/v1/training-sessions/**").authenticated()
                         .requestMatchers("/api/v1/kpi-scores/**").authenticated()
+                        .requestMatchers("/api/v1/ai/**").authenticated()
                         // ====================================================================================
 
                         // 4. ADMIN only

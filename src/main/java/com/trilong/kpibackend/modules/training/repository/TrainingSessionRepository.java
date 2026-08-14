@@ -24,11 +24,12 @@ public interface TrainingSessionRepository extends JpaRepository<TrainingSession
     List<TrainingSession> findExpiredUpcomingSessions(@Param("dayStart") ZonedDateTime dayStart);
 
     /**
-     * Lấy danh sách buổi đào tạo "còn hiển thị":
+     * Lấy danh sách buổi đào tạo "còn hiển thị" cho Mobile:
      * - Chưa kết thúc (status != COMPLETED và != CANCELLED)
-     * - HOẶC startTime >= đầu ngày hôm nay (buổi học hôm nay và tương lai)
-     * Mobile app dùng endpoint này để chỉ hiện phòng đang/sắp diễn ra.
+     * - startTime nằm trong cửa sổ [dayStart, dayEnd): từ đầu ngày hôm nay
+     *   đến trước mốc dayEnd (ví dụ 1 tuần tới).
+     * Buổi đã qua ngày (startTime < dayStart) hoặc quá xa (>= dayEnd) sẽ bị ẩn.
      */
-    @Query("SELECT s FROM TrainingSession s WHERE s.status NOT IN ('COMPLETED', 'CANCELLED') AND s.startTime >= :dayStart ORDER BY s.startTime ASC")
-    List<TrainingSession> findActiveSessionsFromToday(@Param("dayStart") ZonedDateTime dayStart);
+    @Query("SELECT s FROM TrainingSession s WHERE s.status NOT IN ('COMPLETED', 'CANCELLED') AND s.startTime >= :dayStart AND s.startTime < :dayEnd ORDER BY s.startTime ASC")
+    List<TrainingSession> findActiveSessionsInWindow(@Param("dayStart") ZonedDateTime dayStart, @Param("dayEnd") ZonedDateTime dayEnd);
 }

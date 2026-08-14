@@ -55,14 +55,17 @@ public class TrainingService {
 
     /**
      * Lấy danh sách buổi học "đang hiển thị trên app":
-     * Chỉ trả về buổi UPCOMING có startTime >= đầu ngày hôm nay.
-     * Buổi từ hôm qua trở về trước sẽ bị ẩn.
+     * Chỉ trả về buổi chưa kết thúc có startTime trong vòng 1 TUẦN tính từ đầu ngày hôm nay.
+     * Buổi đã qua ngày (hôm qua trở về trước) hoặc quá 1 tuần tới sẽ bị ẩn.
      */
     public List<TrainingSession> getActiveSessions() {
-        ZonedDateTime todayStart = ZonedDateTime.now(ZoneId.of("Asia/Ho_Chi_Minh"))
+        ZoneId vnZone = ZoneId.of("Asia/Ho_Chi_Minh");
+        ZonedDateTime todayStart = ZonedDateTime.now(vnZone)
                 .toLocalDate()
-                .atStartOfDay(ZoneId.of("Asia/Ho_Chi_Minh"));
-        return trainingSessionRepository.findActiveSessionsFromToday(todayStart);
+                .atStartOfDay(vnZone);
+        // Cửa sổ hiển thị: từ đầu hôm nay đến trước đầu ngày thứ 8 (= 1 tuần tới)
+        ZonedDateTime weekEnd = todayStart.plusDays(7);
+        return trainingSessionRepository.findActiveSessionsInWindow(todayStart, weekEnd);
     }
 
     public List<TrainingSession> getSessionsByStatus(String status) {

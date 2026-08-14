@@ -5,3 +5,8 @@ target
 .gemini
 uploads
 *.log
+.env
+.env.*
+!.env.example
+HELP.md
+DEPLOY-DOCKER.md

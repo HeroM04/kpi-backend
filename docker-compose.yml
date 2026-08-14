@@ -1,0 +1,71 @@
+# ============================================================
+# KPI System — full stack (Backend + Frontend) qua Docker
+# Database dùng Neon (cloud) — điền kết nối trong file .env
+#
+#   Chạy:   docker compose up -d --build
+#   Mở:     http://localhost:8080   (đăng nhập admin/admin123)
+#   Log:    docker compose logs -f
+#   Dừng:   docker compose down
+#
+# LƯU Ý: repo Frontend (WebAdmin) phải nằm CẠNH repo này:
+#     D:\kpi-backend   ← repo này (chứa docker-compose.yml)
+#     D:\WebAdmin      ← repo Frontend (build context ../WebAdmin)
+# ============================================================
+
+services:
+  backend:
+    build:
+      context: .
+    image: kpi-backend:latest
+    container_name: kpi-backend
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+
+      # --- Neon PostgreSQL (BẮT BUỘC — lấy từ .env) ---
+      DATABASE_URL: ${DATABASE_URL}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+
+      # --- AWS: S3 (lưu ảnh) + Rekognition (chấm công khuôn mặt) ---
+      AWS_ACCESS_KEY: ${AWS_ACCESS_KEY}
+      AWS_SECRET_KEY: ${AWS_SECRET_KEY}
+      AWS_REGION: ${AWS_REGION:-ap-southeast-1}
+      AWS_BUCKET_NAME: ${AWS_BUCKET_NAME:-trilong-kpi-uploads}
+      AWS_S3_BASE_URL: ${AWS_S3_BASE_URL:-https://trilong-kpi-uploads.s3.ap-southeast-1.amazonaws.com}
+
+      # --- Bảo mật đăng nhập (BẮT BUỘC đặt trên production) ---
+      JWT_SECRET: ${JWT_SECRET}
+
+      # --- Cloudinary (lưu ảnh upload) ---
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET}
+
+      # --- Google Gemini (chấm điểm bài đăng bằng AI) ---
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-flash-latest}
+
+      # --- (Tuỳ chọn) đổi sang chạy KHÔNG cần AWS thật ---
+      APP_STORAGE_TYPE: ${APP_STORAGE_TYPE:-s3}
+      APP_REKOGNITION_ENABLED: ${APP_REKOGNITION_ENABLED:-true}
+    expose:
+      - "8088"
+    # Mở cổng BE ra host để debug / Swagger (không bắt buộc cho FE)
+    ports:
+      - "8088:8088"
+
+  frontend:
+    build:
+      context: ../WebAdmin
+      args:
+        # FE gọi API/WS qua đường tương đối → nginx proxy sang backend
+        VITE_API_BASE_URL: /api/v1
+        VITE_WS_URL: /ws
+    image: kpi-frontend:latest
+    container_name: kpi-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "8080:80"

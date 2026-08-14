@@ -1,31 +1,33 @@
-# Stage 1: Build the Maven project
+# syntax=docker/dockerfile:1
+
+# ============================================================
+# KPI Backend — Spring Boot 4 (Java 17)
+# Multi-stage: build bằng Maven → chạy trên JRE gọn nhẹ
+# ============================================================
+
+# ---- Stage 1: Build ----
 FROM maven:3.9-eclipse-temurin-17 AS builder
-
 WORKDIR /app
 
-# Copy the pom.xml and source code
+# Cache dependencies: layer này chỉ chạy lại khi pom.xml thay đổi
 COPY pom.xml .
+RUN mvn -B -q dependency:go-offline || true
+
+# Build jar (bỏ test để build nhanh, không cần DB lúc build)
 COPY src ./src
+RUN mvn -B -q -DskipTests clean package
 
-# Build the jar file skipping tests to speed up the process
-RUN mvn clean package -DskipTests
-
-# Stage 2: Create the minimal runtime image
+# ---- Stage 2: Runtime ----
 FROM eclipse-temurin:17-jre
-
 WORKDIR /app
 
-# Khai báo volume cho thư mục upload nếu dùng storage local
-VOLUME /app/uploads
-
-# Expose port
-EXPOSE 8088
-
-# Môi trường chạy mặc định là prod
-ENV SPRING_PROFILES_ACTIVE=prod
-
-# Copy jar từ stage 1 sang stage 2
+# Copy jar từ stage build
 COPY --from=builder /app/target/*.jar app.jar
 
-# Chạy ứng dụng
-ENTRYPOINT ["java", "-jar", "app.jar"]
+EXPOSE 8088
+
+# Mặc định chạy profile prod (đọc DATABASE_URL, AWS_* từ biến môi trường)
+ENV SPRING_PROFILES_ACTIVE=prod
+ENV JAVA_OPTS=""
+
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]

@@ -55,12 +55,38 @@ import java.util.Map;
 public class CheckinService {
 
     // ── Ngưỡng khoảng cách (mét) ─────────────────────────────────────────────
-    /** Trong vòng 2000m so với văn phòng → APPROVED tự động */
+    /** Bán kính mặc định khi phòng ban chưa cấu hình: trong vòng 2000m → APPROVED tự động */
     private static final double OFFICE_RADIUS_METERS = 2000.0;
 
     // ── Tọa độ văn phòng mặc định (fallback khi phòng ban chưa set) ──────────
     private static final double DEFAULT_OFFICE_LAT = 20.999042; // Hà Nội
     private static final double DEFAULT_OFFICE_LNG = 105.806702;
+
+    /**
+     * Cấu hình văn phòng áp dụng cho một nhân viên (tọa độ + bán kính cho phép).
+     * Đọc từ phòng ban của nhân viên trong DB, để đổi địa điểm văn phòng chỉ cần
+     * sửa trên Web Admin, KHÔNG phải sửa code và build lại app.
+     */
+    private record OfficeConfig(double lat, double lng, double radiusMeters, String source) {}
+
+    /**
+     * Lấy cấu hình văn phòng cho nhân viên.
+     * Ưu tiên tọa độ/bán kính của phòng ban; thiếu thì dùng giá trị mặc định.
+     */
+    private OfficeConfig resolveOfficeConfig(User user) {
+        Department dept = (user != null) ? user.getDepartment() : null;
+
+        if (dept != null && dept.getOfficeLat() != null && dept.getOfficeLng() != null) {
+            double radius = (dept.getAllowedRadius() != null && dept.getAllowedRadius() > 0)
+                    ? dept.getAllowedRadius().doubleValue()
+                    : OFFICE_RADIUS_METERS;
+            return new OfficeConfig(dept.getOfficeLat(), dept.getOfficeLng(), radius,
+                    "phòng ban '" + dept.getName() + "'");
+        }
+
+        return new OfficeConfig(DEFAULT_OFFICE_LAT, DEFAULT_OFFICE_LNG, OFFICE_RADIUS_METERS,
+                "mặc định (phòng ban chưa cấu hình tọa độ)");
+    }
 
     // ── Mốc giờ KPI ─────────────────────────────────────────────────────────
     private static final LocalTime CUTOFF_CHECKIN  = LocalTime.of(8, 30);  // 08:30 — đúng giờ
@@ -125,18 +151,18 @@ public class CheckinService {
             log.info("[Checkin] Xác thực khuôn mặt thành công cho user {}!", userId);
         }
 
-        // Tính khoảng cách đến văn phòng (áp dụng chung 1 tọa độ cho TẤT CẢ phòng ban)
-        double officeLat = DEFAULT_OFFICE_LAT;
-        double officeLng = DEFAULT_OFFICE_LNG;
+        // Tọa độ + bán kính lấy theo phòng ban của nhân viên (sửa được trên Web Admin)
+        OfficeConfig office = resolveOfficeConfig(user);
 
         double distance = HaversineUtils.calculateDistanceInMeters(
-                request.getLatitude(), request.getLongitude(), officeLat, officeLng
+                request.getLatitude(), request.getLongitude(), office.lat(), office.lng()
         );
 
-        log.info("[Checkin] userId={}, distance={}m, lat={}, lng={}",
-                userId, String.format("%.1f", distance), request.getLatitude(), request.getLongitude());
+        log.info("[Checkin] userId={}, distance={}m, lat={}, lng={} | văn phòng: {} ({}, {}) bán kính {}m",
+                userId, String.format("%.1f", distance), request.getLatitude(), request.getLongitude(),
+                office.source(), office.lat(), office.lng(), String.format("%.0f", office.radiusMeters()));
 
-        if (distance <= OFFICE_RADIUS_METERS) {
+        if (distance <= office.radiusMeters()) {
             return processOfficeCheckin(userId, request, distance);
         } else {
             return processFieldCheckin(userId, request, distance);
@@ -144,14 +170,14 @@ public class CheckinService {
     }
 
     /**
-     * Kiểm tra nhanh xem tọa độ có trong phạm vi văn phòng không.
-     * Dùng tọa độ văn phòng mặc định (trung tâm HN) — cho phép fallback.
+     * Kiểm tra nhanh xem tọa độ có trong phạm vi văn phòng của nhân viên không.
+     * Dùng cấu hình phòng ban; phòng ban chưa set thì dùng giá trị mặc định.
      */
     public boolean isWithinOfficeRange(Long userId, double lat, double lng) {
-        double officeLat = DEFAULT_OFFICE_LAT;
-        double officeLng = DEFAULT_OFFICE_LNG;
-        double distance = HaversineUtils.calculateDistanceInMeters(lat, lng, officeLat, officeLng);
-        return distance <= OFFICE_RADIUS_METERS;
+        User user = userRepository.findById(userId).orElse(null);
+        OfficeConfig office = resolveOfficeConfig(user);
+        double distance = HaversineUtils.calculateDistanceInMeters(lat, lng, office.lat(), office.lng());
+        return distance <= office.radiusMeters();
     }
 
     /** Lấy lịch sử checkin của user trong một ngày cụ thể */

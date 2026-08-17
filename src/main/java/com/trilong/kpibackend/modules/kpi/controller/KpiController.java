@@ -34,6 +34,95 @@ public class KpiController {
     private final com.trilong.kpibackend.modules.kpi.repository.KpiWeeklyScoreRepository kpiWeeklyScoreRepository;
     private final UserRepository userRepository;
     private final KpiCalculationService kpiCalculationService;
+    private final com.trilong.kpibackend.modules.kpi.service.KpiReportService kpiReportService;
+
+    // ══════════════════════════════════════════════════════════════════
+    //  XUẤT BÁO CÁO EXCEL
+    // ══════════════════════════════════════════════════════════════════
+
+    @Operation(
+            summary = "Xuất báo cáo KPI cá nhân (1 người / 1 tháng)",
+            description = "File Excel gồm: bảng điểm theo tuần, số liệu hoạt động thực tế và các sheet "
+                    + "chi tiết từng bản ghi (chấm công, thực chiến, bài đăng, chốt căn) để đối chiếu.",
+            security = @SecurityRequirement(name = "Bearer Authentication")
+    )
+    @GetMapping("/export/personal")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<?> exportPersonalReport(
+            @AuthenticationPrincipal UserPrincipal currentUser,
+            @RequestParam(required = false) Long userId,
+            @RequestParam(required = false) String month) {
+        try {
+            // Không truyền userId thì xuất báo cáo của chính mình
+            Long targetId = (userId != null) ? userId : currentUser.getUserId();
+
+            // Nhân viên thường chỉ được xem báo cáo của chính mình
+            boolean privileged = currentUser.getAuthorities().stream()
+                    .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN")
+                            || a.getAuthority().equals("ROLE_TRUONG_PHONG")
+                            || a.getAuthority().equals("kpi:view-all"));
+            if (!privileged && !targetId.equals(currentUser.getUserId())) {
+                return ResponseEntity.status(403).body(Map.of(
+                        "status", "ERROR", "message", "Bạn chỉ được xuất báo cáo KPI của chính mình."));
+            }
+
+            String m = (month == null || month.isBlank())
+                    ? kpiCalculationService.extractMonth(ZonedDateTime.now()) : month;
+
+            byte[] data = kpiReportService.generatePersonalReport(targetId, m);
+            User u = userRepository.findById(targetId).orElse(null);
+            String name = (u != null ? stripAccents(u.getFullName()) : "NhanSu").replaceAll("[^A-Za-z0-9]+", "_");
+            String fileName = "KPI_" + name + "_" + m + ".xlsx";
+
+            return excelResponse(data, fileName);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("status", "ERROR", "message", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(Map.of(
+                    "status", "ERROR", "message", "Không xuất được báo cáo: " + e.getMessage()));
+        }
+    }
+
+    @Operation(
+            summary = "Xuất báo cáo KPI toàn công ty theo tháng",
+            description = "Bảng tổng hợp mọi nhân sự: mỗi người một khối gồm các mục điểm × các tuần "
+                    + "trong tháng, kèm tổng điểm tháng và % đạt KPI.",
+            security = @SecurityRequirement(name = "Bearer Authentication")
+    )
+    @GetMapping("/export/company")
+    @PreAuthorize("hasAuthority('kpi:view-all') or hasRole('ADMIN')")
+    public ResponseEntity<?> exportCompanyReport(@RequestParam(required = false) String month) {
+        try {
+            String m = (month == null || month.isBlank())
+                    ? kpiCalculationService.extractMonth(ZonedDateTime.now()) : month;
+            byte[] data = kpiReportService.generateCompanyReport(m);
+            return excelResponse(data, "KPI_TongHop_" + m + ".xlsx");
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("status", "ERROR", "message", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(Map.of(
+                    "status", "ERROR", "message", "Không xuất được báo cáo: " + e.getMessage()));
+        }
+    }
+
+    /** Đóng gói mảng byte thành file Excel tải về. */
+    private ResponseEntity<byte[]> excelResponse(byte[] data, String fileName) {
+        String encoded = java.net.URLEncoder.encode(fileName, java.nio.charset.StandardCharsets.UTF_8)
+                .replace("+", "%20");
+        return ResponseEntity.ok()
+                .header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                .header("Content-Disposition", "attachment; filename=\"" + encoded + "\"; filename*=UTF-8''" + encoded)
+                .header("Access-Control-Expose-Headers", "Content-Disposition")
+                .body(data);
+    }
+
+    /** Bỏ dấu tiếng Việt để đặt tên file an toàn trên mọi hệ điều hành. */
+    private String stripAccents(String s) {
+        if (s == null) return "";
+        String n = java.text.Normalizer.normalize(s, java.text.Normalizer.Form.NFD)
+                .replaceAll("\\p{InCombiningDiacriticalMarks}+", "");
+        return n.replace('đ', 'd').replace('Đ', 'D');
+    }
 
     @Operation(
             summary = "Xem điểm KPI toàn công ty theo tháng",

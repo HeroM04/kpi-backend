@@ -88,12 +88,21 @@ public class CheckinService {
                 "mặc định (phòng ban chưa cấu hình tọa độ)");
     }
 
-    // ── Mốc giờ KPI ─────────────────────────────────────────────────────────
-    private static final LocalTime CUTOFF_CHECKIN  = LocalTime.of(8, 30);  // 08:30 — đúng giờ
-    private static final LocalTime CUTOFF_CHECKOUT = LocalTime.of(17, 30); // 17:30 — tan làm
+    // ── Mốc giờ chấm công (theo quy định công ty) ───────────────────────────
+    /** Điểm danh từ 08:30; đến 08:45 vẫn tính ĐÚNG GIỜ (15 phút châm chước). */
+    private static final LocalTime ON_TIME_LIMIT = LocalTime.of(8, 45);
+    /** Từ sau 08:45 đến 10:00 tính là ĐI MUỘN. */
+    private static final LocalTime LATE_LIMIT    = LocalTime.of(10, 0);
+    /** Kết thúc giờ làm. */
+    private static final LocalTime CUTOFF_CHECKOUT = LocalTime.of(17, 30);
 
-    // ── KPI Points ───────────────────────────────────────────────────────────
-    private static final int KPI_POINTS_ATTENDANCE = 5;
+    // ── Điểm KPI chuyên cần ─────────────────────────────────────────────────
+    /** Đi làm đúng giờ (≤ 08:45) */
+    private static final int KPI_ON_TIME = 5;
+    /** Đi làm muộn (08:45 – 10:00) */
+    private static final int KPI_LATE = -5;
+    /** Check-in sau 10:00 — theo quy định tính là vắng mặt (không phép) */
+    private static final int KPI_ABSENT_UNEXCUSED = -15;
 
     // ── Zone ─────────────────────────────────────────────────────────────────
     private static final ZoneId VN_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
@@ -230,13 +239,21 @@ public class CheckinService {
 
         // Xử lý cộng/trừ KPI
         if (!"APPROVED".equals(oldStatus) && "APPROVED".equals(newStatus.toUpperCase())) {
-            int kpiPoints = calculateAttendanceKpi(checkinLog.getActionType(), checkinLog.getCheckinTime().toLocalTime());
+            // Phải quy về giờ Việt Nam: giá trị đọc từ DB đang ở múi giờ UTC,
+            // nếu lấy thẳng toLocalTime() thì 09:30 VN thành 02:30 và bị chấm
+            // nhầm thành "đi đúng giờ".
+            int kpiPoints = calculateAttendanceKpi(checkinLog.getActionType(),
+                    checkinLog.getCheckinTime().withZoneSameInstant(VN_ZONE).toLocalTime());
             kpiCalculationService.updateKpiPoints(
                     checkinLog.getUserId(), "attendance", kpiPoints, checkinLog.getCheckinTime()
             );
             log.info("[Checkin]  Duyệt {} #{} → {} KPI cho userId={}", checkinLog.getActionType(), id, (kpiPoints > 0 ? "+" + kpiPoints : kpiPoints), checkinLog.getUserId());
         } else if ("APPROVED".equals(oldStatus) && !"APPROVED".equals(newStatus.toUpperCase())) {
-            int kpiPoints = calculateAttendanceKpi(checkinLog.getActionType(), checkinLog.getCheckinTime().toLocalTime());
+            // Phải quy về giờ Việt Nam: giá trị đọc từ DB đang ở múi giờ UTC,
+            // nếu lấy thẳng toLocalTime() thì 09:30 VN thành 02:30 và bị chấm
+            // nhầm thành "đi đúng giờ".
+            int kpiPoints = calculateAttendanceKpi(checkinLog.getActionType(),
+                    checkinLog.getCheckinTime().withZoneSameInstant(VN_ZONE).toLocalTime());
             kpiCalculationService.updateKpiPoints(
                     checkinLog.getUserId(), "attendance", -kpiPoints, checkinLog.getCheckinTime()
             );
@@ -362,16 +379,25 @@ public class CheckinService {
      * - CHECK_IN: Đúng giờ (<= 08:30) -> +5 điểm. Đi trễ (> 08:30) -> 0 điểm.
      * - CHECK_OUT: Không cộng/trừ điểm KPI (chỉ dùng để record thời gian).
      */
+    /**
+     * Tính điểm chuyên cần theo giờ check-in, đúng quy định công ty:
+     * <ul>
+     *   <li>đến 08:45 → đúng giờ, <b>+5đ</b> (điểm danh từ 08:30, châm chước 15 phút)</li>
+     *   <li>08:45 – 10:00 → đi muộn, <b>−5đ</b></li>
+     *   <li>sau 10:00 → tính là vắng mặt không phép, <b>−15đ</b></li>
+     * </ul>
+     * Check-out không tính điểm (chỉ dùng để ghi nhận giờ về).
+     */
     private int calculateAttendanceKpi(String actionType, LocalTime time) {
         if ("CHECK_OUT".equals(actionType)) {
-            return 0; // Check-out không tính điểm KPI
-        } else {
-            // Mặc định là CHECK_IN
-            if (!time.isAfter(CUTOFF_CHECKIN)) {
-                return KPI_POINTS_ATTENDANCE; // Đi đúng giờ (<= 08:30) -> +5
-            } else {
-                return 0; // Đi trễ (> 08:30) -> 0
-            }
+            return 0;
         }
+        if (!time.isAfter(ON_TIME_LIMIT)) {
+            return KPI_ON_TIME;
+        }
+        if (!time.isAfter(LATE_LIMIT)) {
+            return KPI_LATE;
+        }
+        return KPI_ABSENT_UNEXCUSED;
     }
 }

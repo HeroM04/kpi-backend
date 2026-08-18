@@ -523,13 +523,14 @@ public class KpiReportService {
     //  Tiện ích
     // ══════════════════════════════════════════════════════════════════════
 
-    /** Danh sách mã tuần ISO (yyyy-Www) mà tháng này chạm tới, theo thứ tự. */
+    /**
+     * Danh sách mã tuần (yyyy-Www) thuộc tháng KPI này.
+     * Một tuần thuộc tháng chứa ngày thứ Hai của nó, nên tháng luôn có đúng
+     * 4 hoặc 5 tuần — khớp với chỉ tiêu 400/500 điểm.
+     */
     private List<String> weeksOfMonth(YearMonth ym) {
-        LinkedHashSet<String> weeks = new LinkedHashSet<>();
-        for (int d = 1; d <= ym.lengthOfMonth(); d++) {
-            weeks.add(weekOf(ym.atDay(d)));
-        }
-        return new ArrayList<>(weeks);
+        return kpiCalculationService.getWeeksOfMonth(
+                String.format("%d-%02d", ym.getYear(), ym.getMonthValue()));
     }
 
     /**
@@ -565,15 +566,22 @@ public class KpiReportService {
         };
     }
 
-    /** Lọc bản ghi nằm trong tháng. */
+    /**
+     * Lọc bản ghi thuộc tháng KPI.
+     *
+     * <p>Xét theo TUẦN chứ không theo ngày lịch: bản ghi thuộc tháng nếu tuần
+     * của nó nằm trong danh sách tuần của tháng đó. Nhờ vậy tuần cuối tháng
+     * không bị cắt đôi — việc làm ngày 01–06/09/2026 vẫn nằm trong báo cáo
+     * tháng 8 (tuần bắt đầu 31/08).
+     */
     private <T> List<T> filterByMonth(List<T> items, YearMonth ym,
                                       java.util.function.Function<T, ZonedDateTime> timeGetter) {
+        Set<String> weeks = new HashSet<>(weeksOfMonth(ym));
         List<T> out = new ArrayList<>();
         for (T it : items) {
             ZonedDateTime t = timeGetter.apply(it);
             if (t == null) continue;
-            LocalDate d = t.withZoneSameInstant(VN_ZONE).toLocalDate();
-            if (d.getYear() == ym.getYear() && d.getMonthValue() == ym.getMonthValue()) out.add(it);
+            if (weeks.contains(weekOf(t.withZoneSameInstant(VN_ZONE).toLocalDate()))) out.add(it);
         }
         return out;
     }

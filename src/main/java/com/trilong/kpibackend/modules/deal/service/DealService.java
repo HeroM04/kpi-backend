@@ -81,15 +81,13 @@ public class DealService {
         deal.setApprovedBy(approver);
         deal.setApprovedAt(ZonedDateTime.now());
 
-        // KÃ­ch hoáº¡t cá»™ng Ä‘iá»ƒm KPI thÃ¡ng gá»­i yÃªu cáº§u
-        String month = kpiCalculationService.extractMonth(deal.getSubmittedAt());
-        int maxKpi = kpiCalculationService.getMaxKpiForMonth(month);
-        deal.setKpiTriggered(maxKpi); // Cáº­p nháº­t láº¡i sá»‘ Ä‘iá»ƒm thá»±c táº¿ Ä‘Æ°á»£c cá»™ng
-        Deal savedDeal = dealRepository.save(deal);
-        
-        kpiCalculationService.updateKpiPoints(deal.getUser().getId(), "deal", maxKpi, deal.getSubmittedAt());
-
-        return savedDeal;
+        // Chốt căn KHÔNG cộng điểm vào bảng KPI.
+        // Theo quy định: chốt được căn thì nghiễm nhiên đạt 100% KPI tháng đó,
+        // nhưng ba nhóm tiêu chí (phát triển cá nhân / thực chiến / lan tỏa) vẫn
+        // được chấm bình thường. Việc "đạt 100%" xét ở khâu xếp loại dựa trên
+        // việc tháng đó có deal đã duyệt hay không, nên ở đây chỉ cần lưu bản ghi.
+        deal.setKpiTriggered(0);
+        return dealRepository.save(deal);
     }
 
     @Transactional
@@ -100,11 +98,9 @@ public class DealService {
         User approver = userRepository.findById(approvedById)
                 .orElseThrow(() -> new IllegalArgumentException("KhÃ´ng tÃ¬m tháº¥y ngÆ°á»i duyá»‡t"));
 
-        // Náº¿u Ä‘ang á»Ÿ tráº¡ng thÃ¡i APPROVED, pháº£i trá»« Ä‘iá»ƒm KPI trÆ°á»›c khi reject
-        if ("APPROVED".equals(deal.getStatus())) {
-            kpiCalculationService.updateKpiPoints(deal.getUser().getId(), "deal", -deal.getKpiTriggered(), deal.getSubmittedAt());
-        }
-
+        // Không cần hoàn điểm: chốt căn không cộng điểm vào bảng KPI.
+        // Bỏ duyệt deal thì tháng đó mất tư cách "đạt 100% nhờ chốt căn",
+        // việc này tự phản ánh khi xếp loại vì không còn deal APPROVED nào.
         deal.setStatus("REJECTED");
         deal.setApprovedBy(approver);
         deal.setApprovedAt(ZonedDateTime.now());
@@ -117,11 +113,7 @@ public class DealService {
         Deal deal = dealRepository.findById(dealId)
                 .orElseThrow(() -> new IllegalArgumentException("KhÃ´ng tÃ¬m tháº¥y yÃªu cáº§u chá»‘t cÄƒn cÃ³ ID: " + dealId));
 
-        // Náº¿u Ä‘ang á»Ÿ tráº¡ng thÃ¡i APPROVED, pháº£i trá»« Ä‘iá»ƒm KPI trÆ°á»›c khi xÃ³a
-        if ("APPROVED".equals(deal.getStatus())) {
-            kpiCalculationService.updateKpiPoints(deal.getUser().getId(), "deal", -deal.getKpiTriggered(), deal.getSubmittedAt());
-        }
-
+        // Không cần hoàn điểm: chốt căn không cộng điểm vào bảng KPI.
         dealRepository.delete(deal);
     }
 }

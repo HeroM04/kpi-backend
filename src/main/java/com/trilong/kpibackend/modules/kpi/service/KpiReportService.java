@@ -146,29 +146,19 @@ public class KpiReportService {
         setCell(hdr, lastCol, "Tổng tháng", st.header);
 
         int firstScoreRow = row;
-        // Chuyên cần / Thực chiến / Lan tỏa lấy từ điểm tuần đã lưu
-        row = writeScoreRow(sh, st, row, "Chuyên cần", weeks, weekScores, KpiWeeklyScore::getAttendance, nWeeks, lastCol);
-        row = writeScoreRow(sh, st, row, "Thực chiến", weeks, weekScores, KpiWeeklyScore::getMeeting, nWeeks, lastCol);
-        row = writeScoreRow(sh, st, row, "Lan tỏa", weeks, weekScores, KpiWeeklyScore::getPost, nWeeks, lastCol);
+        // Ba nhóm tiêu chí theo bảng KPI công ty: 30 + 40 + 30 = 100 điểm/tuần.
+        // Chốt căn KHÔNG phải nhóm tính điểm — xem phần đánh giá bên dưới.
+        row = writeScoreRow(sh, st, row, "1. Phát triển cá nhân (tối đa 30đ)",
+                weeks, weekScores, KpiWeeklyScore::getAttendance, nWeeks, lastCol);
+        row = writeScoreRow(sh, st, row, "2. Thực chiến (tối đa 40đ)",
+                weeks, weekScores, KpiWeeklyScore::getMeeting, nWeeks, lastCol);
+        row = writeScoreRow(sh, st, row, "3. Lan tỏa giá trị (tối đa 30đ)",
+                weeks, weekScores, KpiWeeklyScore::getPost, nWeeks, lastCol);
+        int lastScoreRow = row - 1;
 
-        // Chốt căn: điểm tuần không lưu riêng nên tính từ bản ghi deal đã duyệt
-        Row dealRow = sh.createRow(row);
-        setCell(dealRow, 0, "Chốt căn", st.normal);
-        for (int i = 0; i < nWeeks; i++) {
-            int pts = deals.stream()
-                    .filter(d -> "APPROVED".equals(d.getStatus()))
-                    .filter(inWeek(weeks.get(i), Deal::getSubmittedAt))
-                    .mapToInt(d -> d.getKpiTriggered() != null ? d.getKpiTriggered() : 0)
-                    .sum();
-            setCell(dealRow, 1 + i, pts, st.number);
-        }
-        setFormula(dealRow, lastCol, sumRowFormula(row, 1, nWeeks), st.numberBold);
-        int lastScoreRow = row;
-        row++;
-
-        // Dòng tổng
+        // Dòng tổng (mỗi tuần tối đa 100đ)
         Row totalRow = sh.createRow(row);
-        setCell(totalRow, 0, "TỔNG ĐIỂM", st.totalLabel);
+        setCell(totalRow, 0, "TỔNG ĐIỂM TUẦN (tối đa 100đ)", st.totalLabel);
         for (int i = 0; i <= nWeeks; i++) {
             String col = colName(1 + i);
             setFormula(totalRow, 1 + i,
@@ -229,41 +219,50 @@ public class KpiReportService {
         row++;
 
         int official = monthScore != null ? monthScore.getTotal() : 0;
+        boolean hasDeal = deals.stream().anyMatch(d -> "APPROVED".equals(d.getStatus()));
+        var grade = kpiCalculationService.gradeMonth(
+                official, String.format("%d-%02d", ym.getYear(), ym.getMonthValue()),
+                hasDeal, user.getCreatedAt());
 
         Row e1 = sh.createRow(row++);
-        setCell(e1, 0, "Tổng điểm ghi nhận", st.label);
-        setFormula(e1, 1, colName(lastCol) + (totalRowIdx + 1), st.numberBold);
-        setCell(e1, 2, "Cộng thô từ bảng I, chưa áp trần", st.note);
-        int rowRaw = row;
+        setCell(e1, 0, "Tổng điểm KPI tháng", st.label);
+        setCell(e1, 1, official, st.totalNumber);
+        setCell(e1, 2, "Tổng điểm các tuần (mỗi tuần tối đa 100đ)", st.note);
 
         Row e2 = sh.createRow(row++);
-        setCell(e2, 0, "Chỉ tiêu tháng", st.label);
+        setCell(e2, 0, "Điểm tối đa của tháng", st.label);
         setCell(e2, 1, maxKpi, st.number);
         setCell(e2, 2, "(" + (maxKpi / 100) + " tuần × 100 điểm)", st.note);
-        int rowTarget = row;
 
         Row e3 = sh.createRow(row++);
-        setCell(e3, 0, "Điểm KPI chính thức", st.label);
-        setCell(e3, 1, official, st.totalNumber);
-        setCell(e3, 2, "Hệ thống giới hạn tối đa bằng chỉ tiêu tháng — đây là số dùng để xét thưởng", st.note);
+        setCell(e3, 0, "Ngưỡng đạt 50%", st.label);
+        setCell(e3, 1, grade.min50(), st.number);
+        setCell(e3, 2, grade.isNewbie() ? "Mức nhân sự mới (80% quy định)" : "", st.note);
 
         Row e4 = sh.createRow(row++);
-        setCell(e4, 0, "Tỷ lệ hoàn thành", st.label);
-        setFormula(e4, 1, String.format("IFERROR(B%d/B%d,0)", rowRaw, rowTarget), st.percent);
-        setCell(e4, 2, "Tính trên điểm ghi nhận, có thể vượt 100%", st.note);
+        setCell(e4, 0, "Ngưỡng đạt 100%", st.label);
+        setCell(e4, 1, grade.min100(), st.number);
+        setCell(e4, 2, grade.isNewbie() ? "Mức nhân sự mới (80% quy định)" : "", st.note);
 
         Row e5 = sh.createRow(row++);
-        setCell(e5, 0, "Xếp loại", st.label);
-        setCell(e5, 1, classify(official, maxKpi), st.normalBold);
+        setCell(e5, 0, "KẾT QUẢ XẾP LOẠI", st.totalLabel);
+        setCell(e5, 1, grade.label(), st.totalNumber);
+        setCell(e5, 2, grade.reason(), st.note);
 
         Row e6 = sh.createRow(row++);
-        setCell(e6, 0, "Cờ đỏ (nghi ngờ gian lận)", st.label);
-        setCell(e6, 1, (monthScore != null && monthScore.isFlagged()) ? "CÓ" : "Không", st.normal);
+        setCell(e6, 0, "Chốt căn trong tháng", st.label);
+        setCell(e6, 1, hasDeal ? "CÓ → đạt 100% KPI" : "Không", hasDeal ? st.ok : st.normal);
+
+        Row e7 = sh.createRow(row++);
+        setCell(e7, 0, "Cờ đỏ (nghi ngờ gian lận)", st.label);
+        setCell(e7, 1, (monthScore != null && monthScore.isFlagged()) ? "CÓ" : "Không", st.normal);
 
         row++;
         setCell(sh.createRow(row), 0,
-                "Ghi chú: Chỉ tính các bản ghi ở trạng thái ĐÃ DUYỆT. Check-out không cộng điểm chuyên cần "
-                        + "(chỉ check-in đúng giờ mới được tính). Xem các sheet chi tiết để đối chiếu từng bản ghi.",
+                "Ghi chú: Chỉ tính các bản ghi ĐÃ DUYỆT. Mỗi tuần tối đa 100đ, chia theo nhóm: "
+                        + "Phát triển cá nhân 30đ + Thực chiến 40đ + Lan tỏa 30đ. Điểm tuần không âm. "
+                        + "Chốt căn không cộng điểm nhưng được tính đạt 100% KPI tháng. "
+                        + "KPI chỉ có hai mức: đạt 50% hoặc đạt 100%.",
                 st.note);
         sh.addMergedRegion(new CellRangeAddress(row, row, 0, lastCol));
 
@@ -412,9 +411,14 @@ public class KpiReportService {
             setCell(title, 0, "TỔNG HỢP BÁO CÁO KPI THÁNG " + String.format("%02d/%d", ym.getMonthValue(), ym.getYear()), st.title);
             sh.addMergedRegion(new CellRangeAddress(0, 0, 0, cNote));
 
+            // Ngưỡng xếp loại của tháng (dùng chung cho nhân sự chính thức)
+            var sample = kpiCalculationService.gradeMonth(0, month, false, null);
             Row sub = sh.createRow(1);
-            setCell(sub, 0, "Chỉ tiêu tháng: " + maxKpi + " điểm (" + nWeeks + " tuần)   |   Ngày xuất: "
-                    + ZonedDateTime.now(VN_ZONE).format(DATETIME_FMT), st.note);
+            setCell(sub, 0, String.format(
+                    "Tối đa %d điểm (%d tuần × 100đ)   |   Đạt 50%%: từ %d điểm   |   Đạt 100%%: từ %d điểm"
+                            + "   |   Nhân sự mới áp mức 80%%   |   Ngày xuất: %s",
+                    maxKpi, nWeeks, sample.min50(), sample.min100(),
+                    ZonedDateTime.now(VN_ZONE).format(DATETIME_FMT)), st.note);
             sh.addMergedRegion(new CellRangeAddress(1, 1, 0, cNote));
 
             Row hdr = sh.createRow(3);
@@ -424,10 +428,17 @@ public class KpiReportService {
             setCell(hdr, cMuc, "Mục điểm", st.header);
             for (int i = 0; i < nWeeks; i++) setCell(hdr, cW1 + i, weekLabel(i + 1, weeks.get(i)), st.header);
             setCell(hdr, cTotal, "Tổng điểm THÁNG", st.header);
-            setCell(hdr, cPct, "% ĐẠT KPI", st.header);
+            setCell(hdr, cPct, "XẾP LOẠI KPI", st.header);
             setCell(hdr, cNote, "Chú thích", st.header);
 
-            String[] muc = {"Chuyên cần", "Thực chiến", "Số khách đi gặp", "Lan tỏa", "Chốt căn", "TỔNG ĐIỂM TUẦN"};
+            // Ba nhóm tính điểm (30/40/30) + một dòng số lượng để đối chiếu thực tế
+            String[] muc = {
+                    "1. Phát triển cá nhân (30đ)",
+                    "2. Thực chiến (40đ)",
+                    "3. Lan tỏa giá trị (30đ)",
+                    "Số khách đi gặp (số lượng)",
+                    "TỔNG ĐIỂM TUẦN (100đ)"
+            };
             int row = 4;
             int stt = 1;
 
@@ -455,21 +466,18 @@ public class KpiReportService {
                         switch (m) {
                             case 0 -> val = w != null ? w.getAttendance() : 0;
                             case 1 -> val = w != null ? w.getMeeting() : 0;
-                            case 2 -> val = battles.stream().filter(b -> "APPROVED".equals(b.getStatus()))
+                            case 2 -> val = w != null ? w.getPost() : 0;
+                            case 3 -> val = battles.stream().filter(b -> "APPROVED".equals(b.getStatus()))
                                     .filter(inWeek(wk, FieldBattle::getSubmittedAt))
                                     .map(FieldBattle::getCustomerName).filter(Objects::nonNull)
                                     .map(String::trim).filter(s -> !s.isEmpty()).distinct().count();
-                            case 3 -> val = w != null ? w.getPost() : 0;
-                            case 4 -> val = deals.stream().filter(d -> "APPROVED".equals(d.getStatus()))
-                                    .filter(inWeek(wk, Deal::getSubmittedAt))
-                                    .mapToInt(d -> d.getKpiTriggered() != null ? d.getKpiTriggered() : 0).sum();
                             default -> val = null;
                         }
                         if (isTotal) {
-                            // Tổng cột tuần = cộng 4 dòng điểm (bỏ dòng "Số khách đi gặp" vì là số lượng)
+                            // Tổng tuần = 3 nhóm tính điểm (bỏ dòng "Số khách đi gặp" vì là số lượng)
                             String c = colName(cW1 + i);
-                            setFormula(r, cW1 + i, String.format("%s%d+%s%d+%s%d+%s%d",
-                                    c, blockStart + 1, c, blockStart + 2, c, blockStart + 4, c, blockStart + 5),
+                            setFormula(r, cW1 + i, String.format("%s%d+%s%d+%s%d",
+                                    c, blockStart + 1, c, blockStart + 2, c, blockStart + 3),
                                     st.totalNumber);
                         } else if (val instanceof Long lv) {
                             setCell(r, cW1 + i, lv, st.number);
@@ -493,13 +501,21 @@ public class KpiReportService {
                 sh.addMergedRegion(new CellRangeAddress(blockStart, row - 1, 1, 1));
                 sh.addMergedRegion(new CellRangeAddress(blockStart, row - 1, 2, 2));
 
-                // % đạt KPI (dựa trên dòng TỔNG ĐIỂM TUẦN) + chú thích
-                setFormula(sh.getRow(blockStart), cPct,
-                        String.format("IFERROR(%s%d/%d,0)", colName(cTotal), row, maxKpi), st.percent);
+                // Xếp loại KPI — chỉ có hai mức: đạt 50% hoặc đạt 100%
+                boolean hasDeal = deals.stream().anyMatch(d -> "APPROVED".equals(d.getStatus()));
+                int monthTotal = (ms != null) ? ms.getTotal() : 0;
+                var grade = kpiCalculationService.gradeMonth(monthTotal, month, hasDeal, u.getCreatedAt());
+
+                setCell(sh.getRow(blockStart), cPct, grade.label(),
+                        grade.percent() == 100 ? st.ok : (grade.percent() == 50 ? st.pending : st.bad));
                 sh.addMergedRegion(new CellRangeAddress(blockStart, row - 1, cPct, cPct));
 
-                String note = (ms != null && ms.isFlagged()) ? "Bị gắn cờ đỏ — cần hậu kiểm" : "";
-                setCell(sh.getRow(blockStart), cNote, note, st.note);
+                // Chú thích: lý do xếp loại + các dấu hiệu cần lưu ý
+                List<String> notes = new ArrayList<>();
+                notes.add(grade.reason());
+                if (grade.isNewbie()) notes.add("Nhân sự mới — áp mức 80%");
+                if (ms != null && ms.isFlagged()) notes.add("Bị gắn cờ đỏ — cần hậu kiểm");
+                setCell(sh.getRow(blockStart), cNote, String.join(" · ", notes), st.note);
                 sh.addMergedRegion(new CellRangeAddress(blockStart, row - 1, cNote, cNote));
 
                 row++; // dòng trống giữa các nhân sự
@@ -605,16 +621,6 @@ public class KpiReportService {
             i = i / 26 - 1;
         }
         return sb.toString();
-    }
-
-    private String classify(int achieved, int max) {
-        if (max <= 0) return "Chưa có chỉ tiêu";
-        double p = (double) achieved / max;
-        if (p >= 1.0) return "Xuất sắc";
-        if (p >= 0.8) return "Tốt";
-        if (p >= 0.6) return "Đạt";
-        if (p >= 0.4) return "Cần cố gắng";
-        return "Không đạt";
     }
 
     private String statusVi(String s) {

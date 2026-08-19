@@ -33,6 +33,22 @@ public class KpiCalculationService {
     private static final DateTimeFormatter MONTH_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM");
     private static final ZoneId VN_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
 
+    // ── Trần điểm từng nhóm tiêu chí (mỗi tuần) ─────────────────────────────
+    // Theo bảng tiêu chí KPI: 30 + 40 + 30 = 100 điểm/tuần.
+    /** Nhóm 1 — Phát triển cá nhân: chuyên cần + học tập/đào tạo */
+    public static final int CAP_PERSONAL = 30;
+    /** Nhóm 2 — Thực chiến: gặp khách, one-on-one, tăng ca */
+    public static final int CAP_BATTLE = 40;
+    /** Nhóm 3 — Lan tỏa giá trị: video xây kênh, bài đăng, gieo hạt */
+    public static final int CAP_SPREAD = 30;
+    /** Tổng tối đa mỗi tuần */
+    public static final int CAP_WEEK = 100;
+
+    /** Giới hạn giá trị trong khoảng [0, max] — điểm tuần không bao giờ âm. */
+    private int clamp(int value, int max) {
+        return Math.max(0, Math.min(max, value));
+    }
+
     @PostConstruct
     public void initMissingKpiScores() {
         String currentMonth = extractMonth(ZonedDateTime.now());
@@ -120,6 +136,88 @@ public class KpiCalculationService {
         }
     }
 
+    // ══════════════════════════════════════════════════════════════════════
+    //  XẾP LOẠI KPI — chỉ có hai mức: đạt 50% hoặc đạt 100%
+    // ══════════════════════════════════════════════════════════════════════
+
+    /**
+     * Kết quả xếp loại KPI tháng.
+     *
+     * @param percent   mức KPI đạt được: 100, 50 hoặc 0
+     * @param label     nhãn hiển thị
+     * @param reason    lý do (đặc biệt hữu ích khi đạt 100% nhờ chốt căn)
+     * @param min50     ngưỡng điểm để đạt 50%
+     * @param min100    ngưỡng điểm để đạt 100%
+     * @param isNewbie  có đang áp mức nhân sự mới (80%) hay không
+     */
+    public record KpiGrade(int percent, String label, String reason,
+                           int min50, int min100, boolean isNewbie) {}
+
+    /**
+     * Xếp loại KPI tháng theo quy định công ty.
+     *
+     * <p>Ngưỡng điểm (nhân sự chính thức):
+     * <ul>
+     *   <li>Tháng 4 tuần (tối đa 400đ): từ 250 → đạt 50%; từ 320 → đạt 100%</li>
+     *   <li>Tháng 5 tuần (tối đa 500đ): từ 310 → đạt 50%; từ 400 → đạt 100%</li>
+     * </ul>
+     *
+     * <p>Nhân sự mới (2 tháng đầu kể từ ngày tạo tài khoản) chỉ cần đạt
+     * <b>80%</b> các ngưỡng trên. Ví dụ tháng 4 tuần: 200 → 50%, 255 → 100%.
+     *
+     * <p>Chốt được căn (deal đã duyệt trong tháng) → <b>đạt 100% KPI</b> bất kể
+     * điểm số, nhưng điểm ba nhóm tiêu chí vẫn ghi nhận bình thường.
+     *
+     * @param totalPoints  tổng điểm KPI tháng (tổng điểm các tuần)
+     * @param month        tháng dạng yyyy-MM
+     * @param hasClosedDeal tháng đó có chốt căn được duyệt hay không
+     * @param joinedAt     ngày vào làm (để xác định nhân sự mới); null = coi là chính thức
+     */
+    public KpiGrade gradeMonth(int totalPoints, String month, boolean hasClosedDeal,
+                               ZonedDateTime joinedAt) {
+        int maxKpi = getMaxKpiForMonth(month);
+
+        // Ngưỡng gốc theo số tuần của tháng
+        int base50 = (maxKpi >= 500) ? 310 : 250;
+        int base100 = (maxKpi >= 500) ? 400 : 320;
+
+        boolean newbie = isNewStaff(joinedAt, month);
+        int min50 = newbie ? (int) Math.round(base50 * 0.8) : base50;
+        int min100 = newbie ? (int) Math.round(base100 * 0.8) : base100;
+
+        if (hasClosedDeal) {
+            return new KpiGrade(100, "Đạt 100% KPI",
+                    "Có chốt căn được duyệt trong tháng", min50, min100, newbie);
+        }
+        if (totalPoints >= min100) {
+            return new KpiGrade(100, "Đạt 100% KPI",
+                    "Đạt " + totalPoints + " điểm (ngưỡng " + min100 + ")", min50, min100, newbie);
+        }
+        if (totalPoints >= min50) {
+            return new KpiGrade(50, "Đạt 50% KPI",
+                    "Đạt " + totalPoints + " điểm (ngưỡng 100% là " + min100 + ")", min50, min100, newbie);
+        }
+        return new KpiGrade(0, "Không đạt KPI",
+                "Chỉ đạt " + totalPoints + " điểm, chưa tới ngưỡng " + min50, min50, min100, newbie);
+    }
+
+    /**
+     * Nhân sự mới = trong 2 tháng đầu kể từ ngày tạo tài khoản.
+     * Tháng đang xét được so với tháng vào làm (theo quy tắc tuần trọn vẹn).
+     */
+    public boolean isNewStaff(ZonedDateTime joinedAt, String month) {
+        if (joinedAt == null) return false;
+        try {
+            java.time.YearMonth joinMonth = java.time.YearMonth.parse(
+                    extractMonth(joinedAt), MONTH_FORMATTER);
+            java.time.YearMonth target = java.time.YearMonth.parse(month, MONTH_FORMATTER);
+            long diff = joinMonth.until(target, java.time.temporal.ChronoUnit.MONTHS);
+            return diff >= 0 && diff < 2;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     /**
      * Danh sách mã tuần (yyyy-Www) thuộc một tháng KPI, theo thứ tự.
      * Mỗi phần tử ứng với một cột "Tuần N" trên báo cáo.
@@ -178,22 +276,24 @@ public class KpiCalculationService {
                             .total(0)
                             .build());
 
+            // Mỗi nhóm có trần riêng theo bảng tiêu chí; điểm không xuống dưới 0
+            // (có điểm mới bị trừ, không có điểm thì không âm).
             switch (lowerType) {
                 case "attendance":
-                    weeklyScore.setAttendance(Math.max(0, weeklyScore.getAttendance() + points));
+                    weeklyScore.setAttendance(clamp(weeklyScore.getAttendance() + points, CAP_PERSONAL));
                     break;
                 case "meeting":
-                    weeklyScore.setMeeting(Math.max(0, weeklyScore.getMeeting() + points));
+                    weeklyScore.setMeeting(clamp(weeklyScore.getMeeting() + points, CAP_BATTLE));
                     break;
                 case "post":
-                    weeklyScore.setPost(Math.max(0, weeklyScore.getPost() + points));
+                    weeklyScore.setPost(clamp(weeklyScore.getPost() + points, CAP_SPREAD));
                     break;
                 default:
                     throw new IllegalArgumentException("Loại điểm KPI không hợp lệ: " + type);
             }
 
             int rawWeekly = weeklyScore.getAttendance() + weeklyScore.getMeeting() + weeklyScore.getPost();
-            weeklyScore.setTotal(Math.min(100, rawWeekly)); // Cap at 100 points per week
+            weeklyScore.setTotal(Math.min(CAP_WEEK, rawWeekly));
             kpiWeeklyScoreRepository.save(weeklyScore);
         }
 
@@ -217,11 +317,13 @@ public class KpiCalculationService {
         kpiScore.setPost(sumPost);
 
         int maxKpi = getMaxKpiForMonth(month);
-        
-        // Final Monthly total = Sum of weekly capped totals + Deal points
-        // The overall total is capped at maxKpi
-        int rawTotal = sumWeeklyTotal + kpiScore.getDeal();
-        kpiScore.setTotal(Math.min(maxKpi, rawTotal));
+
+        // Điểm tháng = tổng điểm các TUẦN (mỗi tuần tối đa 100).
+        // Chốt căn KHÔNG cộng điểm vào đây: theo quy định, chốt được căn thì
+        // nghiễm nhiên đạt 100% KPI tháng — xử lý ở khâu xếp loại, còn ba nhóm
+        // tiêu chí vẫn được chấm và hiển thị bình thường.
+        // (Doanh số và hoa hồng quản lý ở hệ thống khác, không thuộc phạm vi này.)
+        kpiScore.setTotal(Math.min(maxKpi, sumWeeklyTotal));
 
         KpiScore savedScore = kpiScoreRepository.save(kpiScore);
         

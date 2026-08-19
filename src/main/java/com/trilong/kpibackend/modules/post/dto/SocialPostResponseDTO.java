@@ -17,6 +17,7 @@ public class SocialPostResponseDTO {
     private Long userId;
     private String userFullName;
     private String platform;
+    private String contentType;
     private String link;
     private String caption;
     private String screenshotUrl;
@@ -33,6 +34,7 @@ public class SocialPostResponseDTO {
                 .userId(post.getUser().getId())
                 .userFullName(post.getUser().getFullName())
                 .platform(post.getPlatform())
+                .contentType(post.getContentType() != null ? post.getContentType() : "POST")
                 .link(post.getLink())
                 .caption(post.getCaption())
                 .screenshotUrl(post.getScreenshotUrl())

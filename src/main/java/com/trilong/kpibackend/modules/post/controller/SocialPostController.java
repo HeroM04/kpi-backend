@@ -123,6 +123,24 @@ public class SocialPostController {
         }
     }
 
+    @Operation(summary = "Sửa bài đăng MXH",
+            description = "Admin sửa nội dung/phân loại/trạng thái. Đổi trạng thái sẽ cộng hoặc thu hồi 5đ KPI tương ứng.")
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('post:manage') or hasRole('ADMIN')")
+    public ResponseEntity<?> updatePost(@PathVariable Long id,
+                                        @RequestBody com.trilong.kpibackend.modules.post.dto.UpdatePostDTO dto,
+                                        @AuthenticationPrincipal UserPrincipal currentUser) {
+        try {
+            SocialPost post = socialPostService.updatePost(id, dto, dto.getStatus(), currentUser.getUserId());
+            return ResponseEntity.ok(Map.of(
+                    "status", "SUCCESS",
+                    "message", "Đã cập nhật bài đăng MXH.",
+                    "data", SocialPostResponseDTO.from(post)));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("status", "ERROR", "message", e.getMessage()));
+        }
+    }
+
     @Operation(summary = "Xóa bài đăng MXH", description = "Admin xóa bản ghi bài đăng MXH, tự động thu hồi điểm nếu đã duyệt.")
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")

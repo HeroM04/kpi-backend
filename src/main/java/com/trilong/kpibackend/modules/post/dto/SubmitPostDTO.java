@@ -15,4 +15,7 @@ public class SubmitPostDTO {
     private String caption;
 
     private String screenshotUrl;
+
+    /** VIDEO = video xây kênh, POST = bài đăng/story. Bỏ trống mặc định POST. */
+    private String contentType;
 }

@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.trilong.kpibackend.core.service.FaceRecognitionService;
 
+import java.time.DayOfWeek;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -103,6 +104,12 @@ public class CheckinService {
     private static final int KPI_LATE = -5;
     /** Check-in sau 10:00 — theo quy định tính là vắng mặt (không phép) */
     private static final int KPI_ABSENT_UNEXCUSED = -15;
+
+    // ── Tăng ca (thuộc nhóm Thực chiến) ─────────────────────────────────────
+    /** Mốc giờ về tối thiểu để được tính một khung tăng ca. */
+    private static final LocalTime OVERTIME_LIMIT = LocalTime.of(20, 0);
+    /** Điểm cho mỗi khung tăng ca. */
+    private static final int KPI_OVERTIME = 5;
 
     // ── Zone ─────────────────────────────────────────────────────────────────
     private static final ZoneId VN_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
@@ -247,6 +254,9 @@ public class CheckinService {
             kpiCalculationService.updateKpiPoints(
                     checkinLog.getUserId(), "attendance", kpiPoints, checkinLog.getCheckinTime()
             );
+            // Duyệt bản ghi check-out muộn cũng được tính tăng ca như chấm công tại chỗ
+            awardOvertimeIfEligible(checkinLog.getUserId(), checkinLog.getActionType(),
+                    checkinLog.getCheckinTime().withZoneSameInstant(VN_ZONE));
             log.info("[Checkin]  Duyệt {} #{} → {} KPI cho userId={}", checkinLog.getActionType(), id, (kpiPoints > 0 ? "+" + kpiPoints : kpiPoints), checkinLog.getUserId());
         } else if ("APPROVED".equals(oldStatus) && !"APPROVED".equals(newStatus.toUpperCase())) {
             // Phải quy về giờ Việt Nam: giá trị đọc từ DB đang ở múi giờ UTC,
@@ -309,10 +319,13 @@ public class CheckinService {
 
         CheckinLog saved = checkinLogRepository.save(checkinLog);
 
-        // Tính điểm KPI theo mốc thời gian Check-in (08:30) / Check-out (17:30)
+        // Điểm chuyên cần theo giờ check-in
         int kpiPoints = calculateAttendanceKpi(finalActionType, now.toLocalTime());
         kpiCalculationService.updateKpiPoints(userId, "attendance", kpiPoints, now);
-        
+
+        // Điểm tăng ca theo giờ check-out (tính vào nhóm Thực chiến)
+        awardOvertimeIfEligible(userId, finalActionType, now);
+
         log.info("[Checkin]  OFFICE {} userId={} lúc {} → {} KPI | distance={}m",
                 finalActionType, userId, now.toLocalTime(), (kpiPoints > 0 ? "+" + kpiPoints : kpiPoints), String.format("%.1f", distance));
 
@@ -388,6 +401,30 @@ public class CheckinService {
      * </ul>
      * Check-out không tính điểm (chỉ dùng để ghi nhận giờ về).
      */
+    /**
+     * Cộng điểm tăng ca nếu ca làm kéo dài tới mốc quy định.
+     *
+     * <p>Quy định: khung làm thêm 18h–20h, về từ <b>20:00</b> trở đi được tính
+     * một khung (+5đ), áp dụng các ngày làm việc trong tuần. Riêng thứ Năm và
+     * thứ Sáu công ty kỳ vọng có một buổi kéo tới 21h — chỉ cần một trong hai
+     * ngày đó đạt là đủ, nên về mặt điểm số vẫn tính từ mốc 20:00.
+     *
+     * <p>Điểm tăng ca thuộc nhóm <b>Thực chiến</b> (trần 40đ/tuần).
+     * Chỉ tính khi CHECK_OUT, và không tính vào cuối tuần.
+     */
+    private void awardOvertimeIfEligible(Long userId, String actionType, ZonedDateTime time) {
+        if (!"CHECK_OUT".equals(actionType)) return;
+
+        DayOfWeek day = time.getDayOfWeek();
+        if (day == DayOfWeek.SATURDAY || day == DayOfWeek.SUNDAY) return;
+
+        if (time.toLocalTime().isBefore(OVERTIME_LIMIT)) return;
+
+        kpiCalculationService.updateKpiPoints(userId, "meeting", KPI_OVERTIME, time);
+        log.info("[Checkin]  Tăng ca userId={} về lúc {} → +{} KPI (nhóm Thực chiến)",
+                userId, time.toLocalTime(), KPI_OVERTIME);
+    }
+
     private int calculateAttendanceKpi(String actionType, LocalTime time) {
         if ("CHECK_OUT".equals(actionType)) {
             return 0;

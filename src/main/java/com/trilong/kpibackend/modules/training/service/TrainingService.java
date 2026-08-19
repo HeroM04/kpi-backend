@@ -27,6 +27,32 @@ public class TrainingService {
 
     private static final int KPI_POINTS_TRAINING = 5; // +5 điểm mỗi buổi đào tạo tham gia
 
+    /**
+     * Trần điểm học tập/đào tạo mỗi tuần (theo bảng tiêu chí: "Học tập, Đào tạo:
+     * tối đa 15 điểm"). Điểm này nằm trong nhóm Phát triển cá nhân (trần 30đ).
+     */
+    public static final int CAP_TRAINING_PER_WEEK = 15;
+
+    /**
+     * Số điểm đào tạo thực sự được cộng cho lần điểm danh này.
+     *
+     * <p>Đếm số buổi đã điểm danh trong cùng tuần rồi áp trần 15đ, chỉ cộng phần
+     * chênh lệch. Ví dụ buổi thứ 4 trong tuần sẽ cộng 0 điểm vì đã chạm trần.
+     */
+    private int trainingPointsToAward(Long userId, ZonedDateTime attendedAt) {
+        String week = kpiCalculationService.getWeekString(attendedAt);
+
+        long attendedThisWeek = trainingAttendeeRepository.findByUserId(userId).stream()
+                .filter(a -> a.getAttendedAt() != null)
+                .filter(a -> week.equals(kpiCalculationService.getWeekString(a.getAttendedAt())))
+                .count();
+
+        // Bản ghi hiện tại đã được lưu trước khi gọi hàm này
+        int after = (int) Math.min(CAP_TRAINING_PER_WEEK, attendedThisWeek * KPI_POINTS_TRAINING);
+        int before = (int) Math.min(CAP_TRAINING_PER_WEEK, (attendedThisWeek - 1) * KPI_POINTS_TRAINING);
+        return Math.max(0, after - before);
+    }
+
     @Transactional
     public TrainingSession createSession(CreateTrainingSessionDTO dto) {
         if (trainingSessionRepository.findByRoomCode(dto.getRoomCode()).isPresent()) {
@@ -161,8 +187,11 @@ public class TrainingService {
 
         TrainingAttendee savedAttendee = trainingAttendeeRepository.save(attendee);
 
-        // Cộng điểm KPI attendance tháng hiện tại
-        kpiCalculationService.updateKpiPoints(userId, "attendance", KPI_POINTS_TRAINING, attendee.getAttendedAt());
+        // Cộng điểm học tập, áp trần 15đ/tuần
+        int pts = trainingPointsToAward(userId, attendee.getAttendedAt());
+        if (pts > 0) {
+            kpiCalculationService.updateKpiPoints(userId, "attendance", pts, attendee.getAttendedAt());
+        }
 
         return savedAttendee;
     }
@@ -199,7 +228,11 @@ public class TrainingService {
                 .build();
 
         TrainingAttendee savedAttendee = trainingAttendeeRepository.save(attendee);
-        kpiCalculationService.updateKpiPoints(userId, "attendance", KPI_POINTS_TRAINING, attendee.getAttendedAt());
+        // Điểm danh thủ công cũng áp trần 15đ/tuần như quét QR
+        int pts = trainingPointsToAward(userId, attendee.getAttendedAt());
+        if (pts > 0) {
+            kpiCalculationService.updateKpiPoints(userId, "attendance", pts, attendee.getAttendedAt());
+        }
         return savedAttendee;
     }
 

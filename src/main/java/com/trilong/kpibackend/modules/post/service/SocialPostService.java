@@ -35,6 +35,7 @@ public class SocialPostService {
         SocialPost post = SocialPost.builder()
                 .user(user)
                 .platform(dto.getPlatform())
+                .contentType(normalizeContentType(dto.getContentType()))
                 .link(dto.getLink())
                 .caption(dto.getCaption())
                 .screenshotUrl(dto.getScreenshotUrl())
@@ -42,6 +43,11 @@ public class SocialPostService {
                 .build();
 
         return socialPostRepository.save(post);
+    }
+
+    /** Chỉ chấp nhận VIDEO hoặc POST; giá trị lạ/rỗng quy về POST. */
+    private String normalizeContentType(String raw) {
+        return "VIDEO".equalsIgnoreCase(raw == null ? "" : raw.trim()) ? "VIDEO" : "POST";
     }
 
     public List<SocialPost> getMyPosts(Long userId) {
@@ -61,6 +67,44 @@ public class SocialPostService {
                 .orElseThrow(() -> new IllegalArgumentException("KhÃ´ng tÃ¬m tháº¥y bÃ i viáº¿t MXH cÃ³ ID: " + postId));
     }
 
+
+    /**
+     * Admin sửa nội dung bài đăng. Đổi trạng thái ở đây cũng cộng/trừ điểm KPI
+     * đúng như khi bấm Duyệt / Từ chối, tránh lệch điểm giữa hai đường sửa.
+     */
+    @Transactional
+    public SocialPost updatePost(Long postId, SubmitPostDTO dto, String newStatus, Long editorId) {
+        SocialPost post = socialPostRepository.findById(postId)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy bài viết MXH có ID: " + postId));
+
+        if (dto.getPlatform() != null && !dto.getPlatform().isBlank()) post.setPlatform(dto.getPlatform());
+        if (dto.getLink() != null && !dto.getLink().isBlank()) post.setLink(dto.getLink());
+        if (dto.getCaption() != null) post.setCaption(dto.getCaption());
+        if (dto.getScreenshotUrl() != null) post.setScreenshotUrl(dto.getScreenshotUrl());
+        if (dto.getContentType() != null) post.setContentType(normalizeContentType(dto.getContentType()));
+
+        if (newStatus != null && !newStatus.isBlank() && !newStatus.equals(post.getStatus())) {
+            boolean wasApproved = "APPROVED".equals(post.getStatus());
+            boolean nowApproved = "APPROVED".equals(newStatus);
+
+            if (wasApproved && !nowApproved) {
+                kpiCalculationService.updateKpiPoints(post.getUser().getId(), "post", -KPI_POINTS_POST, post.getSubmittedAt());
+            } else if (!wasApproved && nowApproved) {
+                kpiCalculationService.updateKpiPoints(post.getUser().getId(), "post", KPI_POINTS_POST, post.getSubmittedAt());
+            }
+
+            post.setStatus(newStatus);
+            if (nowApproved || "REJECTED".equals(newStatus)) {
+                userRepository.findById(editorId).ifPresent(post::setApprovedBy);
+                post.setApprovedAt(ZonedDateTime.now());
+            } else {
+                post.setApprovedBy(null);
+                post.setApprovedAt(null);
+            }
+        }
+
+        return socialPostRepository.save(post);
+    }
 
     @Transactional
     public SocialPost approvePost(Long postId, Long approvedById) {

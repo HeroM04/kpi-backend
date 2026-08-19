@@ -26,6 +26,18 @@ public class SocialPost {
     @Column(nullable = false, length = 50)
     private String platform; // Facebook, Zalo, TikTok, etc.
 
+    /**
+     * Loại nội dung lan tỏa — cùng nhóm "Lan tỏa giá trị" (5đ mỗi lượt), tách ra
+     * để Admin theo dõi được nhân sự làm video hay chỉ đăng bài:
+     * <ul>
+     *   <li>{@code VIDEO} — video xây kênh (TikTok, Facebook cá nhân…)</li>
+     *   <li>{@code POST}  — bài đăng / story chia sẻ trải nghiệm, công việc</li>
+     * </ul>
+     */
+    @Column(name = "content_type", length = 20)
+    @Builder.Default
+    private String contentType = "POST";
+
     @Column(nullable = false, length = 500)
     private String link;
 

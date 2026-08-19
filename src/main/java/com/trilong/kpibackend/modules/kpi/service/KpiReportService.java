@@ -58,6 +58,7 @@ public class KpiReportService {
     private final SocialPostRepository socialPostRepository;
     private final DealRepository dealRepository;
     private final KpiCalculationService kpiCalculationService;
+    private final com.trilong.kpibackend.modules.attendance.repository.LeaveRequestRepository leaveRequestRepository;
 
     // ══════════════════════════════════════════════════════════════════════
     //  BÁO CÁO CÁ NHÂN — 1 người / 1 tháng
@@ -88,6 +89,8 @@ public class KpiReportService {
                 socialPostRepository.findByUserIdOrderBySubmittedAtDesc(userId), ym, SocialPost::getSubmittedAt);
         List<Deal> deals = filterByMonth(
                 dealRepository.findByUserIdOrderBySubmittedAtDesc(userId), ym, Deal::getSubmittedAt);
+        List<com.trilong.kpibackend.modules.attendance.entity.LeaveRequest> leaves =
+                leaveRequestRepository.findByUserIdAndLeaveDateBetween(userId, ym.atDay(1), ym.atEndOfMonth());
 
         try (Workbook wb = new XSSFWorkbook()) {
             Styles st = new Styles(wb);
@@ -95,6 +98,7 @@ public class KpiReportService {
             buildPersonalSummarySheet(wb, st, user, ym, weeks, maxKpi,
                     monthScore, weekScores, checkins, battles, posts, deals);
             buildCheckinSheet(wb, st, checkins);
+            buildLeaveSheet(wb, st, leaves);
             buildBattleSheet(wb, st, battles);
             buildPostSheet(wb, st, posts);
             buildDealSheet(wb, st, deals);
@@ -193,8 +197,15 @@ public class KpiReportService {
                         .filter(Objects::nonNull).map(String::trim).filter(s -> !s.isEmpty())
                         .distinct().count());
 
-        row = writeCountRow(sh, st, row, "Số bài đăng lan tỏa", weeks, nWeeks, lastCol,
+        // Lan tỏa tách hai loại để Admin nhìn ra ai chịu khó làm video xây kênh
+        row = writeCountRow(sh, st, row, "Số video xây kênh", weeks, nWeeks, lastCol,
                 w -> posts.stream().filter(p -> "APPROVED".equals(p.getStatus()))
+                        .filter(p -> isVideo(p))
+                        .filter(inWeek(w, SocialPost::getSubmittedAt)).count());
+
+        row = writeCountRow(sh, st, row, "Số bài đăng / story", weeks, nWeeks, lastCol,
+                w -> posts.stream().filter(p -> "APPROVED".equals(p.getStatus()))
+                        .filter(p -> !isVideo(p))
                         .filter(inWeek(w, SocialPost::getSubmittedAt)).count());
 
         row = writeCountRow(sh, st, row, "Số căn chốt", weeks, nWeeks, lastCol,
@@ -338,20 +349,62 @@ public class KpiReportService {
         autoSize(sh, cols.length, new int[]{18, 22, 15, 22, 50, 30, 14});
     }
 
+    /** Sheet vắng mặt — đơn xin vắng đã duyệt và các ngày vắng không phép. */
+    private void buildLeaveSheet(Workbook wb, Styles st,
+                                 List<com.trilong.kpibackend.modules.attendance.entity.LeaveRequest> leaves) {
+        Sheet sh = wb.createSheet("Chi tiết vắng mặt");
+        String[] cols = {"Ngày vắng", "Loại", "Lý do", "Điểm KPI", "Người duyệt", "Duyệt lúc"};
+        writeHeader(sh, st, cols);
+        int r = 1;
+        List<com.trilong.kpibackend.modules.attendance.entity.LeaveRequest> sorted = leaves.stream()
+                .sorted(Comparator.comparing(
+                        com.trilong.kpibackend.modules.attendance.entity.LeaveRequest::getLeaveDate))
+                .toList();
+        for (var lv : sorted) {
+            boolean unexcused = "UNEXCUSED".equals(lv.getStatus());
+            boolean approved = "APPROVED".equals(lv.getStatus());
+            String loai = unexcused ? "Vắng không phép"
+                    : approved ? "Vắng có phép"
+                    : "PENDING".equals(lv.getStatus()) ? "Đơn chờ duyệt" : "Đơn bị từ chối";
+            int diem = unexcused ? -15 : (approved ? -10 : 0);
+
+            Row row = sh.createRow(r++);
+            setCell(row, 0, lv.getLeaveDate().format(DATE_FMT), st.normal);
+            setCell(row, 1, loai, unexcused ? st.bad : (approved ? st.pending : st.normal));
+            setCell(row, 2, nz(lv.getReason()), st.normal);
+            setCell(row, 3, diem, diem < 0 ? st.numberBold : st.number);
+            setCell(row, 4, lv.getReviewedBy() == null ? "" :
+                    userRepository.findById(lv.getReviewedBy()).map(User::getFullName).orElse(""), st.normal);
+            setCell(row, 5, lv.getReviewedAt() == null ? "" :
+                    lv.getReviewedAt().withZoneSameInstant(VN_ZONE).format(DATETIME_FMT), st.normal);
+        }
+        if (r == 1) {
+            Row row = sh.createRow(1);
+            setCell(row, 0, "Không có ngày vắng nào trong tháng.", st.normal);
+        }
+        autoSize(sh, cols.length, new int[]{14, 18, 50, 12, 20, 18});
+    }
+
+    /** Bài đăng có phải video xây kênh không (mặc định là bài đăng thường). */
+    private boolean isVideo(SocialPost p) {
+        return "VIDEO".equalsIgnoreCase(p.getContentType());
+    }
+
     private void buildPostSheet(Workbook wb, Styles st, List<SocialPost> posts) {
-        Sheet sh = wb.createSheet("Chi tiết bài đăng");
-        String[] cols = {"Ngày", "Nền tảng", "Đường dẫn", "Nội dung", "Trạng thái"};
+        Sheet sh = wb.createSheet("Chi tiết lan tỏa");
+        String[] cols = {"Ngày", "Phân loại", "Nền tảng", "Đường dẫn", "Nội dung", "Trạng thái"};
         writeHeader(sh, st, cols);
         int r = 1;
         for (SocialPost p : sortedByTime(posts, SocialPost::getSubmittedAt)) {
             Row row = sh.createRow(r++);
             setCell(row, 0, p.getSubmittedAt().withZoneSameInstant(VN_ZONE).format(DATETIME_FMT), st.normal);
-            setCell(row, 1, nz(p.getPlatform()), st.normal);
-            setCell(row, 2, nz(p.getLink()), st.normal);
-            setCell(row, 3, nz(p.getCaption()), st.normal);
-            setCell(row, 4, statusVi(p.getStatus()), statusStyle(st, p.getStatus()));
+            setCell(row, 1, isVideo(p) ? "Video xây kênh" : "Bài đăng / story", st.normal);
+            setCell(row, 2, nz(p.getPlatform()), st.normal);
+            setCell(row, 3, nz(p.getLink()), st.normal);
+            setCell(row, 4, nz(p.getCaption()), st.normal);
+            setCell(row, 5, statusVi(p.getStatus()), statusStyle(st, p.getStatus()));
         }
-        autoSize(sh, cols.length, new int[]{18, 14, 45, 50, 14});
+        autoSize(sh, cols.length, new int[]{18, 16, 14, 45, 50, 14});
     }
 
     private void buildDealSheet(Workbook wb, Styles st, List<Deal> deals) {

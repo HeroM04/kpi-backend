@@ -32,4 +32,11 @@ public interface TrainingSessionRepository extends JpaRepository<TrainingSession
      */
     @Query("SELECT s FROM TrainingSession s WHERE s.status NOT IN ('COMPLETED', 'CANCELLED') AND s.startTime >= :dayStart AND s.startTime < :dayEnd ORDER BY s.startTime ASC")
     List<TrainingSession> findActiveSessionsInWindow(@Param("dayStart") ZonedDateTime dayStart, @Param("dayEnd") ZonedDateTime dayEnd);
+
+    /**
+     * Đếm số buổi đào tạo công ty thực sự tổ chức trong khoảng thời gian
+     * (bỏ qua buổi đã hủy) — dùng để biết một tuần có lịch đào tạo hay không.
+     */
+    @Query("SELECT COUNT(s) FROM TrainingSession s WHERE s.status <> 'CANCELLED' AND s.startTime >= :from AND s.startTime < :to")
+    long countHeldSessionsBetween(@Param("from") ZonedDateTime from, @Param("to") ZonedDateTime to);
 }

@@ -17,4 +17,9 @@ public class UpdateUserDTO {
     private Double basicSalary;
     private String avatarUrl;
     private String password;
+
+    /** ID người giới thiệu; truyền 0 để gỡ bỏ, bỏ trống để giữ nguyên */
+    private Long referrerId;
+
+    private java.time.LocalDate joinedDate;
 }

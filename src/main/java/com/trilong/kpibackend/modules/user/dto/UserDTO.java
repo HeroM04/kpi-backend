@@ -20,4 +20,11 @@ public class UserDTO {
     private Double basicSalary;
     private DepartmentDTO department;
     private ZonedDateTime createdAt;
+
+    /** Người giới thiệu nhân sự này vào công ty (null nếu tự ứng tuyển) */
+    private Long referrerId;
+    private String referrerFullName;
+
+    /** Ngày bắt đầu làm việc — mốc tính tròn một tháng cho điểm giới thiệu */
+    private java.time.LocalDate joinedDate;
 }

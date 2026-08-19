@@ -34,5 +34,11 @@ public interface UserRepository extends JpaRepository<User, Long> {
         @Param("role") String role,
         @Param("status") String status
     );
+
+    /** Nhân sự do người khác giới thiệu và hiện vẫn đang làm việc. */
+    List<User> findByReferrerIdIsNotNullAndStatus(String status);
+
+    /** Những người mà một nhân sự đã giới thiệu vào công ty. */
+    List<User> findByReferrerId(Long referrerId);
 }
 

@@ -29,4 +29,10 @@ public class CreateUserDTO {
     private String avatarUrl;
 
     private Double basicSalary;
+
+    /** ID người giới thiệu nhân sự này vào công ty — để trống nếu tự ứng tuyển */
+    private Long referrerId;
+
+    /** Ngày bắt đầu làm việc — bỏ trống thì lấy ngày tạo tài khoản */
+    private java.time.LocalDate joinedDate;
 }

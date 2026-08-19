@@ -59,6 +59,7 @@ public class KpiReportService {
     private final DealRepository dealRepository;
     private final KpiCalculationService kpiCalculationService;
     private final com.trilong.kpibackend.modules.attendance.repository.LeaveRequestRepository leaveRequestRepository;
+    private final com.trilong.kpibackend.modules.kpi.repository.KpiAutoGrantRepository kpiAutoGrantRepository;
 
     // ══════════════════════════════════════════════════════════════════════
     //  BÁO CÁO CÁ NHÂN — 1 người / 1 tháng
@@ -91,12 +92,17 @@ public class KpiReportService {
                 dealRepository.findByUserIdOrderBySubmittedAtDesc(userId), ym, Deal::getSubmittedAt);
         List<com.trilong.kpibackend.modules.attendance.entity.LeaveRequest> leaves =
                 leaveRequestRepository.findByUserIdAndLeaveDateBetween(userId, ym.atDay(1), ym.atEndOfMonth());
+        List<com.trilong.kpibackend.modules.kpi.entity.KpiAutoGrant> referralGrants =
+                kpiAutoGrantRepository.findByUserIdOrderByGrantedAtDesc(userId).stream()
+                        .filter(g -> g.getGrantType() != null && g.getGrantType().startsWith("REFERRAL_"))
+                        .filter(g -> weeks.contains(g.getPeriod()))
+                        .toList();
 
         try (Workbook wb = new XSSFWorkbook()) {
             Styles st = new Styles(wb);
 
             buildPersonalSummarySheet(wb, st, user, ym, weeks, maxKpi,
-                    monthScore, weekScores, checkins, battles, posts, deals);
+                    monthScore, weekScores, checkins, battles, posts, deals, referralGrants);
             buildCheckinSheet(wb, st, checkins);
             buildLeaveSheet(wb, st, leaves);
             buildBattleSheet(wb, st, battles);
@@ -112,7 +118,8 @@ public class KpiReportService {
                                            List<String> weeks, int maxKpi,
                                            KpiScore monthScore, Map<String, KpiWeeklyScore> weekScores,
                                            List<CheckinLog> checkins, List<FieldBattle> battles,
-                                           List<SocialPost> posts, List<Deal> deals) {
+                                           List<SocialPost> posts, List<Deal> deals,
+                                           List<com.trilong.kpibackend.modules.kpi.entity.KpiAutoGrant> referralGrants) {
         Sheet sh = wb.createSheet("Tổng hợp KPI");
         int nWeeks = weeks.size();
         int lastCol = 1 + nWeeks; // cột 0 = tên mục, sau đó N tuần, rồi cột tổng
@@ -207,6 +214,11 @@ public class KpiReportService {
                 w -> posts.stream().filter(p -> "APPROVED".equals(p.getStatus()))
                         .filter(p -> !isVideo(p))
                         .filter(inWeek(w, SocialPost::getSubmittedAt)).count());
+
+        // Gieo hạt nhân sự mới — tính theo tuần được ghi nhận điểm, không phải
+        // tuần giới thiệu (điểm chỉ về sau khi người mới làm đủ một tháng)
+        row = writeCountRow(sh, st, row, "Gieo hạt nhân sự mới (người)", weeks, nWeeks, lastCol,
+                w -> referralGrants.stream().filter(g -> w.equals(g.getPeriod())).count());
 
         row = writeCountRow(sh, st, row, "Số căn chốt", weeks, nWeeks, lastCol,
                 w -> deals.stream().filter(d -> "APPROVED".equals(d.getStatus()))

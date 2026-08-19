@@ -28,6 +28,7 @@ public class UserController {
 
     private final UserService userService;
     private final CloudinaryService cloudinaryService;
+    private final com.trilong.kpibackend.modules.user.service.ReferralRewardService referralRewardService;
 
     @Operation(summary = "Lấy danh sách nhân viên (có thể lọc theo phòng ban, role, trạng thái)")
     @GetMapping
@@ -150,6 +151,21 @@ public class UserController {
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body(Map.of("status", "ERROR", "message", "Upload avatar thất bại: " + e.getMessage()));
         }
+    }
+
+    @Operation(summary = "Chạy soát điểm gieo hạt nhân sự mới",
+            description = "Cộng 15đ cho người giới thiệu khi nhân sự mới đã làm đủ một tháng và vẫn còn làm. "
+                    + "Hệ thống tự chạy 23:20 mỗi ngày; API này để Admin chạy soát ngay.")
+    @PostMapping("/referrals/run")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> runReferralRewards() {
+        var result = referralRewardService.grantMaturedReferrals();
+        return ResponseEntity.ok(Map.of(
+                "status", "SUCCESS",
+                "message", result.granted() == 0
+                        ? "Chưa có ai đủ điều kiện cộng điểm giới thiệu."
+                        : "Đã cộng 15đ cho " + result.granted() + " người giới thiệu.",
+                "data", Map.of("granted", result.granted(), "details", result.details())));
     }
 
     @Operation(summary = "Vô hiệu hóa tài khoản nhân viên (Xóa mềm)")

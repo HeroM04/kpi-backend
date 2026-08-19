@@ -115,6 +115,10 @@ public class UserService {
                 .department(dept)
                 .avatarUrl(dto.getAvatarUrl())
                 .basicSalary(dto.getBasicSalary() != null ? dto.getBasicSalary() : 10000000.0)
+                .referrerId(resolveReferrer(dto.getReferrerId(), null))
+                .joinedDate(dto.getJoinedDate() != null
+                        ? dto.getJoinedDate()
+                        : java.time.LocalDate.now(java.time.ZoneId.of("Asia/Ho_Chi_Minh")))
                 .build();
 
         User saved = userRepository.save(user);
@@ -166,9 +170,28 @@ public class UserService {
                     .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy phòng ban với ID: " + dto.getDepartmentId()));
             user.setDepartment(dept);
         }
+        if (dto.getReferrerId() != null) {
+            // Truyền 0 để gỡ người giới thiệu (JSON null không phân biệt được với "không sửa")
+            user.setReferrerId(dto.getReferrerId() == 0L ? null : resolveReferrer(dto.getReferrerId(), id));
+        }
+        if (dto.getJoinedDate() != null) {
+            user.setJoinedDate(dto.getJoinedDate());
+        }
 
         User saved = userRepository.save(user);
         return convertToDTO(saved);
+    }
+
+    /** Kiểm tra người giới thiệu có tồn tại và không phải chính mình. */
+    private Long resolveReferrer(Long referrerId, Long selfId) {
+        if (referrerId == null || referrerId == 0L) return null;
+        if (selfId != null && referrerId.equals(selfId)) {
+            throw new IllegalArgumentException("Không thể chọn chính mình làm người giới thiệu.");
+        }
+        if (!userRepository.existsById(referrerId)) {
+            throw new IllegalArgumentException("Không tìm thấy người giới thiệu với ID: " + referrerId);
+        }
+        return referrerId;
     }
 
     /** Admin đặt lại mật khẩu cho nhân viên */
@@ -222,7 +245,21 @@ public class UserService {
                 .basicSalary(user.getBasicSalary())
                 .department(deptDTO)
                 .createdAt(user.getCreatedAt())
+                .referrerId(user.getReferrerId())
+                .referrerFullName(user.getReferrerId() == null ? null
+                        : userRepository.findById(user.getReferrerId()).map(User::getFullName).orElse(null))
+                .joinedDate(joinedDateOf(user))
                 .build();
+    }
+
+    /**
+     * Ngày bắt đầu làm việc. Nhân sự tạo trước khi có trường này thì lấy tạm
+     * ngày tạo tài khoản.
+     */
+    public static java.time.LocalDate joinedDateOf(User user) {
+        if (user.getJoinedDate() != null) return user.getJoinedDate();
+        return user.getCreatedAt() == null ? null
+                : user.getCreatedAt().withZoneSameInstant(java.time.ZoneId.of("Asia/Ho_Chi_Minh")).toLocalDate();
     }
 }
 

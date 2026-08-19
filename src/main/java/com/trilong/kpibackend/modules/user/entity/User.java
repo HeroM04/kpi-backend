@@ -64,6 +64,21 @@ public class User {
     @Builder.Default
     private Double basicSalary = 10000000.0;
 
+    /**
+     * Người đã giới thiệu nhân sự này vào công ty ("gieo hạt nhân sự mới").
+     *
+     * <p>Người giới thiệu được +15đ nhóm Lan tỏa, nhưng chỉ khi người được giới
+     * thiệu <b>làm đủ một tháng</b>. Ví dụ giới thiệu ngày 15/7, đến 15/8 vẫn
+     * còn làm thì người giới thiệu mới được cộng. Để trống nếu nhân sự tự ứng
+     * tuyển.
+     */
+    @Column(name = "referrer_id")
+    private Long referrerId;
+
+    /** Ngày bắt đầu làm việc — mốc để tính tròn một tháng cho điểm giới thiệu. */
+    @Column(name = "joined_date")
+    private java.time.LocalDate joinedDate;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private ZonedDateTime createdAt;

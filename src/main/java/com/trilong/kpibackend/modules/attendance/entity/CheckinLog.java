@@ -16,7 +16,18 @@ import java.time.ZonedDateTime;
  * </ul>
  */
 @Entity
-@Table(name = "checkin_logs")
+@Table(
+    name = "checkin_logs",
+    // Bảng này lớn nhất hệ thống: 200 nhân sự chấm công vào/ra mỗi ngày là hơn
+    // 100.000 dòng một năm. Không có chỉ mục thì mỗi lần lọc phải quét sạch cả
+    // bảng. Ba chỉ mục dưới đây phủ đúng ba cách tra cứu hay dùng: xem theo
+    // ngày mới nhất, xem lịch sử một người, và lọc theo trạng thái chờ duyệt.
+    indexes = {
+        @Index(name = "idx_checkin_time", columnList = "checkin_time DESC"),
+        @Index(name = "idx_checkin_user_time", columnList = "user_id, checkin_time DESC"),
+        @Index(name = "idx_checkin_status", columnList = "status")
+    }
+)
 @Data
 @NoArgsConstructor
 public class CheckinLog {

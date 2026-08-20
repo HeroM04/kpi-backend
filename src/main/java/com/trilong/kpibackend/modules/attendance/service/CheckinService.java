@@ -214,6 +214,78 @@ public class CheckinService {
     }
 
     /** Lấy toàn bộ danh sách checkin (Admin) */
+    /**
+     * Lấy một trang bản ghi chấm công theo bộ lọc.
+     *
+     * <p>Lọc theo phòng ban hoặc theo tên được quy về danh sách userId trước
+     * (bảng nhân sự nhỏ), rồi để cơ sở dữ liệu lọc và phân trang. Nhờ vậy dù
+     * bảng chấm công có hàng trăm nghìn dòng, mỗi lần gọi chỉ đọc đúng số dòng
+     * của trang đang xem.
+     */
+    public org.springframework.data.domain.Page<CheckinLog> timTheoTrang(
+            Long userId, Long departmentId, String search,
+            String month, String from, String to, String status,
+            int page, int size) {
+
+        int coSo = Math.min(Math.max(size, 1), 200);
+        var pageable = org.springframework.data.domain.PageRequest.of(Math.max(page, 0), coSo);
+
+        // Khoảng thời gian: ưu tiên from/to, không có thì suy từ month
+        ZonedDateTime tuNgay = null, denNgay = null;
+        if (from != null && !from.isBlank()) tuNgay = LocalDate.parse(from).atStartOfDay(VN_ZONE);
+        if (to != null && !to.isBlank()) denNgay = LocalDate.parse(to).plusDays(1).atStartOfDay(VN_ZONE);
+        if (tuNgay == null && denNgay == null && month != null && !month.isBlank()) {
+            var ym = java.time.YearMonth.parse(month);
+            tuNgay = ym.atDay(1).atStartOfDay(VN_ZONE);
+            denNgay = ym.plusMonths(1).atDay(1).atStartOfDay(VN_ZONE);
+        }
+
+        String trangThai = (status != null && !status.isBlank()) ? status.toUpperCase() : null;
+
+        // Quy phòng ban / tên / userId về một danh sách nhân sự cụ thể
+        List<Long> danhSachNhanSu = null;
+        if (userId != null) {
+            danhSachNhanSu = List.of(userId);
+        } else if (departmentId != null || (search != null && !search.isBlank())) {
+            String tuKhoa = search == null ? null : search.trim().toLowerCase();
+            danhSachNhanSu = userRepository.findAll().stream()
+                    .filter(u -> departmentId == null
+                            || (u.getDepartment() != null && departmentId.equals(u.getDepartment().getId())))
+                    .filter(u -> tuKhoa == null || tuKhoa.isEmpty()
+                            || (u.getFullName() != null && u.getFullName().toLowerCase().contains(tuKhoa)))
+                    .map(User::getId)
+                    .toList();
+            // Không ai khớp thì khỏi truy vấn, trả về trang rỗng luôn
+            if (danhSachNhanSu.isEmpty()) {
+                return org.springframework.data.domain.Page.empty(pageable);
+            }
+        }
+
+        // Dựng điều kiện lọc động: chỉ thêm điều kiện nào thực sự được chọn
+        final List<Long> nhanSu = danhSachNhanSu;
+        final ZonedDateTime tu = tuNgay, den = denNgay;
+        final String tt = trangThai;
+
+        org.springframework.data.jpa.domain.Specification<CheckinLog> dieuKien = (root, query, cb) -> {
+            var ds = new java.util.ArrayList<jakarta.persistence.criteria.Predicate>();
+            if (nhanSu != null) ds.add(root.get("userId").in(nhanSu));
+            if (tt != null) ds.add(cb.equal(root.get("status"), tt));
+            if (tu != null) ds.add(cb.greaterThanOrEqualTo(root.get("checkinTime"), tu));
+            if (den != null) ds.add(cb.lessThan(root.get("checkinTime"), den));
+            return ds.isEmpty() ? cb.conjunction() : cb.and(ds.toArray(new jakarta.persistence.criteria.Predicate[0]));
+        };
+
+        var sapXep = org.springframework.data.domain.Sort.by(
+                org.springframework.data.domain.Sort.Direction.DESC, "checkinTime");
+        return checkinLogRepository.findAll(dieuKien,
+                org.springframework.data.domain.PageRequest.of(Math.max(page, 0), coSo, sapXep));
+    }
+
+    /**
+     * @deprecated Nạp cả bảng vào bộ nhớ — chỉ còn dùng cho báo cáo nội bộ với
+     *     dữ liệu đã giới hạn. Màn hình danh sách phải dùng {@link #timTheoTrang}.
+     */
+    @Deprecated
     public List<CheckinLog> getAllCheckins() {
         return checkinLogRepository.findAll();
     }

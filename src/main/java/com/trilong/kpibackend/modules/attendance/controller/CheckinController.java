@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -187,45 +188,45 @@ public class CheckinController {
     }
 
     @Operation(
-            summary = "🗓️ Lấy toàn bộ lịch sử chấm công (Admin)",
-            description = "Lọc theo userId, departmentId, tháng (YYYY-MM), status."
+            summary = "🗓️ Lấy lịch sử chấm công theo trang (Admin)",
+            description = """
+                    Trả về MỘT TRANG bản ghi, không phải toàn bộ bảng.
+
+                    Lọc: userId, departmentId, search (tên nhân sự), status, from/to (yyyy-MM-dd),
+                    hoặc month (yyyy-MM) cho tương thích với bản cũ.
+                    Phân trang: page (từ 0), size (mặc định 20, tối đa 200).
+
+                    Trước đây endpoint này nạp cả bảng vào bộ nhớ rồi mới lọc bằng Java. Với
+                    200 nhân sự chấm công hằng ngày, bảng lên hơn 100.000 dòng một năm và cách
+                    làm đó khiến máy chủ hết bộ nhớ. Nay cơ sở dữ liệu tự lọc, tự sắp xếp và
+                    chỉ trả về đúng số dòng của trang đang xem.
+                    """
     )
     @GetMapping
     @PreAuthorize("hasAuthority('attendance:view-all') or hasRole('ADMIN')")
     public ResponseEntity<?> getAllCheckins(
             @RequestParam(required = false) Long userId,
             @RequestParam(required = false) Long departmentId,
+            @RequestParam(required = false) String search,
             @RequestParam(required = false) String month,
-            @RequestParam(required = false) String status) {
+            @RequestParam(required = false) String from,
+            @RequestParam(required = false) String to,
+            @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
         try {
-            var logs = checkinService.getAllCheckins();
+            var ketQua = checkinService.timTheoTrang(
+                    userId, departmentId, search, month, from, to, status, page, size);
 
-            if (userId != null) {
-                logs = logs.stream().filter(l -> l.getUserId().equals(userId)).toList();
-            }
-            if (departmentId != null) {
-                logs = logs.stream().filter(l -> {
-                    var u = userRepository.findById(l.getUserId()).orElse(null);
-                    return u != null && u.getDepartment() != null
-                            && u.getDepartment().getId().equals(departmentId);
-                }).toList();
-            }
-            if (month != null && !month.trim().isEmpty()) {
-                logs = logs.stream().filter(l -> {
-                    if (l.getCheckinTime() == null) return false;
-                    String logMonth = String.format("%04d-%02d",
-                            l.getCheckinTime().getYear(),
-                            l.getCheckinTime().getMonthValue());
-                    return logMonth.equals(month) || logMonth.startsWith(month);
-                }).toList();
-            }
-            if (status != null && !status.trim().isEmpty()) {
-                logs = logs.stream()
-                        .filter(l -> status.equalsIgnoreCase(l.getStatus()))
-                        .toList();
-            }
-
-            return ResponseEntity.ok(Map.of("status", "SUCCESS", "data", logs));
+            Map<String, Object> res = new HashMap<>();
+            res.put("status", "SUCCESS");
+            res.put("data", ketQua.getContent());
+            res.put("page", Map.of(
+                    "number", ketQua.getNumber(),
+                    "size", ketQua.getSize(),
+                    "totalElements", ketQua.getTotalElements(),
+                    "totalPages", ketQua.getTotalPages()));
+            return ResponseEntity.ok(res);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("status", "ERROR", "message", e.getMessage()));
         }

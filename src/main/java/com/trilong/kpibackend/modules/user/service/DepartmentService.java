@@ -31,7 +31,26 @@ public class DepartmentService {
     }
 
     @Transactional
+    /**
+     * Không cho hai phòng ban trùng tên. Admin chọn phòng ban qua ô danh sách
+     * chỉ thấy mỗi cái tên, trùng tên là không phân biệt được phòng nào —
+     * mà mỗi phòng lại mang toạ độ văn phòng riêng dùng để chấm công.
+     *
+     * @param selfId bỏ qua chính phòng đang sửa, để lưu lại tên cũ vẫn được
+     */
+    private void requireUniqueName(String name, Long selfId) {
+        if (name == null || name.isBlank()) return;
+        String wanted = name.trim();
+        boolean taken = departmentRepository.findAll().stream()
+                .filter(d -> selfId == null || !d.getId().equals(selfId))
+                .anyMatch(d -> d.getName() != null && d.getName().trim().equalsIgnoreCase(wanted));
+        if (taken) {
+            throw new IllegalArgumentException("Đã có phòng ban tên '" + wanted + "'. Vui lòng đặt tên khác.");
+        }
+    }
+
     public DepartmentDTO createDepartment(DepartmentDTO dto) {
+        requireUniqueName(dto.getName(), null);
         Department dept = Department.builder()
                 .name(dto.getName())
                 .officeLat(dto.getOfficeLat())
@@ -48,6 +67,7 @@ public class DepartmentService {
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy phòng ban với ID: " + id));
 
         if (dto.getName() != null) {
+            requireUniqueName(dto.getName(), id);
             dept.setName(dto.getName());
         }
         if (dto.getOfficeLat() != null) {

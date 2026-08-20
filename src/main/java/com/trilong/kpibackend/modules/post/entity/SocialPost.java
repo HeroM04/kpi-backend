@@ -38,7 +38,13 @@ public class SocialPost {
     @Builder.Default
     private String contentType = "POST";
 
-    @Column(nullable = false, length = 500)
+    /**
+     * Đường dẫn bài đăng. Để 2000 ký tự vì link Facebook sao chép từ trình duyệt
+     * hay ứng dụng thường kèm một loạt tham số theo dõi ({@code fbclid},
+     * {@code __cft__}, {@code __tn__}…) và vượt xa 500 ký tự — giới hạn cũ khiến
+     * nhân sự dán link vào là gửi hỏng.
+     */
+    @Column(nullable = false, length = 2000)
     private String link;
 
     @Column(columnDefinition = "TEXT")

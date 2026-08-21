@@ -190,16 +190,21 @@ public class CheckinController {
     @Operation(
             summary = "🗓️ Lấy lịch sử chấm công theo trang (Admin)",
             description = """
-                    Trả về MỘT TRANG bản ghi, không phải toàn bộ bảng.
+                    Trả về MỘT TRANG, đếm theo NGÀY CÔNG chứ không theo từng bản ghi.
+
+                    Mỗi dòng trên màn hình quản trị là một ngày công của một người, gộp giờ
+                    vào với giờ ra. Nếu chia trang theo bản ghi thì ranh giới trang cắt đôi
+                    một cặp vào/ra và bảng hiện thiếu giờ. Vì vậy `page`/`size` đếm theo ngày
+                    công, còn `data` trả về đầy đủ mọi bản ghi của những ngày công đó — kể cả
+                    bản ghi có trạng thái khác bộ lọc, để một ngày luôn hiện đủ hai mốc giờ.
 
                     Lọc: userId, departmentId, search (tên nhân sự), status, from/to (yyyy-MM-dd),
-                    hoặc month (yyyy-MM) cho tương thích với bản cũ.
-                    Phân trang: page (từ 0), size (mặc định 20, tối đa 200).
+                    hoặc month (yyyy-MM). Phân trang: page (từ 0), size (mặc định 20, tối đa 100).
 
-                    Trước đây endpoint này nạp cả bảng vào bộ nhớ rồi mới lọc bằng Java. Với
-                    200 nhân sự chấm công hằng ngày, bảng lên hơn 100.000 dòng một năm và cách
-                    làm đó khiến máy chủ hết bộ nhớ. Nay cơ sở dữ liệu tự lọc, tự sắp xếp và
-                    chỉ trả về đúng số dòng của trang đang xem.
+                    `stats` đếm ngày công theo trạng thái trên toàn bộ dữ liệu khớp bộ lọc
+                    NHƯNG bỏ qua bộ lọc trạng thái, để các ô thống kê không đổi theo tab đang
+                    chọn. Trước đây web tự đếm từ mảng nhận được nên chỉ đếm được đúng một
+                    trang.
                     """
     )
     @GetMapping
@@ -215,17 +220,25 @@ public class CheckinController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         try {
-            var ketQua = checkinService.timTheoTrang(
+            var kq = checkinService.timTheoNgayCong(
                     userId, departmentId, search, month, from, to, status, page, size);
+
+            int coSo = Math.min(Math.max(size, 1), 100);
+            long tong = kq.tongNgayCong();
 
             Map<String, Object> res = new HashMap<>();
             res.put("status", "SUCCESS");
-            res.put("data", ketQua.getContent());
+            res.put("data", kq.banGhi());
             res.put("page", Map.of(
-                    "number", ketQua.getNumber(),
-                    "size", ketQua.getSize(),
-                    "totalElements", ketQua.getTotalElements(),
-                    "totalPages", ketQua.getTotalPages()));
+                    "number", Math.max(page, 0),
+                    "size", coSo,
+                    "totalElements", tong,
+                    "totalPages", (int) ((tong + coSo - 1) / coSo)));
+            res.put("stats", Map.of(
+                    "total", kq.soCho() + kq.soDuyet() + kq.soTuChoi(),
+                    "pending", kq.soCho(),
+                    "approved", kq.soDuyet(),
+                    "rejected", kq.soTuChoi()));
             return ResponseEntity.ok(res);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("status", "ERROR", "message", e.getMessage()));

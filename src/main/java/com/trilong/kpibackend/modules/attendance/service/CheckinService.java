@@ -120,6 +120,10 @@ public class CheckinService {
     @Autowired
     private UserRepository userRepository;
 
+    /** Dùng cho truy vấn gộp theo ngày công — JPQL không diễn đạt được GROUP BY này. */
+    @jakarta.persistence.PersistenceContext
+    private jakarta.persistence.EntityManager em;
+
     @Autowired
     private KpiCalculationService kpiCalculationService;
 
@@ -279,6 +283,165 @@ public class CheckinService {
                 org.springframework.data.domain.Sort.Direction.DESC, "checkinTime");
         return checkinLogRepository.findAll(dieuKien,
                 org.springframework.data.domain.PageRequest.of(Math.max(page, 0), coSo, sapXep));
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    //  PHÂN TRANG THEO NGÀY CÔNG
+    // ══════════════════════════════════════════════════════════════════════
+
+    /**
+     * Một trang danh sách chấm công, đếm theo NGÀY CÔNG chứ không theo bản ghi.
+     *
+     * @param banGhi     mọi bản ghi thuộc các ngày công của trang này
+     * @param tongNgayCong tổng số ngày công khớp bộ lọc (để dựng thanh phân trang)
+     * @param soCho / soDuyet / soTuChoi  thống kê ngày công theo trạng thái,
+     *        tính trên toàn bộ dữ liệu khớp bộ lọc trừ bộ lọc trạng thái
+     */
+    public record TrangNgayCong(List<CheckinLog> banGhi, long tongNgayCong,
+                                long soCho, long soDuyet, long soTuChoi) {}
+
+    /** Biểu thức quy giờ chấm công về NGÀY theo giờ Việt Nam. */
+    private static final String COT_NGAY =
+            "(c.checkin_time AT TIME ZONE 'Asia/Ho_Chi_Minh')::date";
+
+    /**
+     * Lấy một trang danh sách chấm công, mỗi dòng là MỘT NGÀY CÔNG của một người
+     * (gộp bản ghi vào và bản ghi ra) — đúng cách màn hình quản trị hiển thị.
+     *
+     * <p>Phải phân trang theo ngày công chứ không theo từng bản ghi, nếu không
+     * ranh giới trang sẽ cắt đôi một cặp vào/ra và bảng hiện thiếu giờ.
+     *
+     * <p>Việc chia trang do cơ sở dữ liệu làm bằng GROUP BY … LIMIT/OFFSET, nên
+     * trang thứ mấy cũng đọc đúng phần dữ liệu của trang đó. Cách làm cũ là nạp
+     * một cụm bản ghi đầu bảng rồi cắt trong bộ nhớ — trang 2 trở đi không bao
+     * giờ với tới được dữ liệu cũ hơn, và tổng số trang cũng sai.
+     *
+     * <p>Trả về TẤT CẢ bản ghi của những ngày công trong trang, kể cả bản ghi có
+     * trạng thái khác với bộ lọc: một ngày có giờ vào đã duyệt và giờ ra đang
+     * chờ vẫn phải hiện đủ hai mốc giờ thì người duyệt mới nhìn ra vấn đề.
+     */
+    @Transactional(readOnly = true)
+    public TrangNgayCong timTheoNgayCong(
+            Long userId, Long departmentId, String search,
+            String month, String from, String to, String status,
+            int page, int size) {
+
+        int coSo = Math.min(Math.max(size, 1), 100);
+        int trang = Math.max(page, 0);
+
+        // Khoảng thời gian: ưu tiên from/to, không có thì suy từ month
+        ZonedDateTime tuNgay = null, denNgay = null;
+        if (from != null && !from.isBlank()) tuNgay = LocalDate.parse(from).atStartOfDay(VN_ZONE);
+        if (to != null && !to.isBlank()) denNgay = LocalDate.parse(to).plusDays(1).atStartOfDay(VN_ZONE);
+        if (tuNgay == null && denNgay == null && month != null && !month.isBlank()) {
+            var ym = java.time.YearMonth.parse(month);
+            tuNgay = ym.atDay(1).atStartOfDay(VN_ZONE);
+            denNgay = ym.plusMonths(1).atDay(1).atStartOfDay(VN_ZONE);
+        }
+
+        String trangThai = (status != null && !status.isBlank()) ? status.toUpperCase() : null;
+        List<Long> nhanSu = quyVeDanhSachNhanSu(userId, departmentId, search);
+        if (nhanSu != null && nhanSu.isEmpty()) {
+            return new TrangNgayCong(List.of(), 0, 0, 0, 0);
+        }
+
+        // Điều kiện lọc dùng chung; chỉ ghép mệnh đề nào thực sự được chọn nên
+        // không bao giờ phải truyền tham số null vào SQL.
+        StringBuilder loc = new StringBuilder(" WHERE 1=1");
+        Map<String, Object> thamSo = new java.util.LinkedHashMap<>();
+        if (nhanSu != null) { loc.append(" AND c.user_id IN (:nhanSu)"); thamSo.put("nhanSu", nhanSu); }
+        if (tuNgay != null) { loc.append(" AND c.checkin_time >= :tu"); thamSo.put("tu", tuNgay); }
+        if (denNgay != null) { loc.append(" AND c.checkin_time < :den"); thamSo.put("den", denNgay); }
+        String locKhongTrangThai = loc.toString();
+        if (trangThai != null) { loc.append(" AND c.status = :tt"); thamSo.put("tt", trangThai); }
+        String locDayDu = loc.toString();
+
+        // 1) Tổng số ngày công khớp bộ lọc — để biết có bao nhiêu trang
+        var qTong = em.createNativeQuery(
+                "SELECT COUNT(*) FROM (SELECT c.user_id, " + COT_NGAY
+                        + " FROM checkin_logs c" + locDayDu + " GROUP BY 1, 2) t");
+        ganThamSo(qTong, thamSo, locDayDu);
+        long tongNgayCong = ((Number) qTong.getSingleResult()).longValue();
+
+        // 2) Thống kê theo trạng thái của ngày công. Bỏ qua bộ lọc trạng thái để
+        //    các ô đếm luôn hiện đủ bức tranh, không đổi theo tab đang chọn.
+        //    Một ngày có bản ghi chờ thì tính là chờ; có bản ghi bị từ chối thì
+        //    tính là từ chối; còn lại là đã duyệt — khớp cách web gộp dòng.
+        var qTk = em.createNativeQuery(
+                "SELECT COUNT(*) FILTER (WHERE co_cho),"
+                        + " COUNT(*) FILTER (WHERE NOT co_cho AND co_tuchoi),"
+                        + " COUNT(*) FILTER (WHERE NOT co_cho AND NOT co_tuchoi)"
+                        + " FROM (SELECT c.user_id, " + COT_NGAY + " AS ngay,"
+                        + " bool_or(c.status = 'PENDING') AS co_cho,"
+                        + " bool_or(c.status = 'REJECTED') AS co_tuchoi"
+                        + " FROM checkin_logs c" + locKhongTrangThai + " GROUP BY 1, 2) t");
+        ganThamSo(qTk, thamSo, locKhongTrangThai);
+        Object[] tk = (Object[]) qTk.getSingleResult();
+        long soCho = ((Number) tk[0]).longValue();
+        long soTuChoi = ((Number) tk[1]).longValue();
+        long soDuyet = ((Number) tk[2]).longValue();
+
+        if (tongNgayCong == 0) {
+            return new TrangNgayCong(List.of(), 0, soCho, soDuyet, soTuChoi);
+        }
+
+        // 3) Đúng những ngày công thuộc trang đang xem
+        var qNgay = em.createNativeQuery(
+                "SELECT c.user_id, " + COT_NGAY + " AS ngay FROM checkin_logs c" + locDayDu
+                        + " GROUP BY 1, 2 ORDER BY ngay DESC, c.user_id LIMIT :lim OFFSET :bo");
+        ganThamSo(qNgay, thamSo, locDayDu);
+        qNgay.setParameter("lim", coSo);
+        qNgay.setParameter("bo", (long) trang * coSo);
+        @SuppressWarnings("unchecked")
+        List<Object[]> cacNgay = qNgay.getResultList();
+        if (cacNgay.isEmpty()) {
+            return new TrangNgayCong(List.of(), tongNgayCong, soCho, soDuyet, soTuChoi);
+        }
+
+        // 4) Mọi bản ghi của đúng những cặp (nhân sự, ngày) đó
+        StringBuilder cap = new StringBuilder();
+        for (int i = 0; i < cacNgay.size(); i++) {
+            cap.append(i == 0 ? " (" : " OR (")
+               .append("c.user_id = :u").append(i)
+               .append(" AND ").append(COT_NGAY).append(" = CAST(:d").append(i).append(" AS date))");
+        }
+        var qBanGhi = em.createNativeQuery(
+                "SELECT c.* FROM checkin_logs c WHERE" + cap + " ORDER BY c.checkin_time DESC",
+                CheckinLog.class);
+        for (int i = 0; i < cacNgay.size(); i++) {
+            qBanGhi.setParameter("u" + i, ((Number) cacNgay.get(i)[0]).longValue());
+            qBanGhi.setParameter("d" + i, cacNgay.get(i)[1]);
+        }
+        @SuppressWarnings("unchecked")
+        List<CheckinLog> banGhi = qBanGhi.getResultList();
+
+        return new TrangNgayCong(banGhi, tongNgayCong, soCho, soDuyet, soTuChoi);
+    }
+
+    /** Chỉ gán những tham số thực sự có mặt trong câu lệnh. */
+    private void ganThamSo(jakarta.persistence.Query q, Map<String, Object> thamSo, String cauLenh) {
+        thamSo.forEach((ten, gt) -> {
+            if (cauLenh.contains(":" + ten)) q.setParameter(ten, gt);
+        });
+    }
+
+    /**
+     * Quy bộ lọc phòng ban / tên / một người về danh sách userId cụ thể.
+     * Trả về null nghĩa là không lọc theo người nào cả.
+     */
+    private List<Long> quyVeDanhSachNhanSu(Long userId, Long departmentId, String search) {
+        if (userId != null) return List.of(userId);
+        boolean coTuKhoa = search != null && !search.isBlank();
+        if (departmentId == null && !coTuKhoa) return null;
+
+        String tuKhoa = coTuKhoa ? search.trim().toLowerCase() : null;
+        return userRepository.findAll().stream()
+                .filter(u -> departmentId == null
+                        || (u.getDepartment() != null && departmentId.equals(u.getDepartment().getId())))
+                .filter(u -> tuKhoa == null
+                        || (u.getFullName() != null && u.getFullName().toLowerCase().contains(tuKhoa)))
+                .map(User::getId)
+                .toList();
     }
 
 

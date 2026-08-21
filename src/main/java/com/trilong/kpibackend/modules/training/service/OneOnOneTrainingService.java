@@ -33,7 +33,8 @@ public class OneOnOneTrainingService {
         training = oneOnOneTrainingRepository.save(training);
 
         // Auto add 5 KPI points
-        kpiCalculationService.updateKpiPoints(userId, "meeting", KPI_POINTS_ONE_ON_ONE, java.time.ZonedDateTime.now());
+        kpiCalculationService.updateKpiPoints(userId, "meeting", KPI_POINTS_ONE_ON_ONE,
+                java.time.ZonedDateTime.now(), "Báo cáo đào tạo 1-1");
 
         return mapToDto(training);
     }

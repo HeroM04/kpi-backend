@@ -85,7 +85,8 @@ public class NoTrainingWeekScheduler {
             }
 
             kpiCalculationService.updateKpiPoints(user.getId(), "attendance",
-                    TrainingService.CAP_TRAINING_PER_WEEK, midWeek);
+                    TrainingService.CAP_TRAINING_PER_WEEK, midWeek,
+                    "Tuần này công ty không tổ chức đào tạo — cộng mặc định theo quy định");
 
             KpiAutoGrant grant = new KpiAutoGrant();
             grant.setUserId(user.getId());

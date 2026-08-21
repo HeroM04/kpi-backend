@@ -281,6 +281,7 @@ public class CheckinService {
                 org.springframework.data.domain.PageRequest.of(Math.max(page, 0), coSo, sapXep));
     }
 
+
     /**
      * @deprecated Nạp cả bảng vào bộ nhớ — chỉ còn dùng cho báo cáo nội bộ với
      *     dữ liệu đã giới hạn. Màn hình danh sách phải dùng {@link #timTheoTrang}.
@@ -324,7 +325,9 @@ public class CheckinService {
             int kpiPoints = calculateAttendanceKpi(checkinLog.getActionType(),
                     checkinLog.getCheckinTime().withZoneSameInstant(VN_ZONE).toLocalTime());
             kpiCalculationService.updateKpiPoints(
-                    checkinLog.getUserId(), "attendance", kpiPoints, checkinLog.getCheckinTime()
+                    checkinLog.getUserId(), "attendance", kpiPoints, checkinLog.getCheckinTime(),
+                    "Admin duyệt chấm công ngoại tuyến — "
+                            + dienGiaiChuyenCan(checkinLog.getActionType(), checkinLog.getCheckinTime())
             );
             // Duyệt bản ghi check-out muộn cũng được tính tăng ca như chấm công tại chỗ
             awardOvertimeIfEligible(checkinLog.getUserId(), checkinLog.getActionType(),
@@ -337,7 +340,9 @@ public class CheckinService {
             int kpiPoints = calculateAttendanceKpi(checkinLog.getActionType(),
                     checkinLog.getCheckinTime().withZoneSameInstant(VN_ZONE).toLocalTime());
             kpiCalculationService.updateKpiPoints(
-                    checkinLog.getUserId(), "attendance", -kpiPoints, checkinLog.getCheckinTime()
+                    checkinLog.getUserId(), "attendance", -kpiPoints, checkinLog.getCheckinTime(),
+                    "Admin thu hồi duyệt chấm công lúc " + gio(checkinLog.getCheckinTime())
+                            + (reason != null && !reason.isBlank() ? " — " + reason.trim() : "")
             );
             log.info("[Checkin]  Thu hồi {} #{} → {} KPI cho userId={}", checkinLog.getActionType(), id, (-kpiPoints > 0 ? "+" + (-kpiPoints) : (-kpiPoints)), checkinLog.getUserId());
         }
@@ -393,7 +398,8 @@ public class CheckinService {
 
         // Điểm chuyên cần theo giờ check-in
         int kpiPoints = calculateAttendanceKpi(finalActionType, now.toLocalTime());
-        kpiCalculationService.updateKpiPoints(userId, "attendance", kpiPoints, now);
+        kpiCalculationService.updateKpiPoints(userId, "attendance", kpiPoints, now,
+                dienGiaiChuyenCan(finalActionType, now));
 
         // Điểm tăng ca theo giờ check-out (tính vào nhóm Thực chiến)
         awardOvertimeIfEligible(userId, finalActionType, now);
@@ -492,7 +498,8 @@ public class CheckinService {
 
         if (time.toLocalTime().isBefore(OVERTIME_LIMIT)) return;
 
-        kpiCalculationService.updateKpiPoints(userId, "meeting", KPI_OVERTIME, time);
+        kpiCalculationService.updateKpiPoints(userId, "meeting", KPI_OVERTIME, time,
+                "Tăng ca — về lúc " + gio(time));
         log.info("[Checkin]  Tăng ca userId={} về lúc {} → +{} KPI (nhóm Thực chiến)",
                 userId, time.toLocalTime(), KPI_OVERTIME);
     }
@@ -508,5 +515,30 @@ public class CheckinService {
             return KPI_LATE;
         }
         return KPI_ABSENT_UNEXCUSED;
+    }
+
+    /** Giờ Việt Nam dạng HH:mm để ghép vào câu diễn giải điểm. */
+    private String gio(ZonedDateTime t) {
+        return t.withZoneSameInstant(VN_ZONE).toLocalTime()
+                .format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"));
+    }
+
+    /**
+     * Câu giải thích khoản điểm chuyên cần, khớp với {@link #calculateAttendanceKpi}.
+     * Nhân sự đọc là biết ngay vì sao được cộng hay bị trừ.
+     */
+    private String dienGiaiChuyenCan(String actionType, ZonedDateTime time) {
+        String hhmm = gio(time);
+        if ("CHECK_OUT".equals(actionType)) {
+            return "Chấm công ra ca lúc " + hhmm;
+        }
+        LocalTime t = time.withZoneSameInstant(VN_ZONE).toLocalTime();
+        if (!t.isAfter(ON_TIME_LIMIT)) {
+            return "Đi làm đúng giờ — chấm công lúc " + hhmm;
+        }
+        if (!t.isAfter(LATE_LIMIT)) {
+            return "Đi muộn — chấm công lúc " + hhmm + " (hạn " + ON_TIME_LIMIT + ")";
+        }
+        return "Chấm công lúc " + hhmm + ", sau " + LATE_LIMIT + " nên tính vắng không phép";
     }
 }

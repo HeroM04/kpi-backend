@@ -90,7 +90,8 @@ public class FieldBattleService {
         FieldBattle savedBattle = fieldBattleRepository.save(battle);
 
         // Cá»™ng Ä‘iá»ƒm KPI thÃ¡ng gá»­i yÃªu cáº§u
-        kpiCalculationService.updateKpiPoints(battle.getUser().getId(), "meeting", KPI_POINTS_MEETING, battle.getSubmittedAt());
+        kpiCalculationService.updateKpiPoints(battle.getUser().getId(), "meeting", KPI_POINTS_MEETING,
+                battle.getSubmittedAt(), "Admin duyệt thực chiến — gặp khách " + battle.getCustomerName());
 
         return savedBattle;
     }
@@ -105,7 +106,8 @@ public class FieldBattleService {
 
         // Náº¿u Ä‘ang á»Ÿ tráº¡ng thÃ¡i APPROVED, pháº£i trá»« Ä‘iá»ƒm KPI trÆ°á»›c khi reject
         if ("APPROVED".equals(battle.getStatus())) {
-            kpiCalculationService.updateKpiPoints(battle.getUser().getId(), "meeting", -KPI_POINTS_MEETING, battle.getSubmittedAt());
+            kpiCalculationService.updateKpiPoints(battle.getUser().getId(), "meeting", -KPI_POINTS_MEETING,
+                    battle.getSubmittedAt(), "Admin từ chối thực chiến — gặp khách " + battle.getCustomerName());
         }
 
         battle.setStatus("REJECTED");
@@ -122,7 +124,8 @@ public class FieldBattleService {
 
         // Náº¿u Ä‘ang á»Ÿ tráº¡ng thÃ¡i APPROVED, pháº£i trá»« Ä‘iá»ƒm KPI trÆ°á»›c khi xÃ³a
         if ("APPROVED".equals(battle.getStatus())) {
-            kpiCalculationService.updateKpiPoints(battle.getUser().getId(), "meeting", -KPI_POINTS_MEETING, battle.getSubmittedAt());
+            kpiCalculationService.updateKpiPoints(battle.getUser().getId(), "meeting", -KPI_POINTS_MEETING,
+                    battle.getSubmittedAt(), "Admin xóa báo cáo thực chiến — gặp khách " + battle.getCustomerName());
         }
 
         fieldBattleRepository.delete(battle);

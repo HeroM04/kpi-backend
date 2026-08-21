@@ -50,6 +50,14 @@ public class SocialPostService {
         return "VIDEO".equalsIgnoreCase(raw == null ? "" : raw.trim()) ? "VIDEO" : "POST";
     }
 
+    /** Tên gọi ngắn của một bài để ghép vào nhật ký điểm, ví dụ "Video trên TikTok". */
+    private String moTa(SocialPost post) {
+        String loai = "VIDEO".equals(post.getContentType()) ? "Video xây kênh" : "Bài đăng";
+        String nen = (post.getPlatform() == null || post.getPlatform().isBlank())
+                ? "" : " trên " + post.getPlatform();
+        return loai + nen;
+    }
+
     public List<SocialPost> getMyPosts(Long userId) {
         return socialPostRepository.findByUserIdOrderBySubmittedAtDesc(userId);
     }
@@ -88,9 +96,11 @@ public class SocialPostService {
             boolean nowApproved = "APPROVED".equals(newStatus);
 
             if (wasApproved && !nowApproved) {
-                kpiCalculationService.updateKpiPoints(post.getUser().getId(), "post", -KPI_POINTS_POST, post.getSubmittedAt());
+                kpiCalculationService.updateKpiPoints(post.getUser().getId(), "post", -KPI_POINTS_POST,
+                        post.getSubmittedAt(), "Admin gỡ duyệt: " + moTa(post));
             } else if (!wasApproved && nowApproved) {
-                kpiCalculationService.updateKpiPoints(post.getUser().getId(), "post", KPI_POINTS_POST, post.getSubmittedAt());
+                kpiCalculationService.updateKpiPoints(post.getUser().getId(), "post", KPI_POINTS_POST,
+                        post.getSubmittedAt(), "Admin duyệt: " + moTa(post));
             }
 
             post.setStatus(newStatus);
@@ -124,7 +134,8 @@ public class SocialPostService {
         SocialPost savedPost = socialPostRepository.save(post);
 
         // Cá»™ng Ä‘iá»ƒm KPI tuáº§n gá»­i yÃªu cáº§u
-        kpiCalculationService.updateKpiPoints(post.getUser().getId(), "post", KPI_POINTS_POST, post.getSubmittedAt());
+        kpiCalculationService.updateKpiPoints(post.getUser().getId(), "post", KPI_POINTS_POST,
+                post.getSubmittedAt(), "Admin duyệt: " + moTa(post));
 
         return savedPost;
     }
@@ -139,7 +150,8 @@ public class SocialPostService {
 
         // Náº¿u Ä‘ang á»Ÿ tráº¡ng thÃ¡i APPROVED, pháº£i trá»« Ä‘iá»ƒm KPI trÆ°á»›c khi reject
         if ("APPROVED".equals(post.getStatus())) {
-            kpiCalculationService.updateKpiPoints(post.getUser().getId(), "post", -KPI_POINTS_POST, post.getSubmittedAt());
+            kpiCalculationService.updateKpiPoints(post.getUser().getId(), "post", -KPI_POINTS_POST,
+                    post.getSubmittedAt(), "Admin từ chối: " + moTa(post));
         }
 
         post.setStatus("REJECTED");
@@ -156,7 +168,8 @@ public class SocialPostService {
 
         // Náº¿u Ä‘ang á»Ÿ tráº¡ng thÃ¡i APPROVED, pháº£i trá»« Ä‘iá»ƒm KPI trÆ°á»›c khi xÃ³a
         if ("APPROVED".equals(post.getStatus())) {
-            kpiCalculationService.updateKpiPoints(post.getUser().getId(), "post", -KPI_POINTS_POST, post.getSubmittedAt());
+            kpiCalculationService.updateKpiPoints(post.getUser().getId(), "post", -KPI_POINTS_POST,
+                    post.getSubmittedAt(), "Admin xóa bản ghi: " + moTa(post));
         }
 
         socialPostRepository.delete(post);

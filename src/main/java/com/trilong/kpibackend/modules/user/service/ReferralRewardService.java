@@ -79,7 +79,8 @@ public class ReferralRewardService {
             if (referrer == null || !"ACTIVE".equals(referrer.getStatus())) continue;
 
             ZonedDateTime creditAt = creditMoment(matureDate, today);
-            kpiCalculationService.updateKpiPoints(referrerId, CATEGORY, KPI_REFERRAL, creditAt);
+            kpiCalculationService.updateKpiPoints(referrerId, CATEGORY, KPI_REFERRAL, creditAt,
+                    "Gieo hạt — " + newcomer.getFullName() + " bạn giới thiệu đã làm đủ một tháng");
 
             KpiAutoGrant grant = new KpiAutoGrant();
             grant.setUserId(referrerId);

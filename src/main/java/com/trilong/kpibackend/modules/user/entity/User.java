@@ -83,6 +83,16 @@ public class User {
     @Column(name = "created_at", updatable = false)
     private ZonedDateTime createdAt;
 
+    /**
+     * Lần gần nhất nhân sự mở màn hình Thông báo điểm KPI.
+     *
+     * <p>Mọi dòng nhật ký điểm ghi sau mốc này được tính là chưa đọc — đó là con
+     * số hiện trên huy hiệu đỏ. Null nghĩa là chưa mở lần nào, khi đó cả lịch sử
+     * đều là mới.
+     */
+    @Column(name = "kpi_notifications_seen_at")
+    private ZonedDateTime kpiNotificationsSeenAt;
+
     @PrePersist
     public void prePersist() {
         if (this.role == null) this.role = "SALE";

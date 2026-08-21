@@ -190,7 +190,8 @@ public class TrainingService {
         // Cộng điểm học tập, áp trần 15đ/tuần
         int pts = trainingPointsToAward(userId, attendee.getAttendedAt());
         if (pts > 0) {
-            kpiCalculationService.updateKpiPoints(userId, "attendance", pts, attendee.getAttendedAt());
+            kpiCalculationService.updateKpiPoints(userId, "attendance", pts, attendee.getAttendedAt(),
+                    "Học buổi đào tạo “" + session.getTitle() + "”");
         }
 
         return savedAttendee;
@@ -231,7 +232,8 @@ public class TrainingService {
         // Điểm danh thủ công cũng áp trần 15đ/tuần như quét QR
         int pts = trainingPointsToAward(userId, attendee.getAttendedAt());
         if (pts > 0) {
-            kpiCalculationService.updateKpiPoints(userId, "attendance", pts, attendee.getAttendedAt());
+            kpiCalculationService.updateKpiPoints(userId, "attendance", pts, attendee.getAttendedAt(),
+                    "Được điểm danh buổi đào tạo “" + session.getTitle() + "”");
         }
         return savedAttendee;
     }
@@ -242,8 +244,17 @@ public class TrainingService {
         TrainingAttendee attendee = trainingAttendeeRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Học viên chưa điểm danh buổi học này!"));
 
-        kpiCalculationService.updateKpiPoints(userId, "attendance", -KPI_POINTS_TRAINING, attendee.getAttendedAt());
+        kpiCalculationService.updateKpiPoints(userId, "attendance", -KPI_POINTS_TRAINING,
+                attendee.getAttendedAt(), "Bị gỡ khỏi danh sách học buổi “" + tenBuoi(sessionId) + "”");
         trainingAttendeeRepository.delete(attendee);
+    }
+
+    /** Tên buổi đào tạo để ghép vào nhật ký điểm; không có thì gọi theo mã. */
+    private String tenBuoi(Long sessionId) {
+        return trainingSessionRepository.findById(sessionId)
+                .map(TrainingSession::getTitle)
+                .filter(t -> t != null && !t.isBlank())
+                .orElse("buổi đào tạo #" + sessionId);
     }
 
     @Transactional
@@ -254,7 +265,8 @@ public class TrainingService {
         // Trừ điểm của tất cả học viên đã tham gia lớp này
         List<TrainingAttendee> attendees = trainingAttendeeRepository.findBySessionId(sessionId);
         for (TrainingAttendee attendee : attendees) {
-            kpiCalculationService.updateKpiPoints(attendee.getUserId(), "attendance", -KPI_POINTS_TRAINING, attendee.getAttendedAt());
+            kpiCalculationService.updateKpiPoints(attendee.getUserId(), "attendance", -KPI_POINTS_TRAINING,
+                    attendee.getAttendedAt(), "Buổi đào tạo “" + session.getTitle() + "” đã bị xóa");
         }
 
         // Xóa tất cả học viên điểm danh trước để tránh lỗi Foreign Key
@@ -280,7 +292,8 @@ public class TrainingService {
         if ("CANCELLED".equals(status)) {
             List<TrainingAttendee> attendees = trainingAttendeeRepository.findBySessionId(sessionId);
             for (TrainingAttendee attendee : attendees) {
-                kpiCalculationService.updateKpiPoints(attendee.getUserId(), "attendance", -KPI_POINTS_TRAINING, attendee.getAttendedAt());
+                kpiCalculationService.updateKpiPoints(attendee.getUserId(), "attendance", -KPI_POINTS_TRAINING,
+                        attendee.getAttendedAt(), "Buổi đào tạo “" + session.getTitle() + "” đã bị hủy");
             }
         }
 
@@ -323,7 +336,8 @@ public class TrainingService {
             if ("CANCELLED".equals(newStatus) && !oldStatus.equals(newStatus)) {
                 List<TrainingAttendee> attendees = trainingAttendeeRepository.findBySessionId(sessionId);
                 for (TrainingAttendee attendee : attendees) {
-                    kpiCalculationService.updateKpiPoints(attendee.getUserId(), "attendance", -KPI_POINTS_TRAINING, attendee.getAttendedAt());
+                    kpiCalculationService.updateKpiPoints(attendee.getUserId(), "attendance", -KPI_POINTS_TRAINING,
+                            attendee.getAttendedAt(), "Buổi đào tạo “" + session.getTitle() + "” đã bị hủy");
                 }
             }
         }

@@ -1,12 +1,15 @@
 package com.trilong.kpibackend.modules.kpi.service;
 
+import com.trilong.kpibackend.modules.kpi.entity.KpiLedgerEntry;
 import com.trilong.kpibackend.modules.kpi.entity.KpiScore;
 import com.trilong.kpibackend.modules.kpi.entity.KpiWeeklyScore;
+import com.trilong.kpibackend.modules.kpi.repository.KpiLedgerEntryRepository;
 import com.trilong.kpibackend.modules.kpi.repository.KpiScoreRepository;
 import com.trilong.kpibackend.modules.kpi.repository.KpiWeeklyScoreRepository;
 import com.trilong.kpibackend.modules.user.entity.User;
 import com.trilong.kpibackend.modules.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -22,11 +25,13 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class KpiCalculationService {
 
     private final KpiScoreRepository kpiScoreRepository;
     private final KpiWeeklyScoreRepository kpiWeeklyScoreRepository;
+    private final KpiLedgerEntryRepository kpiLedgerEntryRepository;
     private final UserRepository userRepository;
     private final SimpMessagingTemplate messagingTemplate;
 
@@ -240,8 +245,18 @@ public class KpiCalculationService {
         return weeks;
     }
 
+    /**
+     * Cộng (hoặc trừ) điểm KPI cho một nhân sự và ghi lại một dòng nhật ký.
+     *
+     * @param type      nhóm điểm: attendance / meeting / post / deal
+     * @param points    số điểm theo quy định, âm nghĩa là trừ
+     * @param dienGiai  câu ngắn gọn giải thích khoản điểm này cho nhân sự đọc,
+     *                  ví dụ "Chấm công vào lúc 08:12" hay "Admin từ chối bài đăng".
+     *                  Bắt buộc — điểm nào cũng phải nói được vì sao có.
+     */
     @Transactional
-    public KpiScore updateKpiPoints(Long userId, String type, int points, ZonedDateTime submittedAt) {
+    public KpiScore updateKpiPoints(Long userId, String type, int points,
+                                    ZonedDateTime submittedAt, String dienGiai) {
         String month = extractMonth(submittedAt);
         String week = getWeekString(submittedAt);
         String lowerType = type.toLowerCase();
@@ -261,8 +276,15 @@ public class KpiCalculationService {
                         .isFlagged(false)
                         .build());
 
+        // Điểm THỰC NHẬN sau khi áp trần nhóm và chặn số âm. Có thể nhỏ hơn
+        // `points` khi nhóm đã kịch trần tuần — nhật ký cần cả hai con số thì
+        // nhân sự mới hiểu vì sao làm thêm mà điểm đứng yên.
+        int diemThucNhan;
+
         if (lowerType.equals("deal")) {
-            kpiScore.setDeal(Math.max(0, kpiScore.getDeal() + points));
+            int truoc = kpiScore.getDeal();
+            kpiScore.setDeal(Math.max(0, truoc + points));
+            diemThucNhan = kpiScore.getDeal() - truoc;
         } else {
             // Update weekly score capped at 100
             KpiWeeklyScore weeklyScore = kpiWeeklyScoreRepository.findByUserIdAndWeek(userId, week)
@@ -279,15 +301,24 @@ public class KpiCalculationService {
             // Mỗi nhóm có trần riêng theo bảng tiêu chí; điểm không xuống dưới 0
             // (có điểm mới bị trừ, không có điểm thì không âm).
             switch (lowerType) {
-                case "attendance":
-                    weeklyScore.setAttendance(clamp(weeklyScore.getAttendance() + points, CAP_PERSONAL));
+                case "attendance": {
+                    int truoc = weeklyScore.getAttendance();
+                    weeklyScore.setAttendance(clamp(truoc + points, CAP_PERSONAL));
+                    diemThucNhan = weeklyScore.getAttendance() - truoc;
                     break;
-                case "meeting":
-                    weeklyScore.setMeeting(clamp(weeklyScore.getMeeting() + points, CAP_BATTLE));
+                }
+                case "meeting": {
+                    int truoc = weeklyScore.getMeeting();
+                    weeklyScore.setMeeting(clamp(truoc + points, CAP_BATTLE));
+                    diemThucNhan = weeklyScore.getMeeting() - truoc;
                     break;
-                case "post":
-                    weeklyScore.setPost(clamp(weeklyScore.getPost() + points, CAP_SPREAD));
+                }
+                case "post": {
+                    int truoc = weeklyScore.getPost();
+                    weeklyScore.setPost(clamp(truoc + points, CAP_SPREAD));
+                    diemThucNhan = weeklyScore.getPost() - truoc;
                     break;
+                }
                 default:
                     throw new IllegalArgumentException("Loại điểm KPI không hợp lệ: " + type);
             }
@@ -326,20 +357,55 @@ public class KpiCalculationService {
         kpiScore.setTotal(Math.min(maxKpi, sumWeeklyTotal));
 
         KpiScore savedScore = kpiScoreRepository.save(kpiScore);
-        
+
+        // Ghi nhật ký để màn hình Thông báo dựng lại được từng khoản điểm.
+        // Không chặn luồng chính: nhật ký hỏng thì điểm vẫn phải được cộng.
+        try {
+            KpiLedgerEntry buocGhi = new KpiLedgerEntry();
+            buocGhi.setUserId(userId);
+            buocGhi.setCategory(lowerType);
+            buocGhi.setPoints(points);
+            buocGhi.setEffectivePoints(diemThucNhan);
+            buocGhi.setReason(rutGon(dienGiai, 300));
+            buocGhi.setWeek(week);
+            buocGhi.setMonth(month);
+            buocGhi.setOccurredAt(submittedAt != null ? submittedAt : ZonedDateTime.now(VN_ZONE));
+            kpiLedgerEntryRepository.save(buocGhi);
+        } catch (Exception e) {
+            log.warn("[KPI] Không ghi được nhật ký điểm cho userId={}: {}", userId, e.getMessage());
+        }
+
         int currentWeeklyTotal = kpiWeeklyScoreRepository.findByUserIdAndWeek(userId, getWeekString(ZonedDateTime.now()))
                 .map(KpiWeeklyScore::getTotal)
                 .orElse(0);
 
         try {
+            // Gửi kèm chính khoản điểm vừa phát sinh: ứng dụng khỏi phải suy ra
+            // bằng cách so sánh các con số tổng, và báo được đúng lý do.
             messagingTemplate.convertAndSend(
-                "/topic/kpi/" + userId, 
-                (Object) Map.of("status", "SUCCESS", "data", KpiScoreResponseDTO.from(savedScore, currentWeeklyTotal, maxKpi))
+                "/topic/kpi/" + userId,
+                (Object) Map.of(
+                    "status", "SUCCESS",
+                    "data", KpiScoreResponseDTO.from(savedScore, currentWeeklyTotal, maxKpi),
+                    "change", Map.of(
+                        "category", lowerType,
+                        "points", points,
+                        "effectivePoints", diemThucNhan,
+                        "reason", rutGon(dienGiai, 300)
+                    )
+                )
             );
         } catch (Exception e) {
             // Ignore messaging errors
         }
-        
+
         return savedScore;
+    }
+
+    /** Cắt bớt diễn giải cho vừa cột, và không bao giờ để trống. */
+    private String rutGon(String s, int max) {
+        if (s == null || s.isBlank()) return "Điều chỉnh điểm KPI";
+        String t = s.trim();
+        return t.length() <= max ? t : t.substring(0, max - 1) + "…";
     }
 }

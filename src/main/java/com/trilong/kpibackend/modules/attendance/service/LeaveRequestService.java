@@ -154,7 +154,8 @@ public class LeaveRequestService {
 
         if (!Boolean.TRUE.equals(req.getKpiApplied())) {
             kpiCalculationService.updateKpiPoints(req.getUserId(), "attendance",
-                    KPI_LEAVE_APPROVED, atNoon(req.getLeaveDate()));
+                    KPI_LEAVE_APPROVED, atNoon(req.getLeaveDate()),
+                    "Nghỉ có phép ngày " + ngay(req.getLeaveDate()) + " — Admin đã duyệt đơn");
             req.setKpiApplied(true);
             log.info("[Leave] Duyệt đơn vắng userId={} ngày={} → {} KPI (vắng có phép)",
                     req.getUserId(), req.getLeaveDate(), KPI_LEAVE_APPROVED);
@@ -171,7 +172,8 @@ public class LeaveRequestService {
 
         if (Boolean.TRUE.equals(req.getKpiApplied())) {
             kpiCalculationService.updateKpiPoints(req.getUserId(), "attendance",
-                    -KPI_LEAVE_APPROVED, atNoon(req.getLeaveDate()));
+                    -KPI_LEAVE_APPROVED, atNoon(req.getLeaveDate()),
+                    "Hoàn lại điểm đơn nghỉ ngày " + ngay(req.getLeaveDate()) + " — Admin đổi sang từ chối");
             req.setKpiApplied(false);
         }
 
@@ -243,13 +245,19 @@ public class LeaveRequestService {
             leaveRequestRepository.save(mark);
 
             kpiCalculationService.updateKpiPoints(user.getId(), "attendance",
-                    KPI_LEAVE_UNEXCUSED, atNoon(date));
+                    KPI_LEAVE_UNEXCUSED, atNoon(date),
+                    "Vắng không phép ngày " + ngay(date) + " — không chấm công và không có đơn xin nghỉ");
             count++;
         }
 
         log.info("[Leave] Chốt ngày {}: {} nhân sự vắng không phép ({} KPI mỗi người).",
                 date, count, KPI_LEAVE_UNEXCUSED);
         return count;
+    }
+
+    /** Ngày dạng dd/MM để ghép vào câu diễn giải điểm. */
+    private String ngay(LocalDate d) {
+        return d == null ? "?" : d.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM"));
     }
 
     // ------------------------------------------------------------------ Tiện ích

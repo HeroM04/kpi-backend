@@ -38,12 +38,21 @@ public class KpiLedgerService {
     private static final ZoneId VN_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
     private static final DateTimeFormatter NGAY = DateTimeFormatter.ofPattern("dd/MM");
 
-    /** Tên hiển thị của từng nhóm điểm, dùng chung cho ứng dụng và web. */
+    /**
+     * Tên hiển thị của từng nhóm điểm, dùng chung cho ứng dụng và web.
+     *
+     * <p>Dùng đúng tên ba nhóm trong bảng tiêu chí KPI của công ty. Khi nhân sự
+     * thắc mắc điểm, họ và Admin phải nhìn thấy cùng một cách gọi tên như trong
+     * bảng tiêu chí, không phải một cách gọi riêng của phần mềm.
+     */
     public static String nhanNhom(String category) {
         if (category == null) return "Khác";
         return switch (category.toLowerCase()) {
-            case "attendance" -> "Chuyên cần & Đào tạo";
+            // Nhóm 1 (trần 30đ/tuần): chuyên cần + học tập, đào tạo nhóm
+            case "attendance" -> "Phát triển cá nhân";
+            // Nhóm 2 (trần 40đ/tuần): gặp khách, đào tạo 1-1, tăng ca
             case "meeting" -> "Thực chiến";
+            // Nhóm 3 (trần 30đ/tuần): video xây kênh, bài đăng, gieo hạt
             case "post" -> "Lan tỏa";
             case "deal" -> "Chốt căn";
             default -> "Khác";

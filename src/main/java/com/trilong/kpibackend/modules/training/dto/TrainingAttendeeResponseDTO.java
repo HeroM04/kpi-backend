@@ -19,11 +19,11 @@ public class TrainingAttendeeResponseDTO {
     private String departmentName;
     private ZonedDateTime attendedAt;
 
-    /**
-     * Điểm danh do hệ thống tự ghi vì người này đã học nhóm kỹ năng đó ở buổi
-     * khác — không phải họ ngồi học buổi này.
-     */
+    /** Điểm danh do hệ thống tự ghi, không phải người này ngồi học buổi này. */
     private Boolean autoMarked;
+
+    /** REAL = có mặt thật · SKILL_GROUP = đã học nhóm kỹ năng · EXEMPT = được miễn. */
+    private String source;
 
     public static TrainingAttendeeResponseDTO from(TrainingAttendee attendee) {
         if (attendee == null) return null;
@@ -31,7 +31,8 @@ public class TrainingAttendeeResponseDTO {
         // phải đọc phòng hờ null thay vì gọi thẳng getUser().getId().
         var u = attendee.getUser();
         return TrainingAttendeeResponseDTO.builder()
-                .autoMarked(Boolean.TRUE.equals(attendee.getAutoMarked()))
+                .autoMarked(attendee.laTuDong())
+                .source(attendee.getSource() != null ? attendee.getSource() : "REAL")
                 .userId(u != null ? u.getId() : attendee.getUserId())
                 .fullName(u != null ? u.getFullName() : null)
                 .role(u != null ? u.getRole() : null)

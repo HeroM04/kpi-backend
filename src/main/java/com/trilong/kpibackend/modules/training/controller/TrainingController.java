@@ -28,6 +28,93 @@ public class TrainingController {
 
     private final TrainingService trainingService;
 
+    // ══════════════════════════════════════════════════════════════════════
+    //  ĐÀO TẠO DỰ ÁN — đăng ký tham gia / xin vắng
+    // ══════════════════════════════════════════════════════════════════════
+
+    @Operation(
+            summary = "Trả lời có tham gia buổi đào tạo hay không",
+            description = """
+                    Đào tạo dự án bắt buộc mọi người dự, nhưng ai không bán dự án đó thì
+                    không có lý do phải ngồi học. Hệ thống không tự biết ai bán dự án nào,
+                    nên để nhân sự tự khai rồi Admin duyệt.
+
+                    - `choice = JOIN` → sẽ tham gia, đến buổi học quét mã điểm danh
+                    - `choice = DECLINE` → xin vắng, BẮT BUỘC nhập `reason`
+
+                    Đơn xin vắng được Admin duyệt thì tính là có điểm danh và vẫn được
+                    điểm đào tạo; bị từ chối thì coi như vắng buổi đó.
+                    """
+    )
+    @PostMapping("/{sessionId}/rsvp")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<?> traLoiThamGia(
+            @AuthenticationPrincipal UserPrincipal currentUser,
+            @PathVariable Long sessionId,
+            @RequestBody Map<String, String> body) {
+        try {
+            var rsvp = trainingService.traLoiThamGia(sessionId, currentUser.getUserId(),
+                    body.get("choice"), body.get("reason"));
+            return ResponseEntity.ok(Map.of(
+                    "status", "SUCCESS",
+                    "message", "DECLINE".equals(rsvp.getChoice())
+                            ? "Đã gửi lý do xin vắng, chờ Admin duyệt."
+                            : "Đã ghi nhận bạn sẽ tham gia buổi đào tạo này.",
+                    "data", TrainingRsvpResponseDTO.from(rsvp, null, null)));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return ResponseEntity.badRequest().body(Map.of("status", "ERROR", "message", e.getMessage()));
+        }
+    }
+
+    @Operation(summary = "Câu trả lời của chính mình cho một buổi đào tạo")
+    @GetMapping("/{sessionId}/rsvp/my")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<?> traLoiCuaToi(
+            @AuthenticationPrincipal UserPrincipal currentUser,
+            @PathVariable Long sessionId) {
+        return ResponseEntity.ok(Map.of("status", "SUCCESS",
+                "data", trainingService.traLoiCuaToi(sessionId, currentUser.getUserId())
+                        .map(r -> TrainingRsvpResponseDTO.from(r, null, null)).orElse(null)));
+    }
+
+    @Operation(summary = "Đơn xin vắng đào tạo đang chờ duyệt (Admin)")
+    @GetMapping("/rsvp/pending")
+    @PreAuthorize("hasAuthority('training:manage') or hasRole('ADMIN')")
+    public ResponseEntity<?> donChoDuyet() {
+        return ResponseEntity.ok(Map.of("status", "SUCCESS",
+                "data", trainingService.donXinVangChoDuyetDayDu()));
+    }
+
+    @Operation(summary = "Toàn bộ câu trả lời của một buổi đào tạo (Admin)")
+    @GetMapping("/{sessionId}/rsvp")
+    @PreAuthorize("hasAuthority('training:manage') or hasRole('ADMIN')")
+    public ResponseEntity<?> traLoiCuaBuoi(@PathVariable Long sessionId) {
+        return ResponseEntity.ok(Map.of("status", "SUCCESS",
+                "data", trainingService.traLoiCuaBuoiDayDu(sessionId)));
+    }
+
+    @Operation(
+            summary = "Duyệt / từ chối đơn xin vắng đào tạo (Admin)",
+            description = "Duyệt thì nhân sự được tính có điểm danh và vẫn được điểm đào tạo."
+    )
+    @PutMapping("/rsvp/{rsvpId}")
+    @PreAuthorize("hasAuthority('training:manage') or hasRole('ADMIN')")
+    public ResponseEntity<?> duyetDon(
+            @AuthenticationPrincipal UserPrincipal currentUser,
+            @PathVariable Long rsvpId,
+            @RequestParam boolean approve,
+            @RequestParam(required = false) String note) {
+        try {
+            var rsvp = trainingService.duyetDonXinVang(rsvpId, currentUser.getUserId(), approve, note);
+            return ResponseEntity.ok(Map.of(
+                    "status", "SUCCESS",
+                    "message", approve ? "Đã duyệt đơn xin vắng." : "Đã từ chối đơn xin vắng.",
+                    "data", TrainingRsvpResponseDTO.from(rsvp, null, null)));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return ResponseEntity.badRequest().body(Map.of("status", "ERROR", "message", e.getMessage()));
+        }
+    }
+
     @Operation(summary = "Tạo phòng đào tạo mới", description = "Dành cho Admin/Trưởng phòng.")
     @PostMapping
     @PreAuthorize("hasAuthority('training:manage') or hasRole('ADMIN')")

@@ -37,16 +37,29 @@ public class TrainingAttendee {
     private ZonedDateTime attendedAt;
 
     /**
-     * Điểm danh do hệ thống tự ghi, không phải người này thật sự ngồi học buổi đó.
-     *
-     * <p>Xảy ra với đào tạo kỹ năng: dự một buổi trong nhóm là coi như xong cả
-     * nhóm, nên các buổi còn lại cùng nhóm được đánh dấu tự động. Những dòng
-     * này KHÔNG cộng thêm điểm — điểm đã tính ở buổi học thật.
-     *
-     * <p>Tách riêng để danh sách lớp phân biệt được ai có mặt thật, ai được
-     * miễn nhờ đã học nhóm kỹ năng đó rồi.
+     * Dòng điểm danh này từ đâu ra:
+     * <ul>
+     *   <li>{@code REAL} — người này thật sự có mặt (quét mã hoặc Admin điểm
+     *       danh tay). Được cộng điểm học tập.</li>
+     *   <li>{@code SKILL_GROUP} — hệ thống tự đánh dấu vì đã học một buổi khác
+     *       cùng nhóm kỹ năng. KHÔNG cộng điểm, vì điểm đã tính ở buổi học thật;
+     *       cộng nữa là một buổi học ăn điểm nhiều lần.</li>
+     *   <li>{@code EXEMPT} — Admin duyệt lý do xin không tham gia buổi đào tạo
+     *       dự án. Vẫn tính là có điểm danh và vẫn được điểm, vì người này không
+     *       thuộc diện phải học chứ không phải trốn học.</li>
+     * </ul>
      */
-    @Column(name = "auto_marked", columnDefinition = "boolean default false")
+    @Column(name = "source", length = 20)
     @Builder.Default
-    private Boolean autoMarked = false;
+    private String source = "REAL";
+
+    /** Có phải dòng do hệ thống tự ghi thay vì người ta ngồi học thật không. */
+    public boolean laTuDong() {
+        return source != null && !"REAL".equals(source);
+    }
+
+    /** Dòng này có được tính vào điểm học tập của tuần không. */
+    public boolean tinhDiem() {
+        return !"SKILL_GROUP".equals(source);
+    }
 }

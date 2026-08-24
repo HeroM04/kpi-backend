@@ -2,9 +2,12 @@ package com.trilong.kpibackend.modules.training.service;
 
 import com.trilong.kpibackend.modules.kpi.service.KpiCalculationService;
 import com.trilong.kpibackend.modules.training.dto.CreateTrainingSessionDTO;
+import com.trilong.kpibackend.modules.training.dto.TrainingRsvpResponseDTO;
 import com.trilong.kpibackend.modules.training.entity.TrainingAttendee;
+import com.trilong.kpibackend.modules.training.entity.TrainingRsvp;
 import com.trilong.kpibackend.modules.training.entity.TrainingSession;
 import com.trilong.kpibackend.modules.training.repository.TrainingAttendeeRepository;
+import com.trilong.kpibackend.modules.training.repository.TrainingRsvpRepository;
 import com.trilong.kpibackend.modules.training.repository.TrainingSessionRepository;
 import com.trilong.kpibackend.modules.user.entity.User;
 import com.trilong.kpibackend.modules.user.repository.UserRepository;
@@ -15,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -22,6 +26,7 @@ public class TrainingService {
 
     private final TrainingSessionRepository trainingSessionRepository;
     private final TrainingAttendeeRepository trainingAttendeeRepository;
+    private final TrainingRsvpRepository trainingRsvpRepository;
     private final UserRepository userRepository;
     private final KpiCalculationService kpiCalculationService;
 
@@ -48,7 +53,7 @@ public class TrainingService {
 
         long attendedThisWeek = trainingAttendeeRepository.findByUserId(userId).stream()
                 .filter(a -> a.getAttendedAt() != null)
-                .filter(a -> !Boolean.TRUE.equals(a.getAutoMarked()))
+                .filter(TrainingAttendee::tinhDiem)
                 .filter(a -> week.equals(kpiCalculationService.getWeekString(a.getAttendedAt())))
                 .count();
 
@@ -294,7 +299,7 @@ public class TrainingService {
         for (TrainingSession khac : trainingSessionRepository.findCungNhomKyNang(session.getSkillGroup())) {
             if (khac.getId().equals(session.getId())) continue;
             if (trainingAttendeeRepository.existsBySessionIdAndUserId(khac.getId(), userId)) continue;
-            ghiDiemDanhTuDong(khac.getId(), userId);
+            ghiDiemDanhTuDong(khac.getId(), userId, "SKILL_GROUP");
         }
     }
 
@@ -309,19 +314,140 @@ public class TrainingService {
 
         for (Long userId : trainingAttendeeRepository.aiDaHocNhom(session.getSkillGroup())) {
             if (trainingAttendeeRepository.existsBySessionIdAndUserId(session.getId(), userId)) continue;
-            ghiDiemDanhTuDong(session.getId(), userId);
+            ghiDiemDanhTuDong(session.getId(), userId, "SKILL_GROUP");
         }
     }
 
-    /** Ghi một dòng điểm danh tự động — không cộng điểm, có cờ để phân biệt. */
-    private void ghiDiemDanhTuDong(Long sessionId, Long userId) {
+    // ══════════════════════════════════════════════════════════════════════
+    //  ĐÀO TẠO DỰ ÁN — nhân sự tự khai tham gia hay không, Admin duyệt
+    // ══════════════════════════════════════════════════════════════════════
+
+    /**
+     * Nhân sự trả lời sẽ tham gia hay xin vắng một buổi đào tạo.
+     *
+     * @param choice JOIN hoặc DECLINE
+     * @param reason bắt buộc khi DECLINE
+     */
+    @Transactional
+    public TrainingRsvp traLoiThamGia(Long sessionId, Long userId, String choice, String reason) {
+        TrainingSession session = trainingSessionRepository.findById(sessionId)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy buổi đào tạo."));
+        if ("CANCELLED".equals(session.getStatus())) {
+            throw new IllegalStateException("Buổi đào tạo này đã bị hủy.");
+        }
+
+        boolean xinVang = "DECLINE".equalsIgnoreCase(choice);
+        if (xinVang && (reason == null || reason.trim().isEmpty())) {
+            throw new IllegalArgumentException("Vui lòng nhập lý do không tham gia buổi đào tạo này.");
+        }
+        if (trainingAttendeeRepository.existsBySessionIdAndUserId(sessionId, userId)) {
+            throw new IllegalStateException("Bạn đã được điểm danh buổi này rồi.");
+        }
+
+        TrainingRsvp rsvp = trainingRsvpRepository.findBySessionIdAndUserId(sessionId, userId)
+                .orElseGet(TrainingRsvp::new);
+        if ("APPROVED".equals(rsvp.getStatus()) && "DECLINE".equals(rsvp.getChoice())) {
+            throw new IllegalStateException("Đơn xin vắng của bạn đã được duyệt, không đổi lại được.");
+        }
+
+        rsvp.setSessionId(sessionId);
+        rsvp.setUserId(userId);
+        rsvp.setChoice(xinVang ? "DECLINE" : "JOIN");
+        rsvp.setReason(xinVang ? reason.trim() : null);
+        // Đổi câu trả lời thì xét lại từ đầu
+        rsvp.setStatus("PENDING");
+        rsvp.setReviewedBy(null);
+        rsvp.setReviewedAt(null);
+        rsvp.setReviewNote(null);
+        return trainingRsvpRepository.save(rsvp);
+    }
+
+    public Optional<TrainingRsvp> traLoiCuaToi(Long sessionId, Long userId) {
+        return trainingRsvpRepository.findBySessionIdAndUserId(sessionId, userId);
+    }
+
+    /** Đơn xin vắng đang chờ duyệt, kèm sẵn tên nhân sự và tên buổi học. */
+    public List<TrainingRsvpResponseDTO> donXinVangChoDuyetDayDu() {
+        return kemThongTin(trainingRsvpRepository.donChoDuyet());
+    }
+
+    public List<TrainingRsvpResponseDTO> traLoiCuaBuoiDayDu(Long sessionId) {
+        return kemThongTin(trainingRsvpRepository.findBySessionId(sessionId));
+    }
+
+    /**
+     * Ghép tên nhân sự và tên buổi học vào từng câu trả lời.
+     *
+     * <p>Nạp gộp một lượt theo tập id thay vì hỏi cơ sở dữ liệu trong vòng lặp —
+     * danh sách chờ duyệt có thể lên tới cả trăm dòng.
+     */
+    private List<TrainingRsvpResponseDTO> kemThongTin(List<TrainingRsvp> danhSach) {
+        if (danhSach.isEmpty()) return List.of();
+
+        var nguoiTheoId = userRepository
+                .findAllById(danhSach.stream().map(TrainingRsvp::getUserId).distinct().toList())
+                .stream().collect(java.util.stream.Collectors.toMap(User::getId, u -> u));
+        var buoiTheoId = trainingSessionRepository
+                .findAllById(danhSach.stream().map(TrainingRsvp::getSessionId).distinct().toList())
+                .stream().collect(java.util.stream.Collectors.toMap(TrainingSession::getId, s -> s));
+        var tenNguoiDuyet = userRepository
+                .findAllById(danhSach.stream().map(TrainingRsvp::getReviewedBy)
+                        .filter(java.util.Objects::nonNull).distinct().toList())
+                .stream().collect(java.util.stream.Collectors.toMap(User::getId, User::getFullName));
+
+        return danhSach.stream().map(r -> {
+            var dto = TrainingRsvpResponseDTO.from(r,
+                    nguoiTheoId.get(r.getUserId()), buoiTheoId.get(r.getSessionId()));
+            if (r.getReviewedBy() != null) {
+                dto.setReviewedByFullName(tenNguoiDuyet.get(r.getReviewedBy()));
+            }
+            return dto;
+        }).toList();
+    }
+
+    /**
+     * Admin duyệt hoặc từ chối đơn xin không tham gia.
+     *
+     * <p>Duyệt thì ghi một dòng điểm danh nguồn {@code EXEMPT}: người này không
+     * thuộc diện phải học nên vẫn được tính có mặt và vẫn được điểm, chứ không
+     * phải trốn học. Từ chối thì không ghi gì — coi như vắng buổi đó.
+     */
+    @Transactional
+    public TrainingRsvp duyetDonXinVang(Long rsvpId, Long adminId, boolean chapNhan, String ghiChu) {
+        TrainingRsvp rsvp = trainingRsvpRepository.findById(rsvpId)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn xin vắng."));
+        if (!"DECLINE".equals(rsvp.getChoice())) {
+            throw new IllegalStateException("Chỉ duyệt được đơn xin không tham gia.");
+        }
+
+        rsvp.setStatus(chapNhan ? "APPROVED" : "REJECTED");
+        rsvp.setReviewedBy(adminId);
+        rsvp.setReviewedAt(ZonedDateTime.now());
+        rsvp.setReviewNote(ghiChu);
+        TrainingRsvp daLuu = trainingRsvpRepository.save(rsvp);
+
+        if (chapNhan && !trainingAttendeeRepository
+                .existsBySessionIdAndUserId(rsvp.getSessionId(), rsvp.getUserId())) {
+            TrainingAttendee mien = ghiDiemDanhTuDong(rsvp.getSessionId(), rsvp.getUserId(), "EXEMPT");
+            int pts = trainingPointsToAward(rsvp.getUserId(), mien.getAttendedAt());
+            if (pts > 0) {
+                kpiCalculationService.updateKpiPoints(rsvp.getUserId(), "attendance", pts,
+                        mien.getAttendedAt(),
+                        "Được miễn buổi đào tạo “" + tenBuoi(rsvp.getSessionId()) + "” — Admin duyệt lý do");
+            }
+        }
+        return daLuu;
+    }
+
+    /** Ghi một dòng điểm danh do hệ thống tự tạo, ghi rõ nguồn gốc để tính điểm đúng. */
+    private TrainingAttendee ghiDiemDanhTuDong(Long sessionId, Long userId, String nguon) {
         TrainingAttendee tu = TrainingAttendee.builder()
                 .sessionId(sessionId)
                 .userId(userId)
                 .attendedAt(ZonedDateTime.now())
-                .autoMarked(true)
+                .source(nguon)
                 .build();
-        trainingAttendeeRepository.save(tu);
+        return trainingAttendeeRepository.save(tu);
     }
 
     @Transactional
@@ -330,8 +456,8 @@ public class TrainingService {
         TrainingAttendee attendee = trainingAttendeeRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Học viên chưa điểm danh buổi học này!"));
 
-        // Dòng điểm danh tự động chưa từng được cộng điểm nên gỡ ra cũng không trừ
-        if (!Boolean.TRUE.equals(attendee.getAutoMarked())) {
+        // Dòng nào chưa từng được cộng điểm thì gỡ ra cũng không trừ
+        if (attendee.tinhDiem()) {
             kpiCalculationService.updateKpiPoints(userId, "attendance", -KPI_POINTS_TRAINING,
                     attendee.getAttendedAt(), "Bị gỡ khỏi danh sách học buổi “" + tenBuoi(sessionId) + "”");
         }
@@ -354,7 +480,7 @@ public class TrainingService {
         // Trừ điểm của tất cả học viên đã tham gia lớp này
         List<TrainingAttendee> attendees = trainingAttendeeRepository.findBySessionId(sessionId);
         for (TrainingAttendee attendee : attendees) {
-            if (Boolean.TRUE.equals(attendee.getAutoMarked())) continue; // chưa cộng thì không trừ
+            if (!attendee.tinhDiem()) continue; // chưa cộng thì không trừ
             kpiCalculationService.updateKpiPoints(attendee.getUserId(), "attendance", -KPI_POINTS_TRAINING,
                     attendee.getAttendedAt(), "Buổi đào tạo “" + session.getTitle() + "” đã bị xóa");
         }
@@ -382,7 +508,7 @@ public class TrainingService {
         if ("CANCELLED".equals(status)) {
             List<TrainingAttendee> attendees = trainingAttendeeRepository.findBySessionId(sessionId);
             for (TrainingAttendee attendee : attendees) {
-                if (Boolean.TRUE.equals(attendee.getAutoMarked())) continue; // chưa cộng thì không trừ
+                if (!attendee.tinhDiem()) continue; // chưa cộng thì không trừ
                 kpiCalculationService.updateKpiPoints(attendee.getUserId(), "attendance", -KPI_POINTS_TRAINING,
                         attendee.getAttendedAt(), "Buổi đào tạo “" + session.getTitle() + "” đã bị hủy");
             }

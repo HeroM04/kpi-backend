@@ -24,13 +24,13 @@ public interface TrainingAttendeeRepository extends JpaRepository<TrainingAttend
     @org.springframework.data.jpa.repository.Query(
             "SELECT COUNT(a) > 0 FROM TrainingAttendee a JOIN TrainingSession s ON s.id = a.sessionId "
                     + "WHERE a.userId = :userId AND s.skillGroup = :nhom "
-                    + "AND (a.autoMarked IS NULL OR a.autoMarked = false)")
+                    + "AND (a.source IS NULL OR a.source = 'REAL')")
     boolean daHocNhomKyNang(@org.springframework.data.repository.query.Param("userId") Long userId,
                             @org.springframework.data.repository.query.Param("nhom") String nhom);
 
     /** Những người đã học thật ít nhất một buổi của nhóm kỹ năng này. */
     @org.springframework.data.jpa.repository.Query(
             "SELECT DISTINCT a.userId FROM TrainingAttendee a JOIN TrainingSession s ON s.id = a.sessionId "
-                    + "WHERE s.skillGroup = :nhom AND (a.autoMarked IS NULL OR a.autoMarked = false)")
+                    + "WHERE s.skillGroup = :nhom AND (a.source IS NULL OR a.source = 'REAL')")
     List<Long> aiDaHocNhom(@org.springframework.data.repository.query.Param("nhom") String nhom);
 }

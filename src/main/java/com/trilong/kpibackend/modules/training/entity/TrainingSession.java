@@ -28,6 +28,31 @@ public class TrainingSession {
     @Column(name = "room_code", unique = true, length = 100)
     private String roomCode;
 
+    /**
+     * Loại đào tạo:
+     * <ul>
+     *   <li>{@code SKILL} — đào tạo kỹ năng. Học một buổi trong nhóm kỹ năng là
+     *       coi như xong cả nhóm, các buổi còn lại tự điểm danh.</li>
+     *   <li>{@code PROJECT} — đào tạo dự án.</li>
+     * </ul>
+     * Buổi tạo từ trước khi có phân loại thì mặc định là kỹ năng.
+     */
+    @Column(name = "training_type", length = 20)
+    @Builder.Default
+    private String trainingType = "SKILL";
+
+    /**
+     * Mã nhóm kỹ năng, ví dụ {@code CHOT_SALE}.
+     *
+     * <p>Một kỹ năng thường dạy lặp lại nhiều buổi cho nhiều ca khác nhau. Các
+     * buổi cùng dạy một kỹ năng thì đặt chung một mã ở đây; nhân sự dự một buổi
+     * bất kỳ trong nhóm là xong nhóm đó, không phải học lại ở những buổi sau.
+     *
+     * <p>Để trống nghĩa là buổi đứng riêng, không thuộc nhóm nào.
+     */
+    @Column(name = "skill_group", length = 60)
+    private String skillGroup;
+
     @Column(name = "start_time")
     private ZonedDateTime startTime;
 
@@ -65,6 +90,13 @@ public class TrainingSession {
         if (this.status == null) this.status = "UPCOMING";
         if (this.maxSlots == null) this.maxSlots = 20;
         if (this.durationMinutes == null) this.durationMinutes = 120;
+        if (this.trainingType == null) this.trainingType = "SKILL";
+    }
+
+    /** Buổi này có thuộc một nhóm kỹ năng để áp quy tắc học một lần không. */
+    public boolean coNhomKyNang() {
+        return "SKILL".equals(trainingType == null ? "SKILL" : trainingType)
+                && skillGroup != null && !skillGroup.isBlank();
     }
 
     /** Thời điểm buổi học kết thúc theo lịch. */

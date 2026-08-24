@@ -35,4 +35,18 @@ public class TrainingAttendee {
     @CreationTimestamp
     @Column(name = "attended_at", updatable = false)
     private ZonedDateTime attendedAt;
+
+    /**
+     * Điểm danh do hệ thống tự ghi, không phải người này thật sự ngồi học buổi đó.
+     *
+     * <p>Xảy ra với đào tạo kỹ năng: dự một buổi trong nhóm là coi như xong cả
+     * nhóm, nên các buổi còn lại cùng nhóm được đánh dấu tự động. Những dòng
+     * này KHÔNG cộng thêm điểm — điểm đã tính ở buổi học thật.
+     *
+     * <p>Tách riêng để danh sách lớp phân biệt được ai có mặt thật, ai được
+     * miễn nhờ đã học nhóm kỹ năng đó rồi.
+     */
+    @Column(name = "auto_marked", columnDefinition = "boolean default false")
+    @Builder.Default
+    private Boolean autoMarked = false;
 }

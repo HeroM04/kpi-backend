@@ -27,6 +27,15 @@ public class CreateTrainingSessionDTO {
     /** Buổi học kéo dài bao nhiêu phút. Trống thì mặc định 120. */
     private Integer durationMinutes;
 
+    /** SKILL = đào tạo kỹ năng (mặc định) · PROJECT = đào tạo dự án. */
+    private String trainingType;
+
+    /**
+     * Mã nhóm kỹ năng — các buổi dạy cùng một kỹ năng đặt chung mã này.
+     * Học một buổi trong nhóm là xong cả nhóm.
+     */
+    private String skillGroup;
+
     private String photoUrl;
 
     /**

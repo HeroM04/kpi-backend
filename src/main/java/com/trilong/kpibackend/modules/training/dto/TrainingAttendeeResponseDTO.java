@@ -19,13 +19,23 @@ public class TrainingAttendeeResponseDTO {
     private String departmentName;
     private ZonedDateTime attendedAt;
 
+    /**
+     * Điểm danh do hệ thống tự ghi vì người này đã học nhóm kỹ năng đó ở buổi
+     * khác — không phải họ ngồi học buổi này.
+     */
+    private Boolean autoMarked;
+
     public static TrainingAttendeeResponseDTO from(TrainingAttendee attendee) {
         if (attendee == null) return null;
+        // Dòng điểm danh tự động được tạo mà không gán sẵn quan hệ user, nên
+        // phải đọc phòng hờ null thay vì gọi thẳng getUser().getId().
+        var u = attendee.getUser();
         return TrainingAttendeeResponseDTO.builder()
-                .userId(attendee.getUser().getId())
-                .fullName(attendee.getUser().getFullName())
-                .role(attendee.getUser().getRole())
-                .departmentName(attendee.getUser().getDepartment() != null ? attendee.getUser().getDepartment().getName() : null)
+                .autoMarked(Boolean.TRUE.equals(attendee.getAutoMarked()))
+                .userId(u != null ? u.getId() : attendee.getUserId())
+                .fullName(u != null ? u.getFullName() : null)
+                .role(u != null ? u.getRole() : null)
+                .departmentName(u != null && u.getDepartment() != null ? u.getDepartment().getName() : null)
                 .attendedAt(attendee.getAttendedAt())
                 .build();
     }

@@ -14,4 +14,23 @@ public interface TrainingAttendeeRepository extends JpaRepository<TrainingAttend
     List<TrainingAttendee> findByUserId(Long userId);
     boolean existsBySessionIdAndUserId(Long sessionId, Long userId);
     long countBySessionId(Long sessionId);
+
+    /**
+     * Nhân sự này đã học THẬT một buổi nào trong nhóm kỹ năng chưa.
+     *
+     * <p>Chỉ tính buổi có mặt thật ({@code autoMarked = false}); dòng do hệ
+     * thống tự đánh dấu không được dùng làm căn cứ miễn cho nhóm khác.
+     */
+    @org.springframework.data.jpa.repository.Query(
+            "SELECT COUNT(a) > 0 FROM TrainingAttendee a JOIN TrainingSession s ON s.id = a.sessionId "
+                    + "WHERE a.userId = :userId AND s.skillGroup = :nhom "
+                    + "AND (a.autoMarked IS NULL OR a.autoMarked = false)")
+    boolean daHocNhomKyNang(@org.springframework.data.repository.query.Param("userId") Long userId,
+                            @org.springframework.data.repository.query.Param("nhom") String nhom);
+
+    /** Những người đã học thật ít nhất một buổi của nhóm kỹ năng này. */
+    @org.springframework.data.jpa.repository.Query(
+            "SELECT DISTINCT a.userId FROM TrainingAttendee a JOIN TrainingSession s ON s.id = a.sessionId "
+                    + "WHERE s.skillGroup = :nhom AND (a.autoMarked IS NULL OR a.autoMarked = false)")
+    List<Long> aiDaHocNhom(@org.springframework.data.repository.query.Param("nhom") String nhom);
 }

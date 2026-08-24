@@ -19,6 +19,10 @@ public class TrainingSessionResponseDTO {
     private String description;
     private String presenter;
     private String roomCode;
+    /** SKILL = đào tạo kỹ năng · PROJECT = đào tạo dự án. */
+    private String trainingType;
+    /** Mã nhóm kỹ năng — học một buổi trong nhóm là xong cả nhóm. */
+    private String skillGroup;
     private ZonedDateTime startTime;
     private ZonedDateTime endTime;
     private Integer durationMinutes;
@@ -44,6 +48,8 @@ public class TrainingSessionResponseDTO {
                 .description(session.getDescription())
                 .presenter(session.getPresenter())
                 .roomCode(session.getRoomCode())
+                .trainingType(session.getTrainingType() != null ? session.getTrainingType() : "SKILL")
+                .skillGroup(session.getSkillGroup())
                 .startTime(session.getStartTime())
                 .endTime(session.getEndTime())
                 .durationMinutes(session.getDurationMinutes())

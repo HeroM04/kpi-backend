@@ -38,12 +38,17 @@ public class TrainingService {
      *
      * <p>Đếm số buổi đã điểm danh trong cùng tuần rồi áp trần 15đ, chỉ cộng phần
      * chênh lệch. Ví dụ buổi thứ 4 trong tuần sẽ cộng 0 điểm vì đã chạm trần.
+     *
+     * <p>Chỉ đếm buổi có mặt THẬT. Dòng điểm danh tự động của nhóm kỹ năng không
+     * được tính — nếu tính thì học một buổi rồi được đánh dấu thêm hai buổi cùng
+     * nhóm sẽ đẩy thẳng lên kịch trần 15đ mà thực tế mới học có một buổi.
      */
     private int trainingPointsToAward(Long userId, ZonedDateTime attendedAt) {
         String week = kpiCalculationService.getWeekString(attendedAt);
 
         long attendedThisWeek = trainingAttendeeRepository.findByUserId(userId).stream()
                 .filter(a -> a.getAttendedAt() != null)
+                .filter(a -> !Boolean.TRUE.equals(a.getAutoMarked()))
                 .filter(a -> week.equals(kpiCalculationService.getWeekString(a.getAttendedAt())))
                 .count();
 
@@ -68,12 +73,18 @@ public class TrainingService {
                 .location(dto.getLocation())
                 .maxSlots(dto.getMaxSlots() != null ? dto.getMaxSlots() : 20)
                 .durationMinutes(dto.getDurationMinutes() != null ? dto.getDurationMinutes() : 120)
+                .trainingType("PROJECT".equalsIgnoreCase(dto.getTrainingType()) ? "PROJECT" : "SKILL")
+                .skillGroup(dto.getSkillGroup() != null && !dto.getSkillGroup().isBlank()
+                        ? dto.getSkillGroup().trim() : null)
                 .status("UPCOMING")
                 .photoUrl(dto.getPhotoUrl())
                 .videoUrl(dto.getVideoUrl())
                 .build();
 
-        return trainingSessionRepository.save(session);
+        TrainingSession daLuu = trainingSessionRepository.save(session);
+        // Ai đã học nhóm kỹ năng này ở buổi trước thì đánh dấu sẵn, khỏi phải học lại
+        tuDiemDanhNguoiDaHocNhom(daLuu);
+        return daLuu;
     }
 
     public List<TrainingSession> getAllSessions() {
@@ -218,6 +229,7 @@ public class TrainingService {
                     "Học buổi đào tạo “" + session.getTitle() + "”");
         }
 
+        tuDiemDanhCungNhomKyNang(session, userId);
         return savedAttendee;
     }
 
@@ -259,7 +271,57 @@ public class TrainingService {
             kpiCalculationService.updateKpiPoints(userId, "attendance", pts, attendee.getAttendedAt(),
                     "Được điểm danh buổi đào tạo “" + session.getTitle() + "”");
         }
+
+        tuDiemDanhCungNhomKyNang(session, userId);
         return savedAttendee;
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    //  NHÓM KỸ NĂNG — học một buổi là xong cả nhóm
+    // ══════════════════════════════════════════════════════════════════════
+
+    /**
+     * Sau khi một người học thật một buổi kỹ năng, đánh dấu điểm danh giúp họ ở
+     * mọi buổi còn lại cùng nhóm kỹ năng.
+     *
+     * <p>Một kỹ năng thường được dạy lặp lại nhiều buổi cho nhiều ca khác nhau.
+     * Ai đã học rồi thì không phải ngồi lại lần nữa, và cũng không được cộng
+     * điểm lần nữa — điểm đã tính ở buổi học thật.
+     */
+    private void tuDiemDanhCungNhomKyNang(TrainingSession session, Long userId) {
+        if (session == null || !session.coNhomKyNang()) return;
+
+        for (TrainingSession khac : trainingSessionRepository.findCungNhomKyNang(session.getSkillGroup())) {
+            if (khac.getId().equals(session.getId())) continue;
+            if (trainingAttendeeRepository.existsBySessionIdAndUserId(khac.getId(), userId)) continue;
+            ghiDiemDanhTuDong(khac.getId(), userId);
+        }
+    }
+
+    /**
+     * Buổi mới thuộc một nhóm kỹ năng đã có người học → đánh dấu sẵn cho họ.
+     *
+     * <p>Cần cả chiều này vì buổi học có thể được tạo SAU khi người ta đã học
+     * nhóm đó ở một buổi trước.
+     */
+    private void tuDiemDanhNguoiDaHocNhom(TrainingSession session) {
+        if (session == null || !session.coNhomKyNang()) return;
+
+        for (Long userId : trainingAttendeeRepository.aiDaHocNhom(session.getSkillGroup())) {
+            if (trainingAttendeeRepository.existsBySessionIdAndUserId(session.getId(), userId)) continue;
+            ghiDiemDanhTuDong(session.getId(), userId);
+        }
+    }
+
+    /** Ghi một dòng điểm danh tự động — không cộng điểm, có cờ để phân biệt. */
+    private void ghiDiemDanhTuDong(Long sessionId, Long userId) {
+        TrainingAttendee tu = TrainingAttendee.builder()
+                .sessionId(sessionId)
+                .userId(userId)
+                .attendedAt(ZonedDateTime.now())
+                .autoMarked(true)
+                .build();
+        trainingAttendeeRepository.save(tu);
     }
 
     @Transactional
@@ -268,8 +330,11 @@ public class TrainingService {
         TrainingAttendee attendee = trainingAttendeeRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Học viên chưa điểm danh buổi học này!"));
 
-        kpiCalculationService.updateKpiPoints(userId, "attendance", -KPI_POINTS_TRAINING,
-                attendee.getAttendedAt(), "Bị gỡ khỏi danh sách học buổi “" + tenBuoi(sessionId) + "”");
+        // Dòng điểm danh tự động chưa từng được cộng điểm nên gỡ ra cũng không trừ
+        if (!Boolean.TRUE.equals(attendee.getAutoMarked())) {
+            kpiCalculationService.updateKpiPoints(userId, "attendance", -KPI_POINTS_TRAINING,
+                    attendee.getAttendedAt(), "Bị gỡ khỏi danh sách học buổi “" + tenBuoi(sessionId) + "”");
+        }
         trainingAttendeeRepository.delete(attendee);
     }
 
@@ -289,6 +354,7 @@ public class TrainingService {
         // Trừ điểm của tất cả học viên đã tham gia lớp này
         List<TrainingAttendee> attendees = trainingAttendeeRepository.findBySessionId(sessionId);
         for (TrainingAttendee attendee : attendees) {
+            if (Boolean.TRUE.equals(attendee.getAutoMarked())) continue; // chưa cộng thì không trừ
             kpiCalculationService.updateKpiPoints(attendee.getUserId(), "attendance", -KPI_POINTS_TRAINING,
                     attendee.getAttendedAt(), "Buổi đào tạo “" + session.getTitle() + "” đã bị xóa");
         }
@@ -316,6 +382,7 @@ public class TrainingService {
         if ("CANCELLED".equals(status)) {
             List<TrainingAttendee> attendees = trainingAttendeeRepository.findBySessionId(sessionId);
             for (TrainingAttendee attendee : attendees) {
+                if (Boolean.TRUE.equals(attendee.getAutoMarked())) continue; // chưa cộng thì không trừ
                 kpiCalculationService.updateKpiPoints(attendee.getUserId(), "attendance", -KPI_POINTS_TRAINING,
                         attendee.getAttendedAt(), "Buổi đào tạo “" + session.getTitle() + "” đã bị hủy");
             }
@@ -347,6 +414,14 @@ public class TrainingService {
         if (dto.getLocation() != null) session.setLocation(dto.getLocation());
         if (dto.getMaxSlots() != null) session.setMaxSlots(dto.getMaxSlots());
         if (dto.getDurationMinutes() != null) session.setDurationMinutes(dto.getDurationMinutes());
+        if (dto.getTrainingType() != null && !dto.getTrainingType().isBlank()) {
+            session.setTrainingType("PROJECT".equalsIgnoreCase(dto.getTrainingType()) ? "PROJECT" : "SKILL");
+        }
+        if (dto.getSkillGroup() != null) {
+            session.setSkillGroup(dto.getSkillGroup().isBlank() ? null : dto.getSkillGroup().trim());
+            // Gán buổi vào một nhóm kỹ năng thì người đã học nhóm đó được đánh dấu ngay
+            tuDiemDanhNguoiDaHocNhom(session);
+        }
         if (dto.getPhotoUrl() != null) session.setPhotoUrl(dto.getPhotoUrl());
         // Cập nhật video URL (Admin điền sau khi buổi học kết thúc hoặc xóa)
         if (dto.getVideoUrl() != null) {

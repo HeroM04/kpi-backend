@@ -42,6 +42,10 @@ public interface TrainingSessionRepository extends JpaRepository<TrainingSession
             + "AND s.startTime >= :tu AND s.startTime < :den ORDER BY s.startTime ASC")
     List<TrainingSession> findTrongKhoang(@Param("tu") ZonedDateTime tu, @Param("den") ZonedDateTime den);
 
+    /** Mọi buổi chưa hủy thuộc cùng một nhóm kỹ năng. */
+    @Query("SELECT s FROM TrainingSession s WHERE s.skillGroup = :nhom AND s.status <> 'CANCELLED'")
+    List<TrainingSession> findCungNhomKyNang(@Param("nhom") String nhom);
+
     /**
      * Đếm số buổi đào tạo công ty thực sự tổ chức trong khoảng thời gian
      * (bỏ qua buổi đã hủy) — dùng để biết một tuần có lịch đào tạo hay không.

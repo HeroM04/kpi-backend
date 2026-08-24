@@ -19,6 +19,8 @@ public class FieldBattleResponseDTO {
     private String customerName;
     private String customerPhone;
     private String project;
+    /** MEETING = gặp khách (+10đ), SUPPORT = hỗ trợ khách (+5đ). */
+    private String battleType;
     private String content;
     private String photoUrl;
     private String location;
@@ -39,6 +41,7 @@ public class FieldBattleResponseDTO {
                 .customerName(battle.getCustomerName())
                 .customerPhone(battle.getCustomerPhone())
                 .project(battle.getProject())
+                .battleType(battle.getBattleType() != null ? battle.getBattleType() : "MEETING")
                 .content(battle.getContent())
                 .photoUrl(battle.getPhotoUrl())
                 .location(battle.getLocation())

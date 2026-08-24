@@ -47,6 +47,18 @@ public class FieldBattle {
     @Column(name = "longitude")
     private Double longitude;
 
+    /**
+     * Loại thực chiến, quyết định số điểm khi được duyệt:
+     * <ul>
+     *   <li>{@code MEETING} — trực tiếp gặp khách, <b>+10đ</b></li>
+     *   <li>{@code SUPPORT} — hỗ trợ khách của người khác, <b>+5đ</b></li>
+     * </ul>
+     * Bản ghi cũ không có trường này thì mặc định là gặp khách.
+     */
+    @Column(name = "battle_type", length = 20)
+    @Builder.Default
+    private String battleType = "MEETING";
+
     @Column(length = 50)
     @Builder.Default
     private String status = "PENDING"; // PENDING, APPROVED, REJECTED

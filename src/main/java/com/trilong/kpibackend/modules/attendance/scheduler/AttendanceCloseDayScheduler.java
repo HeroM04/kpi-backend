@@ -26,7 +26,9 @@ public class AttendanceCloseDayScheduler {
 
     private final LeaveRequestService leaveRequestService;
 
-    @Scheduled(cron = "0 30 23 * * *", zone = "Asia/Ho_Chi_Minh")
+    // Chốt sổ lúc 23:59 — hết ngày mới kết sổ, ai chấm công muộn trong ngày vẫn
+    // kịp được ghi nhận trước khi hệ thống chấm vắng không phép.
+    @Scheduled(cron = "0 59 23 * * *", zone = "Asia/Ho_Chi_Minh")
     public void closeToday() {
         LocalDate today = LocalDate.now(VN_ZONE);
         try {

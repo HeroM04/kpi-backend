@@ -67,6 +67,7 @@ public class TrainingService {
                 .startTime(dto.getStartTime() != null ? dto.getStartTime() : ZonedDateTime.now())
                 .location(dto.getLocation())
                 .maxSlots(dto.getMaxSlots() != null ? dto.getMaxSlots() : 20)
+                .durationMinutes(dto.getDurationMinutes() != null ? dto.getDurationMinutes() : 120)
                 .status("UPCOMING")
                 .photoUrl(dto.getPhotoUrl())
                 .videoUrl(dto.getVideoUrl())
@@ -80,18 +81,41 @@ public class TrainingService {
     }
 
     /**
-     * Lấy danh sách buổi học "đang hiển thị trên app":
-     * Chỉ trả về buổi chưa kết thúc có startTime trong vòng 1 TUẦN tính từ đầu ngày hôm nay.
-     * Buổi đã qua ngày (hôm qua trở về trước) hoặc quá 1 tuần tới sẽ bị ẩn.
+     * Lịch đào tạo của TUẦN NÀY, dùng cho màn hình Đào tạo trên ứng dụng.
+     *
+     * <p>Cửa sổ là trọn tuần ISO — thứ Hai đến hết Chủ nhật — khớp với cách hệ
+     * thống chấm điểm đào tạo theo tuần. Nhờ vậy nhân sự nhìn một màn hình là
+     * biết tuần này còn buổi nào chưa dự.
+     *
+     * <p>Thứ tự: <b>đang diễn ra</b> lên trước, rồi <b>sắp diễn ra</b> theo giờ
+     * gần nhất, cuối cùng là <b>đã kết thúc</b> theo giờ mới nhất. Buổi đã hủy
+     * không hiện.
      */
     public List<TrainingSession> getActiveSessions() {
         ZoneId vnZone = ZoneId.of("Asia/Ho_Chi_Minh");
-        ZonedDateTime todayStart = ZonedDateTime.now(vnZone)
-                .toLocalDate()
-                .atStartOfDay(vnZone);
-        // Cửa sổ hiển thị: từ đầu hôm nay đến trước đầu ngày thứ 8 (= 1 tuần tới)
-        ZonedDateTime weekEnd = todayStart.plusDays(7);
-        return trainingSessionRepository.findActiveSessionsInWindow(todayStart, weekEnd);
+        java.time.LocalDate thuHai = java.time.LocalDate.now(vnZone)
+                .with(java.time.temporal.WeekFields.ISO.dayOfWeek(), 1);
+        ZonedDateTime tu = thuHai.atStartOfDay(vnZone);
+        ZonedDateTime den = thuHai.plusDays(7).atStartOfDay(vnZone);
+
+        List<TrainingSession> tuan = new java.util.ArrayList<>(
+                trainingSessionRepository.findTrongKhoang(tu, den));
+        tuan.sort(java.util.Comparator
+                .comparingInt((TrainingSession s) -> thuTuHienThi(s.getDisplayStatus()))
+                .thenComparing(s -> {
+                    // Sắp diễn ra: gần nhất trước. Đã kết thúc: mới nhất trước.
+                    boolean daXong = "COMPLETED".equals(s.getDisplayStatus());
+                    long moc = s.getStartTime() == null ? 0 : s.getStartTime().toEpochSecond();
+                    return daXong ? -moc : moc;
+                }));
+        return tuan;
+    }
+
+    /** Đang diễn ra (0) → sắp diễn ra (1) → đã kết thúc (2). */
+    private int thuTuHienThi(String displayStatus) {
+        if ("ONGOING".equals(displayStatus)) return 0;
+        if ("UPCOMING".equals(displayStatus)) return 1;
+        return 2;
     }
 
     public List<TrainingSession> getSessionsByStatus(String status) {
@@ -322,6 +346,7 @@ public class TrainingService {
         if (dto.getStartTime() != null) session.setStartTime(dto.getStartTime());
         if (dto.getLocation() != null) session.setLocation(dto.getLocation());
         if (dto.getMaxSlots() != null) session.setMaxSlots(dto.getMaxSlots());
+        if (dto.getDurationMinutes() != null) session.setDurationMinutes(dto.getDurationMinutes());
         if (dto.getPhotoUrl() != null) session.setPhotoUrl(dto.getPhotoUrl());
         // Cập nhật video URL (Admin điền sau khi buổi học kết thúc hoặc xóa)
         if (dto.getVideoUrl() != null) {

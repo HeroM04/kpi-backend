@@ -34,6 +34,15 @@ public interface TrainingSessionRepository extends JpaRepository<TrainingSession
     List<TrainingSession> findActiveSessionsInWindow(@Param("dayStart") ZonedDateTime dayStart, @Param("dayEnd") ZonedDateTime dayEnd);
 
     /**
+     * Mọi buổi đào tạo có giờ bắt đầu nằm trong một khoảng — kể cả buổi đã kết
+     * thúc, vì màn hình tuần vẫn liệt kê chúng ở cuối danh sách.
+     * Buổi đã hủy thì không hiện.
+     */
+    @Query("SELECT s FROM TrainingSession s WHERE s.status <> 'CANCELLED' "
+            + "AND s.startTime >= :tu AND s.startTime < :den ORDER BY s.startTime ASC")
+    List<TrainingSession> findTrongKhoang(@Param("tu") ZonedDateTime tu, @Param("den") ZonedDateTime den);
+
+    /**
      * Đếm số buổi đào tạo công ty thực sự tổ chức trong khoảng thời gian
      * (bỏ qua buổi đã hủy) — dùng để biết một tuần có lịch đào tạo hay không.
      */

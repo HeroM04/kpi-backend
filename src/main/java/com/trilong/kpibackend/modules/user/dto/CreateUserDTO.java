@@ -35,4 +35,7 @@ public class CreateUserDTO {
 
     /** Ngày bắt đầu làm việc — bỏ trống thì lấy ngày tạo tài khoản */
     private java.time.LocalDate joinedDate;
+
+    /** Châm chước riêng: đến 09:00 mới tính đi muộn thay vì 08:45 */
+    private Boolean allowCheckinUntil9;
 }

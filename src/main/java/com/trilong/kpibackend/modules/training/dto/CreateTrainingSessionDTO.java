@@ -24,6 +24,9 @@ public class CreateTrainingSessionDTO {
 
     private Integer maxSlots;
 
+    /** Buổi học kéo dài bao nhiêu phút. Trống thì mặc định 120. */
+    private Integer durationMinutes;
+
     private String photoUrl;
 
     /**

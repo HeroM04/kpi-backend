@@ -84,6 +84,16 @@ public class User {
     private ZonedDateTime createdAt;
 
     /**
+     * Cho phép chấm công đến 09:00 mới tính đi muộn, thay vì 08:45.
+     *
+     * <p>Quy định chung là 08:45. Một số nhân sự được duyệt châm chước riêng
+     * (nhà xa, ca đặc thù) thì bật cờ này. Admin bật/tắt trên Web Admin.
+     */
+    @Column(name = "allow_checkin_until_9", columnDefinition = "boolean default false")
+    @Builder.Default
+    private Boolean allowCheckinUntil9 = false;
+
+    /**
      * Lần gần nhất nhân sự mở màn hình Thông báo điểm KPI.
      *
      * <p>Mọi dòng nhật ký điểm ghi sau mốc này được tính là chưa đọc — đó là con

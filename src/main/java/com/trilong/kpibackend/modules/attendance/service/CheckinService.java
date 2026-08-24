@@ -90,20 +90,30 @@ public class CheckinService {
     }
 
     // ── Mốc giờ chấm công (theo quy định công ty) ───────────────────────────
+    //
+    // Một ngày có HAI khung chấm công vào: ca sáng và ca chiều. Nhân sự chỉ được
+    // tính điểm chuyên cần MỘT LẦN mỗi ngày — lần chấm công vào đầu tiên quyết
+    // định điểm, các lần sau chỉ ghi nhận giờ chứ không cộng thêm.
+
     /** Điểm danh từ 08:30; đến 08:45 vẫn tính ĐÚNG GIỜ (15 phút châm chước). */
     private static final LocalTime ON_TIME_LIMIT = LocalTime.of(8, 45);
-    /** Từ sau 08:45 đến 10:00 tính là ĐI MUỘN. */
-    private static final LocalTime LATE_LIMIT    = LocalTime.of(10, 0);
+    /**
+     * Mốc châm chước riêng: một số nhân sự được Admin cho phép đến 09:00 mới
+     * tính đi muộn (nhà xa, ca đặc thù). Bật/tắt từng người trên Web Admin.
+     */
+    private static final LocalTime ON_TIME_LIMIT_EXTENDED = LocalTime.of(9, 0);
+    /** Ranh giới giữa ca sáng và ca chiều. */
+    private static final LocalTime NOON = LocalTime.of(12, 0);
+    /** Ca chiều: chấm công đến 13:45 vẫn tính ĐÚNG GIỜ. */
+    private static final LocalTime AFTERNOON_ON_TIME_LIMIT = LocalTime.of(13, 45);
     /** Kết thúc giờ làm. */
     private static final LocalTime CUTOFF_CHECKOUT = LocalTime.of(17, 30);
 
     // ── Điểm KPI chuyên cần ─────────────────────────────────────────────────
-    /** Đi làm đúng giờ (≤ 08:45) */
+    /** Đi làm đúng giờ — ca sáng đến 08:45 (hoặc 09:00), ca chiều 12:00–13:45 */
     private static final int KPI_ON_TIME = 5;
-    /** Đi làm muộn (08:45 – 10:00) */
+    /** Đi làm muộn so với khung của ca */
     private static final int KPI_LATE = -5;
-    /** Check-in sau 10:00 — theo quy định tính là vắng mặt (không phép) */
-    private static final int KPI_ABSENT_UNEXCUSED = -15;
 
     // ── Tăng ca (thuộc nhóm Thực chiến) ─────────────────────────────────────
     /** Mốc giờ về tối thiểu để được tính một khung tăng ca. */
@@ -485,13 +495,21 @@ public class CheckinService {
             // Phải quy về giờ Việt Nam: giá trị đọc từ DB đang ở múi giờ UTC,
             // nếu lấy thẳng toLocalTime() thì 09:30 VN thành 02:30 và bị chấm
             // nhầm thành "đi đúng giờ".
+            LocalTime mocDungGio = mocDungGioCua(checkinLog.getUserId());
             int kpiPoints = calculateAttendanceKpi(checkinLog.getActionType(),
-                    checkinLog.getCheckinTime().withZoneSameInstant(VN_ZONE).toLocalTime());
-            kpiCalculationService.updateKpiPoints(
-                    checkinLog.getUserId(), "attendance", kpiPoints, checkinLog.getCheckinTime(),
-                    "Admin duyệt chấm công ngoại tuyến — "
-                            + dienGiaiChuyenCan(checkinLog.getActionType(), checkinLog.getCheckinTime())
-            );
+                    checkinLog.getCheckinTime().withZoneSameInstant(VN_ZONE).toLocalTime(), mocDungGio);
+            if (!"CHECK_OUT".equals(checkinLog.getActionType())
+                    && daTinhDiemTrongNgay(checkinLog.getUserId(), checkinLog.getCheckinTime(), checkinLog.getId())) {
+                kpiPoints = 0; // ngày này đã được tính điểm chuyên cần rồi
+            }
+            if (kpiPoints != 0) {
+                kpiCalculationService.updateKpiPoints(
+                        checkinLog.getUserId(), "attendance", kpiPoints, checkinLog.getCheckinTime(),
+                        "Admin duyệt chấm công ngoại tuyến — "
+                                + dienGiaiChuyenCan(checkinLog.getActionType(),
+                                        checkinLog.getCheckinTime(), mocDungGio)
+                );
+            }
             // Duyệt bản ghi check-out muộn cũng được tính tăng ca như chấm công tại chỗ
             awardOvertimeIfEligible(checkinLog.getUserId(), checkinLog.getActionType(),
                     checkinLog.getCheckinTime().withZoneSameInstant(VN_ZONE));
@@ -501,7 +519,8 @@ public class CheckinService {
             // nếu lấy thẳng toLocalTime() thì 09:30 VN thành 02:30 và bị chấm
             // nhầm thành "đi đúng giờ".
             int kpiPoints = calculateAttendanceKpi(checkinLog.getActionType(),
-                    checkinLog.getCheckinTime().withZoneSameInstant(VN_ZONE).toLocalTime());
+                    checkinLog.getCheckinTime().withZoneSameInstant(VN_ZONE).toLocalTime(),
+                    mocDungGioCua(checkinLog.getUserId()));
             kpiCalculationService.updateKpiPoints(
                     checkinLog.getUserId(), "attendance", -kpiPoints, checkinLog.getCheckinTime(),
                     "Admin thu hồi duyệt chấm công lúc " + gio(checkinLog.getCheckinTime())
@@ -560,9 +579,16 @@ public class CheckinService {
         CheckinLog saved = checkinLogRepository.save(checkinLog);
 
         // Điểm chuyên cần theo giờ check-in
-        int kpiPoints = calculateAttendanceKpi(finalActionType, now.toLocalTime());
-        kpiCalculationService.updateKpiPoints(userId, "attendance", kpiPoints, now,
-                dienGiaiChuyenCan(finalActionType, now));
+        LocalTime mocDungGio = mocDungGioCua(userId);
+        int kpiPoints = calculateAttendanceKpi(finalActionType, now.toLocalTime(), mocDungGio);
+        // Mỗi ngày chỉ tính điểm chuyên cần một lần — lần chấm công vào đầu tiên
+        if (!"CHECK_OUT".equals(finalActionType) && daTinhDiemTrongNgay(userId, now, saved.getId())) {
+            kpiPoints = 0;
+        }
+        if (kpiPoints != 0) {
+            kpiCalculationService.updateKpiPoints(userId, "attendance", kpiPoints, now,
+                    dienGiaiChuyenCan(finalActionType, now, mocDungGio));
+        }
 
         // Điểm tăng ca theo giờ check-out (tính vào nhóm Thực chiến)
         awardOvertimeIfEligible(userId, finalActionType, now);
@@ -629,20 +655,6 @@ public class CheckinService {
     }
 
     /**
-     * Logic tính điểm KPI mới:
-     * - CHECK_IN: Đúng giờ (<= 08:30) -> +5 điểm. Đi trễ (> 08:30) -> 0 điểm.
-     * - CHECK_OUT: Không cộng/trừ điểm KPI (chỉ dùng để record thời gian).
-     */
-    /**
-     * Tính điểm chuyên cần theo giờ check-in, đúng quy định công ty:
-     * <ul>
-     *   <li>đến 08:45 → đúng giờ, <b>+5đ</b> (điểm danh từ 08:30, châm chước 15 phút)</li>
-     *   <li>08:45 – 10:00 → đi muộn, <b>−5đ</b></li>
-     *   <li>sau 10:00 → tính là vắng mặt không phép, <b>−15đ</b></li>
-     * </ul>
-     * Check-out không tính điểm (chỉ dùng để ghi nhận giờ về).
-     */
-    /**
      * Cộng điểm tăng ca nếu ca làm kéo dài tới mốc quy định.
      *
      * <p>Quy định: khung làm thêm 18h–20h, về từ <b>20:00</b> trở đi được tính
@@ -667,17 +679,64 @@ public class CheckinService {
                 userId, time.toLocalTime(), KPI_OVERTIME);
     }
 
-    private int calculateAttendanceKpi(String actionType, LocalTime time) {
+    /**
+     * Điểm chuyên cần theo giờ chấm công vào, đúng quy định công ty:
+     * <ul>
+     *   <li><b>Ca sáng</b> — đến 08:45 (hoặc 09:00 với người được châm chước
+     *       riêng) là đúng giờ <b>+5đ</b>; muộn hơn, trong buổi sáng, <b>−5đ</b></li>
+     *   <li><b>Ca chiều</b> — từ 12:00 đến 13:45 đúng giờ <b>+5đ</b>;
+     *       sau 13:45 <b>−5đ</b></li>
+     * </ul>
+     *
+     * <p>Không chấm công cả ngày mới là vắng không phép (−15đ), và việc đó do
+     * {@code LeaveRequestService.closeDay} chốt lúc cuối ngày xử lý — đã đến
+     * công ty dù muộn thì không bị coi là vắng.
+     *
+     * <p>Check-out không tính điểm, chỉ ghi nhận giờ về.
+     *
+     * @param mocDungGio mốc đúng giờ ca sáng của riêng nhân sự này
+     */
+    private int calculateAttendanceKpi(String actionType, LocalTime time, LocalTime mocDungGio) {
         if ("CHECK_OUT".equals(actionType)) {
             return 0;
         }
-        if (!time.isAfter(ON_TIME_LIMIT)) {
-            return KPI_ON_TIME;
+        if (time.isBefore(NOON)) {
+            return time.isAfter(mocDungGio) ? KPI_LATE : KPI_ON_TIME;
         }
-        if (!time.isAfter(LATE_LIMIT)) {
-            return KPI_LATE;
-        }
-        return KPI_ABSENT_UNEXCUSED;
+        return time.isAfter(AFTERNOON_ON_TIME_LIMIT) ? KPI_LATE : KPI_ON_TIME;
+    }
+
+    /**
+     * Mốc đúng giờ ca sáng áp cho một nhân sự: mặc định 08:45, riêng ai được
+     * Admin bật châm chước thì 09:00.
+     */
+    private LocalTime mocDungGioCua(Long userId) {
+        return userRepository.findById(userId)
+                .filter(u -> Boolean.TRUE.equals(u.getAllowCheckinUntil9()))
+                .map(u -> ON_TIME_LIMIT_EXTENDED)
+                .orElse(ON_TIME_LIMIT);
+    }
+
+    /**
+     * Nhân sự đã được tính điểm chuyên cần trong ngày chưa.
+     *
+     * <p>Quy định: mỗi ngày chỉ tính điểm chuyên cần MỘT LẦN. Ca chiều dành cho
+     * người không có ca sáng; ai đã chấm công buổi sáng rồi thì lần chấm công
+     * chiều chỉ ghi nhận giờ, không cộng thêm 5đ nữa.
+     *
+     * @param boQuaId bản ghi đang xét — không tự tính chính nó là "lần trước"
+     */
+    private boolean daTinhDiemTrongNgay(Long userId, ZonedDateTime moc, Long boQuaId) {
+        LocalDate ngay = moc.withZoneSameInstant(VN_ZONE).toLocalDate();
+        return checkinLogRepository
+                .findByUserIdAndCheckinTimeBetween(userId,
+                        ngay.atStartOfDay(VN_ZONE), ngay.plusDays(1).atStartOfDay(VN_ZONE))
+                .stream()
+                .anyMatch(c -> !"CHECK_OUT".equals(c.getActionType())
+                        && !"REJECTED".equals(c.getStatus())
+                        && (boQuaId == null || !boQuaId.equals(c.getId()))
+                        && c.getCheckinTime() != null
+                        && c.getCheckinTime().isBefore(moc));
     }
 
     /** Giờ Việt Nam dạng HH:mm để ghép vào câu diễn giải điểm. */
@@ -690,18 +749,19 @@ public class CheckinService {
      * Câu giải thích khoản điểm chuyên cần, khớp với {@link #calculateAttendanceKpi}.
      * Nhân sự đọc là biết ngay vì sao được cộng hay bị trừ.
      */
-    private String dienGiaiChuyenCan(String actionType, ZonedDateTime time) {
+    private String dienGiaiChuyenCan(String actionType, ZonedDateTime time, LocalTime mocDungGio) {
         String hhmm = gio(time);
         if ("CHECK_OUT".equals(actionType)) {
             return "Chấm công ra ca lúc " + hhmm;
         }
         LocalTime t = time.withZoneSameInstant(VN_ZONE).toLocalTime();
-        if (!t.isAfter(ON_TIME_LIMIT)) {
-            return "Đi làm đúng giờ — chấm công lúc " + hhmm;
+        if (t.isBefore(NOON)) {
+            return t.isAfter(mocDungGio)
+                    ? "Đi muộn ca sáng — chấm công lúc " + hhmm + " (hạn " + mocDungGio + ")"
+                    : "Đi làm đúng giờ — chấm công lúc " + hhmm;
         }
-        if (!t.isAfter(LATE_LIMIT)) {
-            return "Đi muộn — chấm công lúc " + hhmm + " (hạn " + ON_TIME_LIMIT + ")";
-        }
-        return "Chấm công lúc " + hhmm + ", sau " + LATE_LIMIT + " nên tính vắng không phép";
+        return t.isAfter(AFTERNOON_ON_TIME_LIMIT)
+                ? "Đi muộn ca chiều — chấm công lúc " + hhmm + " (hạn " + AFTERNOON_ON_TIME_LIMIT + ")"
+                : "Vào ca chiều đúng giờ — chấm công lúc " + hhmm;
     }
 }

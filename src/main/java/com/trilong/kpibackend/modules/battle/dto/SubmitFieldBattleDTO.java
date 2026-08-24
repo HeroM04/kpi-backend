@@ -12,6 +12,9 @@ public class SubmitFieldBattleDTO {
 
     private String project;
 
+    /** MEETING = gặp khách (+10đ), SUPPORT = hỗ trợ khách (+5đ). Trống thì là MEETING. */
+    private String battleType;
+
     @NotBlank(message = "Nội dung thực chiến không được để trống")
     private String content;
 

@@ -20,9 +20,17 @@ public class TrainingSessionResponseDTO {
     private String presenter;
     private String roomCode;
     private ZonedDateTime startTime;
+    private ZonedDateTime endTime;
+    private Integer durationMinutes;
     private String location;
     private Integer maxSlots;
+    /** Trạng thái Admin đã đặt — dùng cho form sửa trên Web Admin. */
     private String status;
+    /**
+     * Trạng thái để hiển thị, tính theo đồng hồ: ONGOING · UPCOMING · COMPLETED
+     * · CANCELLED. Đây là giá trị ứng dụng nên dùng để vẽ nhãn và sắp thứ tự.
+     */
+    private String displayStatus;
     private String photoUrl;
     private String videoUrl;
     private long currentSlots;
@@ -37,9 +45,12 @@ public class TrainingSessionResponseDTO {
                 .presenter(session.getPresenter())
                 .roomCode(session.getRoomCode())
                 .startTime(session.getStartTime())
+                .endTime(session.getEndTime())
+                .durationMinutes(session.getDurationMinutes())
                 .location(session.getLocation())
                 .maxSlots(session.getMaxSlots())
                 .status(session.getStatus())
+                .displayStatus(session.getDisplayStatus())
                 .photoUrl(session.getPhotoUrl())
                 .videoUrl(session.getVideoUrl())
                 .currentSlots(currentSlots)

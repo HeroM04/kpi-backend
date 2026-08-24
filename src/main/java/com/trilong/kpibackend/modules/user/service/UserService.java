@@ -119,6 +119,7 @@ public class UserService {
                 .joinedDate(dto.getJoinedDate() != null
                         ? dto.getJoinedDate()
                         : java.time.LocalDate.now(java.time.ZoneId.of("Asia/Ho_Chi_Minh")))
+                .allowCheckinUntil9(Boolean.TRUE.equals(dto.getAllowCheckinUntil9()))
                 .build();
 
         User saved = userRepository.save(user);
@@ -176,6 +177,9 @@ public class UserService {
         }
         if (dto.getJoinedDate() != null) {
             user.setJoinedDate(dto.getJoinedDate());
+        }
+        if (dto.getAllowCheckinUntil9() != null) {
+            user.setAllowCheckinUntil9(dto.getAllowCheckinUntil9());
         }
 
         User saved = userRepository.save(user);
@@ -249,6 +253,7 @@ public class UserService {
                 .referrerFullName(user.getReferrerId() == null ? null
                         : userRepository.findById(user.getReferrerId()).map(User::getFullName).orElse(null))
                 .joinedDate(joinedDateOf(user))
+                .allowCheckinUntil9(Boolean.TRUE.equals(user.getAllowCheckinUntil9()))
                 .build();
     }
 

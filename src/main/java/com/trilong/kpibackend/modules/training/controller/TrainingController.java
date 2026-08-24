@@ -115,6 +115,44 @@ public class TrainingController {
         }
     }
 
+    @Operation(
+            summary = "Chấm lại điểm đào tạo tuần (Admin)",
+            description = """
+                    Tính lại xem nhân sự đã dự đủ các buổi đào tạo bắt buộc của tuần chưa,
+                    rồi cộng hoặc thu hồi cho khớp. Chạy lại bao nhiêu lần cũng ra cùng kết
+                    quả nên gọi thoải mái.
+
+                    Bỏ trống `userId` thì chấm cho toàn bộ nhân sự đang làm việc.
+                    Bỏ trống `date` thì chấm cho tuần hiện tại.
+
+                    Dùng khi cần chấm bù một tuần mà tác vụ nền lỡ không chạy, hoặc sau khi
+                    sửa lại dữ liệu điểm danh.
+                    """
+    )
+    @PostMapping("/cham-lai-diem-tuan")
+    @PreAuthorize("hasAuthority('training:manage') or hasRole('ADMIN')")
+    public ResponseEntity<?> chamLaiDiemTuan(
+            @RequestParam(required = false) Long userId,
+            @RequestParam(required = false) String date) {
+        try {
+            var vnZone = java.time.ZoneId.of("Asia/Ho_Chi_Minh");
+            var moc = (date == null || date.isBlank())
+                    ? java.time.ZonedDateTime.now(vnZone)
+                    : LocalDate.parse(date).atTime(12, 0).atZone(vnZone);
+
+            if (userId != null) {
+                trainingService.chamDiemDaoTaoTuan(userId, moc);
+                return ResponseEntity.ok(Map.of("status", "SUCCESS",
+                        "message", "Đã chấm lại điểm đào tạo tuần cho nhân sự #" + userId));
+            }
+            int n = trainingService.chamDiemDaoTaoTuanChoTatCa(moc);
+            return ResponseEntity.ok(Map.of("status", "SUCCESS",
+                    "message", "Đã chấm lại điểm đào tạo tuần cho " + n + " nhân sự."));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("status", "ERROR", "message", e.getMessage()));
+        }
+    }
+
     @Operation(summary = "Tạo phòng đào tạo mới", description = "Dành cho Admin/Trưởng phòng.")
     @PostMapping
     @PreAuthorize("hasAuthority('training:manage') or hasRole('ADMIN')")

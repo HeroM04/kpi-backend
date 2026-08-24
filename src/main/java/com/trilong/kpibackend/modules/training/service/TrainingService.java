@@ -1,5 +1,7 @@
 package com.trilong.kpibackend.modules.training.service;
 
+import com.trilong.kpibackend.modules.kpi.entity.KpiAutoGrant;
+import com.trilong.kpibackend.modules.kpi.repository.KpiAutoGrantRepository;
 import com.trilong.kpibackend.modules.kpi.service.KpiCalculationService;
 import com.trilong.kpibackend.modules.training.dto.CreateTrainingSessionDTO;
 import com.trilong.kpibackend.modules.training.dto.TrainingRsvpResponseDTO;
@@ -12,55 +14,158 @@ import com.trilong.kpibackend.modules.training.repository.TrainingSessionReposit
 import com.trilong.kpibackend.modules.user.entity.User;
 import com.trilong.kpibackend.modules.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Optional;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class TrainingService {
 
     private final TrainingSessionRepository trainingSessionRepository;
     private final TrainingAttendeeRepository trainingAttendeeRepository;
     private final TrainingRsvpRepository trainingRsvpRepository;
+    private final KpiAutoGrantRepository kpiAutoGrantRepository;
     private final UserRepository userRepository;
     private final KpiCalculationService kpiCalculationService;
 
-    private static final int KPI_POINTS_TRAINING = 5; // +5 điểm mỗi buổi đào tạo tham gia
+    private static final ZoneId VN_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
 
     /**
-     * Trần điểm học tập/đào tạo mỗi tuần (theo bảng tiêu chí: "Học tập, Đào tạo:
-     * tối đa 15 điểm"). Điểm này nằm trong nhóm Phát triển cá nhân (trần 30đ).
+     * Điểm học tập mỗi tuần — cũng chính là mức thưởng khi dự đủ.
+     *
+     * <p>Theo bảng tiêu chí, mục "Học tập, Đào tạo" tối đa 15đ/tuần, nằm trong
+     * nhóm Phát triển cá nhân (trần 30đ). Từ nay là "được cả hoặc không được
+     * gì" chứ không cộng dồn từng buổi: dự đủ mọi buổi bắt buộc thì trọn 15đ,
+     * thiếu một buổi là 0.
      */
     public static final int CAP_TRAINING_PER_WEEK = 15;
 
+    // ══════════════════════════════════════════════════════════════════════
+    //  CHẤM ĐIỂM ĐÀO TẠO THEO TUẦN
+    // ══════════════════════════════════════════════════════════════════════
+
+    /** Mã ghi nhận khoản điểm đào tạo tuần, để chạy lại không cộng trùng. */
+    private static final String GRANT_TUAN = "TRAINING_WEEK";
+
     /**
-     * Số điểm đào tạo thực sự được cộng cho lần điểm danh này.
+     * Chấm lại điểm đào tạo của một nhân sự trong tuần chứa {@code mocTrongTuan}.
      *
-     * <p>Đếm số buổi đã điểm danh trong cùng tuần rồi áp trần 15đ, chỉ cộng phần
-     * chênh lệch. Ví dụ buổi thứ 4 trong tuần sẽ cộng 0 điểm vì đã chạm trần.
+     * <p>Quy định: <b>dự đủ mọi buổi đào tạo nhóm bắt buộc trong tuần mới được
+     * trọn 15đ</b>, thiếu một buổi là không được gì. Khác hẳn cách cũ cộng dồn
+     * 5đ mỗi buổi — cách cũ cho phép dự loe hoe vài buổi vẫn có điểm.
      *
-     * <p>Chỉ đếm buổi có mặt THẬT. Dòng điểm danh tự động của nhóm kỹ năng không
-     * được tính — nếu tính thì học một buổi rồi được đánh dấu thêm hai buổi cùng
-     * nhóm sẽ đẩy thẳng lên kịch trần 15đ mà thực tế mới học có một buổi.
+     * <p>Một buổi được coi là ĐÃ PHỦ nếu nhân sự có bất kỳ dòng điểm danh nào,
+     * bất kể nguồn: có mặt thật, được đánh dấu vì đã học nhóm kỹ năng đó, hay
+     * được Admin duyệt miễn. Ba trường hợp đều nghĩa là "không nợ buổi này".
+     *
+     * <p>Chỉ xét buổi ĐÃ KẾT THÚC. Buổi còn ở phía trước chưa thể coi là bỏ lỡ,
+     * nên giữa tuần ai đang theo kịp vẫn thấy đủ 15đ; lỡ một buổi thì điểm bị
+     * gỡ lại kèm dòng nhật ký nói rõ buổi nào.
+     *
+     * <p>Tuần không có buổi nào thì mặc nhiên đủ điều kiện — khớp với quy định
+     * cũ "tuần công ty không tổ chức đào tạo thì cộng mặc định 15đ".
+     *
+     * <p>Hàm này chạy lại bao nhiêu lần cũng ra cùng một kết quả: nó tính mức
+     * điểm ĐÚNG của tuần rồi chỉ cộng/trừ phần chênh so với mức đã ghi nhận.
      */
-    private int trainingPointsToAward(Long userId, ZonedDateTime attendedAt) {
-        String week = kpiCalculationService.getWeekString(attendedAt);
+    @Transactional
+    public void chamDiemDaoTaoTuan(Long userId, ZonedDateTime mocTrongTuan) {
+        String tuan = kpiCalculationService.getWeekString(mocTrongTuan);
+        LocalDate thuHai = mocTrongTuan.withZoneSameInstant(VN_ZONE).toLocalDate()
+                .with(java.time.temporal.WeekFields.ISO.dayOfWeek(), 1);
 
-        long attendedThisWeek = trainingAttendeeRepository.findByUserId(userId).stream()
-                .filter(a -> a.getAttendedAt() != null)
-                .filter(TrainingAttendee::tinhDiem)
-                .filter(a -> week.equals(kpiCalculationService.getWeekString(a.getAttendedAt())))
-                .count();
+        int soBuoiPhaiDu = demBuoiBatBuoc(userId, thuHai);
+        int mucDung = duDieuKienDiemDaoTao(userId, thuHai) ? CAP_TRAINING_PER_WEEK : 0;
 
-        // Bản ghi hiện tại đã được lưu trước khi gọi hàm này
-        int after = (int) Math.min(CAP_TRAINING_PER_WEEK, attendedThisWeek * KPI_POINTS_TRAINING);
-        int before = (int) Math.min(CAP_TRAINING_PER_WEEK, (attendedThisWeek - 1) * KPI_POINTS_TRAINING);
-        return Math.max(0, after - before);
+        var ghiNhan = kpiAutoGrantRepository
+                .findByUserIdAndPeriodAndGrantType(userId, tuan, GRANT_TUAN);
+        int daCong = ghiNhan.map(g -> g.getPoints() == null ? 0 : g.getPoints()).orElse(0);
+        int chenh = mucDung - daCong;
+        if (chenh == 0) return;
+
+        String dienGiai;
+        if (chenh < 0) {
+            dienGiai = "Thiếu buổi đào tạo bắt buộc trong tuần — thu hồi điểm đã cộng";
+        } else if (soBuoiPhaiDu == 0) {
+            dienGiai = "Tuần này công ty không tổ chức đào tạo — cộng mặc định theo quy định";
+        } else {
+            dienGiai = "Đã dự đủ " + soBuoiPhaiDu + " buổi đào tạo bắt buộc của tuần";
+        }
+
+        kpiCalculationService.updateKpiPoints(userId, "attendance", chenh,
+                thuHai.plusDays(2).atTime(12, 0).atZone(VN_ZONE), dienGiai);
+
+        var g = ghiNhan.orElseGet(KpiAutoGrant::new);
+        g.setUserId(userId);
+        g.setPeriod(tuan);
+        g.setGrantType(GRANT_TUAN);
+        g.setCategory("attendance");
+        g.setPoints(mucDung);
+        g.setReason(mucDung > 0
+                ? "Dự đủ các buổi đào tạo bắt buộc của tuần " + tuan
+                : "Thiếu buổi đào tạo bắt buộc trong tuần " + tuan);
+        kpiAutoGrantRepository.save(g);
+    }
+
+    /** Nhân sự đã phủ hết các buổi đào tạo nhóm đã kết thúc trong tuần chưa. */
+    private boolean duDieuKienDiemDaoTao(Long userId, LocalDate thuHai) {
+        for (TrainingSession s : buoiBatBuocTrongTuan(userId, thuHai)) {
+            if (!trainingAttendeeRepository.existsBySessionIdAndUserId(s.getId(), userId)) {
+                return false; // nợ một buổi là mất cả 15đ
+            }
+        }
+        return true;
+    }
+
+    private int demBuoiBatBuoc(Long userId, LocalDate thuHai) {
+        return buoiBatBuocTrongTuan(userId, thuHai).size();
+    }
+
+    /**
+     * Những buổi đào tạo nhóm trong tuần mà nhân sự này phải chịu trách nhiệm.
+     *
+     * <p>Bỏ qua buổi chưa kết thúc — còn ở phía trước thì chưa thể coi là bỏ lỡ.
+     * Cũng bỏ qua buổi diễn ra trước ngày người này vào công ty.
+     */
+    private List<TrainingSession> buoiBatBuocTrongTuan(Long userId, LocalDate thuHai) {
+        ZonedDateTime tu = thuHai.atStartOfDay(VN_ZONE);
+        ZonedDateTime den = thuHai.plusDays(7).atStartOfDay(VN_ZONE);
+        ZonedDateTime bayGio = ZonedDateTime.now(VN_ZONE);
+
+        LocalDate ngayVao = userRepository.findById(userId)
+                .map(com.trilong.kpibackend.modules.user.service.UserService::joinedDateOf)
+                .orElse(null);
+
+        return trainingSessionRepository.findTrongKhoang(tu, den).stream()
+                .filter(s -> s.getEndTime() != null && !s.getEndTime().isAfter(bayGio))
+                .filter(s -> ngayVao == null || s.getStartTime() == null
+                        || !s.getStartTime().withZoneSameInstant(VN_ZONE).toLocalDate().isBefore(ngayVao))
+                .toList();
+    }
+
+    /** Chấm lại điểm đào tạo tuần này cho toàn bộ nhân sự đang làm việc. */
+    @Transactional
+    public int chamDiemDaoTaoTuanChoTatCa(ZonedDateTime mocTrongTuan) {
+        int n = 0;
+        for (User u : userRepository.findAll()) {
+            if (!"ACTIVE".equals(u.getStatus())) continue;
+            if ("ADMIN".equals(u.getRole())) continue; // không thuộc diện chấm KPI
+            try {
+                chamDiemDaoTaoTuan(u.getId(), mocTrongTuan);
+                n++;
+            } catch (Exception e) {
+                log.warn("[Đào tạo] Không chấm được điểm tuần cho userId={}: {}", u.getId(), e.getMessage());
+            }
+        }
+        return n;
     }
 
     @Transactional
@@ -89,6 +194,12 @@ public class TrainingService {
         TrainingSession daLuu = trainingSessionRepository.save(session);
         // Ai đã học nhóm kỹ năng này ở buổi trước thì đánh dấu sẵn, khỏi phải học lại
         tuDiemDanhNguoiDaHocNhom(daLuu);
+
+        // Buổi mới làm phát sinh nghĩa vụ cho cả công ty. Chưa tới giờ học thì
+        // chưa ai nợ, nhưng vẫn chấm lại để trường hợp Admin tạo bù một buổi đã
+        // diễn ra được phản ánh ngay.
+        chamDiemDaoTaoTuanChoTatCa(daLuu.getStartTime() != null
+                ? daLuu.getStartTime() : ZonedDateTime.now(VN_ZONE));
         return daLuu;
     }
 
@@ -227,14 +338,9 @@ public class TrainingService {
 
         TrainingAttendee savedAttendee = trainingAttendeeRepository.save(attendee);
 
-        // Cộng điểm học tập, áp trần 15đ/tuần
-        int pts = trainingPointsToAward(userId, attendee.getAttendedAt());
-        if (pts > 0) {
-            kpiCalculationService.updateKpiPoints(userId, "attendance", pts, attendee.getAttendedAt(),
-                    "Học buổi đào tạo “" + session.getTitle() + "”");
-        }
-
         tuDiemDanhCungNhomKyNang(session, userId);
+        // Điểm đào tạo chấm theo TUẦN, không cộng lẻ từng buổi
+        chamDiemDaoTaoTuan(userId, attendee.getAttendedAt());
         return savedAttendee;
     }
 
@@ -270,14 +376,8 @@ public class TrainingService {
                 .build();
 
         TrainingAttendee savedAttendee = trainingAttendeeRepository.save(attendee);
-        // Điểm danh thủ công cũng áp trần 15đ/tuần như quét QR
-        int pts = trainingPointsToAward(userId, attendee.getAttendedAt());
-        if (pts > 0) {
-            kpiCalculationService.updateKpiPoints(userId, "attendance", pts, attendee.getAttendedAt(),
-                    "Được điểm danh buổi đào tạo “" + session.getTitle() + "”");
-        }
-
         tuDiemDanhCungNhomKyNang(session, userId);
+        chamDiemDaoTaoTuan(userId, attendee.getAttendedAt());
         return savedAttendee;
     }
 
@@ -366,6 +466,13 @@ public class TrainingService {
         return trainingRsvpRepository.findBySessionIdAndUserId(sessionId, userId);
     }
 
+    /** Mốc thời gian của một buổi học, để biết nó thuộc tuần nào. */
+    private ZonedDateTime mocCuaBuoi(Long sessionId) {
+        return trainingSessionRepository.findById(sessionId)
+                .map(TrainingSession::getStartTime)
+                .orElseGet(() -> ZonedDateTime.now(VN_ZONE));
+    }
+
     /** Đơn xin vắng đang chờ duyệt, kèm sẵn tên nhân sự và tên buổi học. */
     public List<TrainingRsvpResponseDTO> donXinVangChoDuyetDayDu() {
         return kemThongTin(trainingRsvpRepository.donChoDuyet());
@@ -428,14 +535,10 @@ public class TrainingService {
 
         if (chapNhan && !trainingAttendeeRepository
                 .existsBySessionIdAndUserId(rsvp.getSessionId(), rsvp.getUserId())) {
-            TrainingAttendee mien = ghiDiemDanhTuDong(rsvp.getSessionId(), rsvp.getUserId(), "EXEMPT");
-            int pts = trainingPointsToAward(rsvp.getUserId(), mien.getAttendedAt());
-            if (pts > 0) {
-                kpiCalculationService.updateKpiPoints(rsvp.getUserId(), "attendance", pts,
-                        mien.getAttendedAt(),
-                        "Được miễn buổi đào tạo “" + tenBuoi(rsvp.getSessionId()) + "” — Admin duyệt lý do");
-            }
+            ghiDiemDanhTuDong(rsvp.getSessionId(), rsvp.getUserId(), "EXEMPT");
         }
+        // Duyệt hay từ chối đều làm đổi tình trạng "nợ buổi" của tuần đó
+        chamDiemDaoTaoTuan(rsvp.getUserId(), mocCuaBuoi(rsvp.getSessionId()));
         return daLuu;
     }
 
@@ -456,12 +559,15 @@ public class TrainingService {
         TrainingAttendee attendee = trainingAttendeeRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Học viên chưa điểm danh buổi học này!"));
 
-        // Dòng nào chưa từng được cộng điểm thì gỡ ra cũng không trừ
-        if (attendee.tinhDiem()) {
-            kpiCalculationService.updateKpiPoints(userId, "attendance", -KPI_POINTS_TRAINING,
-                    attendee.getAttendedAt(), "Bị gỡ khỏi danh sách học buổi “" + tenBuoi(sessionId) + "”");
-        }
+        ZonedDateTime moc = attendee.getAttendedAt() != null
+                ? attendee.getAttendedAt() : mocCuaBuoi(sessionId);
         trainingAttendeeRepository.delete(attendee);
+        trainingAttendeeRepository.flush(); // chấm lại phải thấy dòng đã bị gỡ
+
+        // Không trừ lẻ nữa: gỡ khỏi một buổi có thể làm nhân sự nợ buổi đó và
+        // mất trọn 15đ của tuần, mà cũng có thể chẳng ảnh hưởng gì nếu buổi ấy
+        // chưa kết thúc. Chấm lại cả tuần rồi cộng/trừ đúng phần chênh.
+        chamDiemDaoTaoTuan(userId, moc);
     }
 
     /** Tên buổi đào tạo để ghép vào nhật ký điểm; không có thì gọi theo mã. */
@@ -477,18 +583,19 @@ public class TrainingService {
         TrainingSession session = trainingSessionRepository.findById(sessionId)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy buổi đào tạo có ID: " + sessionId));
 
-        // Trừ điểm của tất cả học viên đã tham gia lớp này
         List<TrainingAttendee> attendees = trainingAttendeeRepository.findBySessionId(sessionId);
-        for (TrainingAttendee attendee : attendees) {
-            if (!attendee.tinhDiem()) continue; // chưa cộng thì không trừ
-            kpiCalculationService.updateKpiPoints(attendee.getUserId(), "attendance", -KPI_POINTS_TRAINING,
-                    attendee.getAttendedAt(), "Buổi đào tạo “" + session.getTitle() + "” đã bị xóa");
-        }
+        ZonedDateTime moc = session.getStartTime() != null
+                ? session.getStartTime() : ZonedDateTime.now(VN_ZONE);
+        var lienQuan = attendees.stream().map(TrainingAttendee::getUserId).distinct().toList();
 
         // Xóa tất cả học viên điểm danh trước để tránh lỗi Foreign Key
         trainingAttendeeRepository.deleteAll(attendees);
-
         trainingSessionRepository.delete(session);
+        trainingSessionRepository.flush();
+
+        // Buổi biến mất khỏi tuần thì không ai còn nợ nó nữa — chấm lại cho
+        // những người từng có tên, thay vì trừ lẻ điểm của từng người.
+        for (Long uid : lienQuan) chamDiemDaoTaoTuan(uid, moc);
     }
 
     @Transactional
@@ -504,14 +611,11 @@ public class TrainingService {
         session.setStatus(status);
         TrainingSession saved = trainingSessionRepository.save(session);
 
-        // Nếu chuyển sang CANCELLED, thu hồi điểm của tất cả mọi người
+        // Hủy buổi thì buổi đó không còn là nghĩa vụ của ai — chấm lại cả tuần
+        // cho mọi nhân sự, vì người VẮNG buổi bị hủy cũng phải được xóa nợ.
         if ("CANCELLED".equals(status)) {
-            List<TrainingAttendee> attendees = trainingAttendeeRepository.findBySessionId(sessionId);
-            for (TrainingAttendee attendee : attendees) {
-                if (!attendee.tinhDiem()) continue; // chưa cộng thì không trừ
-                kpiCalculationService.updateKpiPoints(attendee.getUserId(), "attendance", -KPI_POINTS_TRAINING,
-                        attendee.getAttendedAt(), "Buổi đào tạo “" + session.getTitle() + "” đã bị hủy");
-            }
+            chamDiemDaoTaoTuanChoTatCa(session.getStartTime() != null
+                    ? session.getStartTime() : ZonedDateTime.now(VN_ZONE));
         }
 
         return saved;
@@ -554,21 +658,24 @@ public class TrainingService {
             session.setVideoUrl(dto.getVideoUrl().isBlank() ? null : dto.getVideoUrl());
         }
         // Cập nhật trạng thái buổi học (Admin thay đổi từ form Edit)
+        boolean vuaHuy = false;
         if (dto.getStatus() != null && !dto.getStatus().isBlank()) {
             String oldStatus = session.getStatus();
             String newStatus = dto.getStatus();
             session.setStatus(newStatus);
-            // Nếu chuyển sang CANCELLED, thu hồi điểm KPI của học viên
-            if ("CANCELLED".equals(newStatus) && !oldStatus.equals(newStatus)) {
-                List<TrainingAttendee> attendees = trainingAttendeeRepository.findBySessionId(sessionId);
-                for (TrainingAttendee attendee : attendees) {
-                    kpiCalculationService.updateKpiPoints(attendee.getUserId(), "attendance", -KPI_POINTS_TRAINING,
-                            attendee.getAttendedAt(), "Buổi đào tạo “" + session.getTitle() + "” đã bị hủy");
-                }
-            }
+            vuaHuy = "CANCELLED".equals(newStatus) && !"CANCELLED".equals(oldStatus);
         }
 
-        return trainingSessionRepository.save(session);
+        TrainingSession daLuu = trainingSessionRepository.save(session);
+
+        // Đổi giờ, đổi loại hay hủy buổi đều làm đổi nghĩa vụ của cả tuần, nên
+        // chấm lại cho mọi người thay vì trừ lẻ điểm từng học viên.
+        if (vuaHuy || dto.getStartTime() != null || dto.getDurationMinutes() != null
+                || dto.getTrainingType() != null || dto.getSkillGroup() != null) {
+            chamDiemDaoTaoTuanChoTatCa(daLuu.getStartTime() != null
+                    ? daLuu.getStartTime() : ZonedDateTime.now(VN_ZONE));
+        }
+        return daLuu;
     }
 }
 

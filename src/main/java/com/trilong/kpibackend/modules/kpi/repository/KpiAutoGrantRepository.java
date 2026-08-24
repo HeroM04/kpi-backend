@@ -11,6 +11,9 @@ public interface KpiAutoGrantRepository extends JpaRepository<KpiAutoGrant, Long
 
     boolean existsByUserIdAndPeriodAndGrantType(Long userId, String period, String grantType);
 
+    java.util.Optional<KpiAutoGrant> findByUserIdAndPeriodAndGrantType(
+            Long userId, String period, String grantType);
+
     List<KpiAutoGrant> findByPeriodAndGrantType(String period, String grantType);
 
     List<KpiAutoGrant> findByUserIdOrderByGrantedAtDesc(Long userId);

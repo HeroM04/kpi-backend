@@ -154,6 +154,13 @@
 			<artifactId>spring-security-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+
+		<!-- Firebase Admin SDK: gửi thông báo đẩy tới thiết bị qua FCM -->
+		<dependency>
+			<groupId>com.google.firebase</groupId>
+			<artifactId>firebase-admin</artifactId>
+			<version>9.4.1</version>
+		</dependency>
 	</dependencies>
 
 

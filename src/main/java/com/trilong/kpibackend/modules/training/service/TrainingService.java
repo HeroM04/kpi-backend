@@ -22,6 +22,7 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -35,6 +36,7 @@ public class TrainingService {
     private final KpiAutoGrantRepository kpiAutoGrantRepository;
     private final UserRepository userRepository;
     private final KpiCalculationService kpiCalculationService;
+    private final com.trilong.kpibackend.modules.notification.service.PushNotificationService pushNotificationService;
 
     private static final ZoneId VN_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
 
@@ -200,7 +202,31 @@ public class TrainingService {
         // diễn ra được phản ánh ngay.
         chamDiemDaoTaoTuanChoTatCa(daLuu.getStartTime() != null
                 ? daLuu.getStartTime() : ZonedDateTime.now(VN_ZONE));
+
+        baoCoBuoiDaoTaoMoi(daLuu);
         return daLuu;
+    }
+
+    /** Đẩy thông báo cho toàn bộ nhân sự khi có buổi đào tạo mới. */
+    private void baoCoBuoiDaoTaoMoi(TrainingSession s) {
+        try {
+            List<Long> nhanSu = userRepository.findAll().stream()
+                    .filter(u -> "ACTIVE".equals(u.getStatus()))
+                    .filter(u -> "SALE".equals(u.getRole()) || "TRUONG_PHONG".equals(u.getRole()))
+                    .map(User::getId)
+                    .toList();
+            boolean duAn = "PROJECT".equals(s.getTrainingType());
+            String khi = s.getStartTime() == null ? "" :
+                    " lúc " + s.getStartTime().withZoneSameInstant(VN_ZONE)
+                            .format(java.time.format.DateTimeFormatter.ofPattern("HH:mm dd/MM"));
+            pushNotificationService.guiToiNhieuNguoi(nhanSu,
+                    duAn ? "Đào tạo dự án — bắt buộc tham gia" : "Có buổi đào tạo mới",
+                    "“" + s.getTitle() + "”" + khi
+                            + (duAn ? ". Mở app để xác nhận tham gia hoặc xin vắng." : "."),
+                    Map.of("type", "training", "sessionId", String.valueOf(s.getId())));
+        } catch (Exception e) {
+            log.warn("[Push] Không gửi được thông báo buổi đào tạo mới: {}", e.getMessage());
+        }
     }
 
     public List<TrainingSession> getAllSessions() {
@@ -459,7 +485,25 @@ public class TrainingService {
         rsvp.setReviewedBy(null);
         rsvp.setReviewedAt(null);
         rsvp.setReviewNote(null);
-        return trainingRsvpRepository.save(rsvp);
+        TrainingRsvp daLuu = trainingRsvpRepository.save(rsvp);
+
+        // Có đơn xin vắng thì báo cho người duyệt biết mà xử lý.
+        if (xinVang) {
+            try {
+                List<Long> nguoiDuyet = userRepository.findAll().stream()
+                        .filter(u -> "ACTIVE".equals(u.getStatus()))
+                        .filter(u -> "ADMIN".equals(u.getRole()) || "TRUONG_PHONG".equals(u.getRole()))
+                        .map(User::getId).toList();
+                String tenNguoiGui = userRepository.findById(userId).map(User::getFullName).orElse("Nhân sự");
+                pushNotificationService.guiToiNhieuNguoi(nguoiDuyet,
+                        "Đơn xin vắng đào tạo",
+                        tenNguoiGui + " xin vắng buổi “" + session.getTitle() + "”. Chờ bạn duyệt.",
+                        Map.of("type", "rsvp", "sessionId", String.valueOf(sessionId)));
+            } catch (Exception e) {
+                log.warn("[Push] Không gửi được thông báo đơn xin vắng: {}", e.getMessage());
+            }
+        }
+        return daLuu;
     }
 
     public Optional<TrainingRsvp> traLoiCuaToi(Long sessionId, Long userId) {
@@ -539,6 +583,19 @@ public class TrainingService {
         }
         // Duyệt hay từ chối đều làm đổi tình trạng "nợ buổi" của tuần đó
         chamDiemDaoTaoTuan(rsvp.getUserId(), mocCuaBuoi(rsvp.getSessionId()));
+
+        // Báo lại cho nhân sự biết đơn được duyệt hay bị từ chối.
+        try {
+            String ten = tenBuoi(rsvp.getSessionId());
+            pushNotificationService.guiToiNhanSu(rsvp.getUserId(),
+                    chapNhan ? "Đơn xin vắng được duyệt" : "Đơn xin vắng bị từ chối",
+                    chapNhan
+                            ? "Bạn được miễn buổi “" + ten + "”, vẫn được tính điểm danh."
+                            : "Buổi “" + ten + "”: bạn vẫn cần tham gia và quét mã điểm danh.",
+                    Map.of("type", "rsvp_result", "sessionId", String.valueOf(rsvp.getSessionId())));
+        } catch (Exception e) {
+            log.warn("[Push] Không gửi được kết quả duyệt đơn: {}", e.getMessage());
+        }
         return daLuu;
     }
 

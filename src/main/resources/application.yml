@@ -57,6 +57,13 @@ cloudinary:
   api-key: ${CLOUDINARY_API_KEY:}
   api-secret: ${CLOUDINARY_API_SECRET:}
 
+# Firebase — gửi thông báo đẩy tới điện thoại.
+# Nạp NỘI DUNG tệp service account JSON (không phải đường dẫn) qua biến môi
+# trường FIREBASE_SERVICE_ACCOUNT. Để trống thì thông báo đẩy tắt, hệ thống vẫn
+# chạy bình thường. KHÔNG ghi thẳng vào đây — file này lên Git.
+firebase:
+  service-account: ${FIREBASE_SERVICE_ACCOUNT:}
+
 springdoc:
   api-docs:
     enabled: true

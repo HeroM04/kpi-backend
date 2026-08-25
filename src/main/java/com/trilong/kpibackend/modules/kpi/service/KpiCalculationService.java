@@ -34,6 +34,7 @@ public class KpiCalculationService {
     private final KpiLedgerEntryRepository kpiLedgerEntryRepository;
     private final UserRepository userRepository;
     private final SimpMessagingTemplate messagingTemplate;
+    private final com.trilong.kpibackend.modules.notification.service.PushNotificationService pushNotificationService;
 
     private static final DateTimeFormatter MONTH_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM");
     private static final ZoneId VN_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
@@ -373,6 +374,21 @@ public class KpiCalculationService {
             kpiLedgerEntryRepository.save(buocGhi);
         } catch (Exception e) {
             log.warn("[KPI] Không ghi được nhật ký điểm cho userId={}: {}", userId, e.getMessage());
+        }
+
+        // Báo thông báo đẩy khi điểm thực sự đổi. Bỏ qua lần điều chỉnh 0đ (ví
+        // dụ chấm lại đào tạo tuần mà không có gì thay đổi) để khỏi làm phiền.
+        if (diemThucNhan != 0) {
+            try {
+                boolean cong = diemThucNhan > 0;
+                pushNotificationService.guiToiNhanSu(userId,
+                        cong ? "Bạn được cộng " + diemThucNhan + "đ KPI"
+                             : "Bạn bị trừ " + (-diemThucNhan) + "đ KPI",
+                        rutGon(dienGiai, 200),
+                        Map.of("type", "kpi"));
+            } catch (Exception e) {
+                log.warn("[Push] Không gửi được thông báo điểm KPI cho userId={}: {}", userId, e.getMessage());
+            }
         }
 
         int currentWeeklyTotal = kpiWeeklyScoreRepository.findByUserIdAndWeek(userId, getWeekString(ZonedDateTime.now()))

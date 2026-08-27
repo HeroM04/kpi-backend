@@ -26,6 +26,8 @@ import java.util.Map;
 public class DeviceTokenController {
 
     private final DeviceTokenRepository deviceTokenRepository;
+    private final com.trilong.kpibackend.modules.user.repository.UserRepository userRepository;
+    private final com.trilong.kpibackend.modules.notification.service.PushNotificationService pushNotificationService;
 
     @Operation(summary = "Đăng ký mã thiết bị của mình")
     @PostMapping("/register")
@@ -48,6 +50,47 @@ public class DeviceTokenController {
         deviceTokenRepository.save(dt);
 
         return ResponseEntity.ok(Map.of("status", "SUCCESS"));
+    }
+
+    @Operation(
+            summary = "Tình trạng thông báo đẩy (Admin)",
+            description = """
+                    Cho biết thông báo đẩy đã chạy được chưa, không phải đoán mò:
+
+                    - `pushConfigured` — máy chủ đã nạp khóa Firebase chưa. False nghĩa là
+                      thiếu biến môi trường FIREBASE_SERVICE_ACCOUNT trên Render.
+                    - `totalDevices` — bao nhiêu máy đã đăng ký nhận. Bằng 0 nghĩa là chưa
+                      ai mở bản app mới, hoặc app chưa xin được quyền thông báo.
+
+                    Có cả hai điều kiện thì thông báo đẩy hoạt động.
+                    """
+    )
+    @GetMapping("/status")
+    @PreAuthorize("hasRole('ADMIN') or hasAuthority('user:manage')")
+    public ResponseEntity<?> status() {
+        var tatCa = deviceTokenRepository.findAll();
+        long android = tatCa.stream().filter(d -> "android".equalsIgnoreCase(d.getPlatform())).count();
+        long ios = tatCa.stream().filter(d -> "ios".equalsIgnoreCase(d.getPlatform())).count();
+
+        // Vài máy đăng ký gần nhất — đủ để biết bản app mới đã tới tay ai chưa
+        var ganDay = tatCa.stream()
+                .filter(d -> d.getUpdatedAt() != null)
+                .sorted((a, b) -> b.getUpdatedAt().compareTo(a.getUpdatedAt()))
+                .limit(10)
+                .map(d -> Map.of(
+                        "userId", d.getUserId(),
+                        "userFullName", userRepository.findById(d.getUserId())
+                                .map(u -> (Object) u.getFullName()).orElse("?"),
+                        "platform", d.getPlatform() == null ? "?" : d.getPlatform(),
+                        "updatedAt", d.getUpdatedAt().toString()))
+                .toList();
+
+        return ResponseEntity.ok(Map.of("status", "SUCCESS", "data", Map.of(
+                "pushConfigured", pushNotificationService.daCauHinh(),
+                "totalDevices", tatCa.size(),
+                "android", android,
+                "ios", ios,
+                "recent", ganDay)));
     }
 
     @Operation(summary = "Gỡ mã thiết bị (khi đăng xuất)")

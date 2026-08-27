@@ -42,6 +42,11 @@ public class PushNotificationService {
 
     private volatile boolean khaDung = false;
 
+    /** Firebase đã cấu hình xong và sẵn sàng gửi thông báo chưa. */
+    public boolean daCauHinh() {
+        return khaDung;
+    }
+
     @PostConstruct
     void khoiTao() {
         if (serviceAccountJson == null || serviceAccountJson.isBlank()) {

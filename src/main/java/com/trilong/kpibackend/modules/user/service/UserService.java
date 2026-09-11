@@ -167,9 +167,17 @@ public class UserService {
             user.setPasswordHash(passwordEncoder.encode(dto.getPassword()));
         }
         if (dto.getDepartmentId() != null) {
-            Department dept = departmentRepository.findById(dto.getDepartmentId())
-                    .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy phòng ban với ID: " + dto.getDepartmentId()));
-            user.setDepartment(dept);
+            // Truyền 0 để gỡ khỏi phòng ban — cùng quy ước với referrerId bên dưới.
+            // Trước đây WebAdmin gửi departmentId = null để gỡ, nhưng null ở đây
+            // nghĩa là "không sửa trường này" nên bị bỏ qua: máy chủ trả 200, web
+            // báo "Đã gỡ", mà người vẫn nằm nguyên trong phòng.
+            if (dto.getDepartmentId() == 0L) {
+                user.setDepartment(null);
+            } else {
+                Department dept = departmentRepository.findById(dto.getDepartmentId())
+                        .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy phòng ban với ID: " + dto.getDepartmentId()));
+                user.setDepartment(dept);
+            }
         }
         if (dto.getReferrerId() != null) {
             // Truyền 0 để gỡ người giới thiệu (JSON null không phân biệt được với "không sửa")

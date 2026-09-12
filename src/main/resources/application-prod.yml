@@ -14,6 +14,17 @@ spring:
         format_sql: false
         hbm2ddl.create_namespaces: true
 
+server:
+  tomcat:
+    threads:
+      # Mặc định 200 luồng là cho máy nhiều CPU. Container 0.1–0.5 CPU chạy 200
+      # luồng chỉ tốn RAM và tranh nhau CPU; 40 luồng đã dư cho 200 người chấm
+      # công rải trong 15 phút (~0,3 yêu cầu/giây). Quá số này thì xếp hàng chờ
+      # (accept-count) thay vì đẩy container vào ngưỡng hết bộ nhớ.
+      max: 40
+      min-spare: 4
+    accept-count: 200
+
 app:
   storage:
     type: s3 # Trên prod sẽ tự động lưu ảnh lên S3 (hoặc Cloudinary)

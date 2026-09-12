@@ -28,6 +28,11 @@ EXPOSE 8088
 
 # Mặc định chạy profile prod (đọc DATABASE_URL, AWS_* từ biến môi trường)
 ENV SPRING_PROFILES_ACTIVE=prod
-ENV JAVA_OPTS=""
+# Cỡ bộ nhớ cho container nhỏ (Render Free/Starter: 512 MB). Mặc định JDK 17 chỉ
+# lấy 25% RAM container làm heap (= 128 MB) — Spring Boot + Hibernate cần hơn
+# thế, tới giờ chấm công 200 người cùng lúc là thiếu. Lấy 60% (~300 MB), phần
+# còn lại cho metaspace, luồng và bộ đệm. Serial GC gọn nhất ở 1 CPU; -Xss512k
+# giảm bộ nhớ mỗi luồng (mặc định 1 MB × số luồng Tomcat).
+ENV JAVA_OPTS="-XX:MaxRAMPercentage=60 -XX:+UseSerialGC -Xss512k"
 
 ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]

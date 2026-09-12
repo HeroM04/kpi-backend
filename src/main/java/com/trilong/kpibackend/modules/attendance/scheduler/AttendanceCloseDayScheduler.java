@@ -30,12 +30,34 @@ public class AttendanceCloseDayScheduler {
     // kịp được ghi nhận trước khi hệ thống chấm vắng không phép.
     @Scheduled(cron = "0 59 23 * * *", zone = "Asia/Ho_Chi_Minh")
     public void closeToday() {
-        LocalDate today = LocalDate.now(VN_ZONE);
+        chot(LocalDate.now(VN_ZONE), "Scheduled 23:59");
+    }
+
+    /**
+     * Chạy bù HÔM QUA một lần sau khi máy chủ khởi động.
+     *
+     * <p>Lịch 23:59 chỉ chạy khi máy chủ đang thức. Trên Render gói miễn phí,
+     * dịch vụ ngủ sau 15 phút không ai gọi — buổi tối gần như chắc chắn ngủ,
+     * nên ngày hôm đó không được chốt: ai không chấm công cũng không bị ghi
+     * vắng, và không ai biết vì không có lỗi nào được ghi ra. Deploy bản mới
+     * cũng khởi động lại giữa chừng và có thể trượt đúng mốc 23:59.
+     *
+     * <p>Chỉ bù đúng một ngày (hôm qua), không lùi xa hơn: {@code closeDay}
+     * không chấm trùng, nhưng bù nhiều ngày một lúc sẽ làm điểm trừ của cả
+     * tuần trước đột ngột đổ về trong một buổi sáng — nhân sự không hiểu vì
+     * sao. Chủ nhật {@code closeDay} tự bỏ qua.
+     */
+    @Scheduled(initialDelay = 90_000, fixedDelay = Long.MAX_VALUE)
+    public void closeYesterdayOnStartup() {
+        chot(LocalDate.now(VN_ZONE).minusDays(1), "Startup, chạy bù hôm qua");
+    }
+
+    private void chot(LocalDate ngay, String nguon) {
         try {
-            int count = leaveRequestService.closeDay(today);
-            log.info("[Scheduler] Chốt chấm công ngày {} — {} nhân sự vắng không phép.", today, count);
+            int count = leaveRequestService.closeDay(ngay);
+            log.info("[Scheduler][{}] Chốt chấm công ngày {} — {} nhân sự vắng không phép.", nguon, ngay, count);
         } catch (Exception e) {
-            log.error("[Scheduler] Lỗi khi chốt chấm công ngày {}: {}", today, e.getMessage(), e);
+            log.error("[Scheduler][{}] Lỗi khi chốt chấm công ngày {}: {}", nguon, ngay, e.getMessage(), e);
         }
     }
 }

@@ -21,6 +21,20 @@ public class ReferralRewardScheduler {
 
     @Scheduled(cron = "0 20 23 * * *", zone = "Asia/Ho_Chi_Minh")
     public void grantMaturedReferrals() {
+        chay();
+    }
+
+    /**
+     * Chạy bù một lần sau khi khởi động — lịch 23:20 không chạy nếu máy chủ đang
+     * ngủ (Render miễn phí) hoặc vừa deploy. Việc này không chấm trùng (mỗi đơn
+     * chỉ được thưởng một lần) nên chạy thêm lúc nào cũng an toàn.
+     */
+    @Scheduled(initialDelay = 120_000, fixedDelay = Long.MAX_VALUE)
+    public void grantOnStartup() {
+        chay();
+    }
+
+    private void chay() {
         try {
             var result = referralRewardService.grantMaturedReferrals();
             if (result.granted() > 0) {

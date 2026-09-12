@@ -134,8 +134,12 @@ public class ReferralSubmissionService {
         CreateUserDTO createDto = new CreateUserDTO();
         createDto.setFullName(req.getCandidateName());
         createDto.setPhoneNumber(req.getCandidatePhone());
-        createDto.setPassword(dto.getPassword() != null && !dto.getPassword().isBlank()
-                ? dto.getPassword() : "123456");
+        // Không tự gán 123456 nữa: mật khẩu chung ai cũng đoán được, và con số này
+        // từng hiện công khai trên màn hình đăng nhập app. Admin phải đặt riêng.
+        if (dto.getPassword() == null || dto.getPassword().trim().length() < 6) {
+            throw new IllegalArgumentException("Cần đặt mật khẩu ban đầu (ít nhất 6 ký tự) cho tài khoản mới.");
+        }
+        createDto.setPassword(dto.getPassword().trim());
         createDto.setRole(dto.getRole() != null && !dto.getRole().isBlank() ? dto.getRole() : "SALE");
         createDto.setDepartmentId(dto.getDepartmentId());
         createDto.setReferrerId(req.getReferrerId());

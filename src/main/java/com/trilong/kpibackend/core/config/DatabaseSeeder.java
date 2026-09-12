@@ -7,6 +7,7 @@ import com.trilong.kpibackend.modules.user.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,6 +17,10 @@ import java.util.List;
  * DatabaseSeeder — tự động nạp dữ liệu mẫu cho phòng ban và người dùng
  * khi ứng dụng khởi chạy lần đầu nếu cơ sở dữ liệu trống.
  */
+// Chỉ chạy ở máy dev (application.yml đặt profile dev). Render chạy profile prod
+// (Dockerfile: SPRING_PROFILES_ACTIVE=prod) nên KHÔNG BAO GIỜ gieo tài khoản mẫu
+// 0900000001…05 / 123456 lên hệ thống thật — kể cả khi DB trống sau này.
+@Profile("dev")
 @Component
 public class DatabaseSeeder implements CommandLineRunner {
 

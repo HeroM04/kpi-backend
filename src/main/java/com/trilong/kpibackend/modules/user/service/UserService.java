@@ -151,6 +151,18 @@ public class UserService {
         if (dto.getFullName() != null) {
             user.setFullName(dto.getFullName());
         }
+        if (dto.getPhoneNumber() != null) {
+            String sdt = dto.getPhoneNumber().trim();
+            if (!sdt.isEmpty() && !sdt.equals(user.getPhoneNumber())) {
+                // SĐT là tên đăng nhập — trùng người khác là hai người cùng một
+                // tài khoản. Kiểm ở đây để báo câu rõ ràng, không đợi DB ném lỗi
+                // unique constraint khó hiểu.
+                if (userRepository.existsByPhoneNumber(sdt)) {
+                    throw new IllegalArgumentException("Số điện thoại " + sdt + " đã thuộc về nhân sự khác.");
+                }
+                user.setPhoneNumber(sdt);
+            }
+        }
         if (dto.getRole() != null) {
             user.setRole(dto.getRole().toUpperCase());
         }

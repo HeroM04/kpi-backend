@@ -11,6 +11,13 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class UpdateUserDTO {
     private String fullName;
+
+    /**
+     * Số điện thoại mới. Đây là tên đăng nhập và là khóa ghép với website, nên
+     * máy chủ kiểm trùng trước khi đổi. Bỏ trống = giữ nguyên.
+     */
+    private String phoneNumber;
+
     private String role;
     private String status;
     private Long departmentId;

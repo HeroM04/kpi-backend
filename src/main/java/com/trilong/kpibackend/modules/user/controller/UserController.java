@@ -168,6 +168,18 @@ public class UserController {
                 "data", Map.of("granted", result.granted(), "details", result.details())));
     }
 
+    @Operation(summary = "XÓA VĨNH VIỄN nhân sự đã khóa cùng toàn bộ dữ liệu (chấm công, KPI, giao dịch, bài đăng, lương...). Không khôi phục được. Dành cho tài khoản thử nghiệm.")
+    @DeleteMapping("/{id}/purge")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> purgeUser(@PathVariable Long id) {
+        try {
+            Map<String, Integer> daXoa = userService.purgeUser(id);
+            return ResponseEntity.ok(Map.of("status", "SUCCESS", "message", "Đã xóa vĩnh viễn", "data", daXoa));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("status", "ERROR", "message", e.getMessage()));
+        }
+    }
+
     @Operation(summary = "Vô hiệu hóa tài khoản nhân viên (Xóa mềm)")
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('user:manage')")

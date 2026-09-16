@@ -35,6 +35,10 @@ public class UserService {
     private final KpiCalculationService kpiCalculationService;
     private final CheckinLogRepository checkinLogRepository;
 
+    /** Dùng cho purgeUser — xóa thẳng theo tên bảng, không qua entity. */
+    @jakarta.persistence.PersistenceContext
+    private jakarta.persistence.EntityManager em;
+
     public List<UserDTO> getAllUsers() {
         return userRepository.findAll().stream()
                 .map(this::convertToDTO)
@@ -242,6 +246,79 @@ public class UserService {
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy nhân viên với ID: " + id));
         user.setStatus("INACTIVE"); // Xoá mềm để giữ data chấm công, kpi, lương
         userRepository.save(user);
+    }
+
+    /**
+     * XÓA VĨNH VIỆN một nhân sự cùng toàn bộ dữ liệu của người đó.
+     *
+     * Khác với {@link #deleteUser} (xóa mềm, giữ lịch sử để tính lương và đối
+     * chiếu), hàm này dùng cho tài khoản thử nghiệm / gieo sẵn khi dựng hệ thống
+     * — thứ không có lịch sử nào đáng giữ, và cứ nằm đó là lọt vào mọi bảng
+     * xếp hạng, biểu đồ, danh sách. Không có đường lùi: chỉ cho xóa khi tài
+     * khoản đã INACTIVE, để phải qua hai bước mới mất dữ liệu thật.
+     *
+     * Dùng SQL thẳng theo tên bảng thay vì đi qua từng repository: 18 bảng tham
+     * chiếu tới users, viết qua entity vừa dài vừa dễ sót một bảng làm DB từ
+     * chối vì khóa ngoại. Bảng nào người này chỉ là người DUYỆT (approved_by,
+     * resolved_by, reviewed_by, referrer_id) thì gỡ tham chiếu, giữ bản ghi —
+     * đó là dữ liệu của người khác.
+     *
+     * @return số dòng đã xóa theo từng bảng, để trả về cho người bấm biết đã mất gì
+     */
+    @Transactional
+    public Map<String, Integer> purgeUser(Long id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy nhân viên với ID: " + id));
+        if ("ACTIVE".equals(user.getStatus())) {
+            throw new IllegalArgumentException(
+                    "Chỉ xóa vĩnh viễn được tài khoản đã khóa (INACTIVE). Hãy bấm Xóa (khóa) trước, rồi mới xóa vĩnh viễn.");
+        }
+
+        Map<String, Integer> daXoa = new java.util.LinkedHashMap<>();
+        // Bảng con trước, bảng cha sau. Mỗi bảng: xóa dòng CỦA người này.
+        String[][] xoa = {
+                {"refresh_tokens",        "user_id"},
+                {"device_tokens",         "user_id"},
+                {"notifications",         "user_id"},
+                {"kpi_ledger_entries",    "user_id"},
+                {"kpi_auto_grants",       "user_id"},
+                {"kpi_weekly_scores",     "user_id"},
+                {"kpi_scores",            "user_id"},
+                {"payrolls",              "user_id"},
+                {"checkin_logs",          "user_id"},
+                {"leave_requests",        "user_id"},
+                {"field_battles",         "user_id"},
+                {"deals",                 "user_id"},
+                {"social_posts",          "user_id"},
+                {"feedbacks",             "sender_id"},
+                {"training_one_on_one",   "user_id"},
+                {"training_attendees",    "user_id"},
+                {"training_rsvps",        "user_id"},
+                {"referral_submissions",  "referrer_id"},
+        };
+        // Bảng người này chỉ là người duyệt / người giới thiệu: gỡ tham chiếu, giữ dòng.
+        String[][] goTruoc = {
+                {"leave_requests",        "reviewed_by"},
+                {"field_battles",         "approved_by"},
+                {"deals",                 "approved_by"},
+                {"social_posts",          "approved_by"},
+                {"feedbacks",             "resolved_by"},
+                {"training_rsvps",        "reviewed_by"},
+                {"referral_submissions",  "reviewed_by"},
+                {"users",                 "referrer_id"},
+        };
+        for (String[] b : goTruoc) {
+            em.createNativeQuery("UPDATE " + b[0] + " SET " + b[1] + " = NULL WHERE " + b[1] + " = :id")
+              .setParameter("id", id).executeUpdate();
+        }
+        for (String[] b : xoa) {
+            int n = em.createNativeQuery("DELETE FROM " + b[0] + " WHERE " + b[1] + " = :id")
+                      .setParameter("id", id).executeUpdate();
+            if (n > 0) daXoa.put(b[0], n);
+        }
+        em.createNativeQuery("DELETE FROM users WHERE id = :id").setParameter("id", id).executeUpdate();
+        daXoa.put("users", 1);
+        return daXoa;
     }
 
     public UserDTO convertToDTO(User user) {

@@ -28,6 +28,17 @@ public class GlobalExceptionHandler {
                 .body(new ErrorResponse("VALIDATION_ERROR", message));
     }
 
+    // File tải lên vượt trần multipart (15 MB). Không bắt riêng thì rơi vào
+    // "Lỗi hệ thống" chung chung, người dùng không biết là do ảnh quá to.
+    @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
+    public ResponseEntity<ErrorResponse> handleFileQuaTo(
+            org.springframework.web.multipart.MaxUploadSizeExceededException ex) {
+        return ResponseEntity
+                .status(HttpStatus.PAYLOAD_TOO_LARGE)
+                .body(new ErrorResponse("FILE_TOO_LARGE",
+                        "Ảnh quá lớn (tối đa 15 MB). Chụp lại ảnh nhỏ hơn hoặc nén trước khi tải."));
+    }
+
     // Bắt RuntimeException (bao gồm lỗi login sai mật khẩu,...)
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<ErrorResponse> handleRuntimeException(RuntimeException ex) {

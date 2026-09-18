@@ -55,6 +55,9 @@ public class CheckinController {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private com.trilong.kpibackend.modules.attendance.service.BangCongService bangCongService;
+
     // ═══════════════════════════════════════════════════════════════════════
     // MOBILE APP — Check-in
     // ═══════════════════════════════════════════════════════════════════════
@@ -184,6 +187,19 @@ public class CheckinController {
             ));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("status", "ERROR", "message", e.getMessage()));
+        }
+    }
+
+    @Operation(summary = "Bảng công tháng — lưới người × ngày",
+            description = "Mỗi người một hàng, mỗi ngày một ô ký hiệu (V đúng giờ, M muộn, ? chờ duyệt, R từ chối, P có phép, X không phép, - Chủ nhật) kèm giờ vào/ra và tổng công/muộn/vắng. month dạng yyyy-MM.")
+    @GetMapping("/monthly-sheet")
+    @PreAuthorize("hasAuthority('attendance:view-all') or hasRole('ADMIN')")
+    public ResponseEntity<?> bangCongThang(@RequestParam String month,
+                                           @RequestParam(required = false) Long departmentId) {
+        try {
+            return ResponseEntity.ok(Map.of("status", "SUCCESS", "data", bangCongService.bangCongThang(month, departmentId)));
+        } catch (java.time.format.DateTimeParseException e) {
+            return ResponseEntity.badRequest().body(Map.of("status", "ERROR", "message", "Tháng không hợp lệ: " + month));
         }
     }
 

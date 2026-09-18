@@ -707,6 +707,18 @@ public class CheckinService {
     }
 
     /**
+     * Giờ vào này đúng giờ hay muộn theo mốc của chính người đó — cùng luật với
+     * chấm điểm chuyên cần, để bảng công tháng và điểm KPI không bao giờ nói
+     * hai kiểu về cùng một lần chấm công.
+     */
+    public boolean laDungGio(User user, ZonedDateTime checkinTime) {
+        LocalTime t = checkinTime.withZoneSameInstant(VN_ZONE).toLocalTime();
+        LocalTime moc = (user != null && Boolean.TRUE.equals(user.getAllowCheckinUntil9()))
+                ? ON_TIME_LIMIT_EXTENDED : ON_TIME_LIMIT;
+        return calculateAttendanceKpi("CHECK_IN", t, moc) > 0;
+    }
+
+    /**
      * Mốc đúng giờ ca sáng áp cho một nhân sự: mặc định 08:45, riêng ai được
      * Admin bật châm chước thì 09:00.
      */

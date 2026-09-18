@@ -50,6 +50,11 @@ public class KpiCalculationService {
     /** Tổng tối đa mỗi tuần */
     public static final int CAP_WEEK = 100;
 
+    /** Vai trò nào bị chấm KPI: chỉ Sale và Trưởng phòng. Văn phòng, Admin chấm công nhưng không có điểm. */
+    public static boolean duocChamKpi(User user) {
+        return user != null && ("SALE".equals(user.getRole()) || "TRUONG_PHONG".equals(user.getRole()));
+    }
+
     /** Giới hạn giá trị trong khoảng [0, max] — điểm tuần không bao giờ âm. */
     private int clamp(int value, int max) {
         return Math.max(0, Math.min(max, value));
@@ -264,6 +269,16 @@ public class KpiCalculationService {
 
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy người dùng có ID: " + userId));
+
+        // Chỉ khối kinh doanh mới bị chấm KPI (bảng tiêu chí 30/40/30 là của Sale
+        // và Trưởng phòng). Văn phòng và Admin vẫn chấm công, vẫn bị ghi vắng mặt
+        // để tính công — nhưng không quy ra điểm, không ghi nhật ký, không nhận
+        // thông báo "bạn bị trừ 15đ" vô nghĩa. Chặn ở đây một lần cho mọi nguồn
+        // điểm (chấm công, chốt vắng đêm, và cả nguồn thêm sau này).
+        if (!duocChamKpi(user)) {
+            log.debug("[KPI] Bỏ qua {} cho userId={} — vai trò {} không chấm KPI", type, userId, user.getRole());
+            return null;
+        }
 
         KpiScore kpiScore = kpiScoreRepository.findByUserIdAndMonth(userId, month)
                 .orElseGet(() -> KpiScore.builder()

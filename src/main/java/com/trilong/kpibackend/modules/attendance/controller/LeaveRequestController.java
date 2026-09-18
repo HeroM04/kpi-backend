@@ -78,11 +78,45 @@ public class LeaveRequestController {
     @GetMapping
     @PreAuthorize("hasAuthority('attendance:view-all') or hasRole('ADMIN')")
     public ResponseEntity<?> all(@RequestParam(required = false) String from,
-                                 @RequestParam(required = false) String to) {
+                                 @RequestParam(required = false) String to,
+                                 @RequestParam(required = false) Integer page,
+                                 @RequestParam(required = false, defaultValue = "20") Integer size,
+                                 @RequestParam(required = false) String loai,
+                                 @RequestParam(required = false) String status,
+                                 @RequestParam(required = false) String search,
+                                 @RequestParam(required = false) Long departmentId) {
         LocalDate f = (from != null && !from.isBlank()) ? LocalDate.parse(from) : null;
         LocalDate t = (to != null && !to.isBlank()) ? LocalDate.parse(to) : null;
+
+        // Có `page` → phân trang ở máy chủ (WebAdmin mới). Không có → trả cả
+        // danh sách như trước, để bản web cũ còn cache không hỏng.
+        if (page != null) {
+            var kq = leaveRequestService.timKiem(loai, status, f, t, search, departmentId, page, size);
+            int coSo = Math.min(Math.max(size, 1), 100);
+            Map<String, Object> res = new HashMap<>();
+            res.put("status", "SUCCESS");
+            res.put("data", kq.banGhi());
+            res.put("page", Map.of(
+                    "number", Math.max(page, 0),
+                    "size", coSo,
+                    "totalElements", kq.tong(),
+                    "totalPages", (int) ((kq.tong() + coSo - 1) / coSo)));
+            return ResponseEntity.ok(res);
+        }
         List<?> data = leaveRequestService.getAll(f, t).stream().map(leaveRequestService::toDTO).toList();
         return ResponseEntity.ok(Map.of("status", "SUCCESS", "data", data));
+    }
+
+    @Operation(summary = "Bảng vắng mặt gộp theo người trong tháng",
+               description = "Mỗi người một dòng: số ngày vắng không phép, có phép, và các ngày cụ thể. month dạng yyyy-MM.")
+    @GetMapping("/absence-summary")
+    @PreAuthorize("hasAuthority('attendance:view-all') or hasRole('ADMIN')")
+    public ResponseEntity<?> tongHop(@RequestParam String month) {
+        try {
+            return ResponseEntity.ok(Map.of("status", "SUCCESS", "data", leaveRequestService.tongHopVangMat(month)));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("status", "ERROR", "message", "Tháng không hợp lệ: " + month));
+        }
     }
 
     @Operation(summary = "Admin duyệt đơn xin vắng", description = "Ghi nhận vắng có phép, trừ 10đ KPI.")

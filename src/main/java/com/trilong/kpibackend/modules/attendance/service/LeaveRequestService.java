@@ -137,6 +137,110 @@ public class LeaveRequestService {
                 .toList();
     }
 
+    // ── Danh sách phân trang cho WebAdmin ──────────────────────────────────
+    //
+    // Bảng này trộn hai loại dữ liệu khác bản chất: ĐƠN do người gửi (vài cái
+    // một ngày, cần Admin duyệt) và BẢN GHI máy quét đêm sinh ra (hàng trăm một
+    // ngày với công ty trăm người, không cần ai làm gì). Trả toàn bộ về trình
+    // duyệt là vài tuần đã hàng nghìn dòng. Nên: phân trang ở máy chủ, và cho
+    // lọc riêng "đơn người gửi" / "máy tự ghi".
+
+    /** Kết quả một trang: bản ghi + tổng số dòng khớp bộ lọc. */
+    public record TrangDon(List<LeaveRequestResponseDTO> banGhi, long tong) {}
+
+    /**
+     * @param loai      NGUOI_GUI = đơn người gửi (khác UNEXCUSED) · TU_DONG = máy tự ghi (UNEXCUSED) · null/ALL = tất cả
+     * @param trangThai PENDING / APPROVED / REJECTED / UNEXCUSED, null = mọi trạng thái
+     * @param search    tìm theo tên, không phân biệt dấu/hoa thường
+     */
+    public TrangDon timKiem(String loai, String trangThai, LocalDate tu, LocalDate den,
+                            String search, Long departmentId, int page, int size) {
+        // Tên tiếng Việt: DB không bỏ dấu được, nhân sự chỉ vài trăm người → lọc
+        // id ở Java rồi đưa vào IN. Không ai khớp thì trả trang rỗng luôn.
+        Set<Long> userIds = null;
+        boolean coDkNguoi = (search != null && !search.isBlank()) || departmentId != null;
+        if (coDkNguoi) {
+            String k = boDau(search);
+            userIds = new HashSet<>();
+            for (User u : userRepository.findAll()) {
+                if (departmentId != null && (u.getDepartment() == null || !departmentId.equals(u.getDepartment().getId()))) continue;
+                if (!k.isEmpty() && !boDau(u.getFullName()).contains(k)) continue;
+                userIds.add(u.getId());
+            }
+            if (userIds.isEmpty()) return new TrangDon(List.of(), 0);
+        }
+        final Set<Long> ids = userIds;
+
+        org.springframework.data.jpa.domain.Specification<LeaveRequest> spec = (root, q, cb) -> {
+            List<jakarta.persistence.criteria.Predicate> ds = new java.util.ArrayList<>();
+            if ("NGUOI_GUI".equals(loai)) ds.add(cb.notEqual(root.get("status"), "UNEXCUSED"));
+            else if ("TU_DONG".equals(loai)) ds.add(cb.equal(root.get("status"), "UNEXCUSED"));
+            if (trangThai != null && !trangThai.isBlank()) ds.add(cb.equal(root.get("status"), trangThai));
+            if (tu != null) ds.add(cb.greaterThanOrEqualTo(root.get("leaveDate"), tu));
+            if (den != null) ds.add(cb.lessThanOrEqualTo(root.get("leaveDate"), den));
+            if (ids != null) ds.add(root.get("userId").in(ids));
+            return cb.and(ds.toArray(new jakarta.persistence.criteria.Predicate[0]));
+        };
+        var pageable = org.springframework.data.domain.PageRequest.of(
+                Math.max(page, 0), Math.min(Math.max(size, 1), 100),
+                org.springframework.data.domain.Sort.by(
+                        org.springframework.data.domain.Sort.Order.desc("leaveDate"),
+                        org.springframework.data.domain.Sort.Order.desc("id")));
+        var trang = leaveRequestRepository.findAll(spec, pageable);
+        return new TrangDon(trang.getContent().stream().map(this::toDTO).toList(), trang.getTotalElements());
+    }
+
+    /**
+     * Bảng vắng mặt gộp theo người trong một tháng: mỗi người một dòng — bao
+     * nhiêu ngày không phép, bao nhiêu ngày có phép, và các ngày cụ thể.
+     * Admin quét 100 dòng thay vì 2.500 dòng máy tự ghi.
+     */
+    public List<Map<String, Object>> tongHopVangMat(String thang) {
+        java.time.YearMonth ym = java.time.YearMonth.parse(thang);
+        List<LeaveRequest> rows = leaveRequestRepository.findByLeaveDateBetweenAndStatusIn(
+                ym.atDay(1), ym.atEndOfMonth(), List.of("UNEXCUSED", "APPROVED"));
+
+        Map<Long, List<LeaveRequest>> theoNguoi = new java.util.LinkedHashMap<>();
+        for (LeaveRequest r : rows) theoNguoi.computeIfAbsent(r.getUserId(), x -> new java.util.ArrayList<>()).add(r);
+        if (theoNguoi.isEmpty()) return List.of();
+
+        Map<Long, User> nguoi = new java.util.HashMap<>();
+        for (User u : userRepository.findAllById(theoNguoi.keySet())) nguoi.put(u.getId(), u);
+
+        List<Map<String, Object>> kq = new java.util.ArrayList<>();
+        for (var e : theoNguoi.entrySet()) {
+            User u = nguoi.get(e.getKey());
+            List<String> khongPhep = e.getValue().stream().filter(r -> "UNEXCUSED".equals(r.getStatus()))
+                    .map(r -> r.getLeaveDate().toString()).sorted().toList();
+            List<String> coPhep = e.getValue().stream().filter(r -> "APPROVED".equals(r.getStatus()))
+                    .map(r -> r.getLeaveDate().toString()).sorted().toList();
+            Map<String, Object> d = new java.util.LinkedHashMap<>();
+            d.put("userId", e.getKey());
+            d.put("fullName", u != null ? u.getFullName() : "#" + e.getKey());
+            d.put("departmentName", u != null && u.getDepartment() != null ? u.getDepartment().getName() : null);
+            d.put("role", u != null ? u.getRole() : null);
+            d.put("status", u != null ? u.getStatus() : null);
+            d.put("soKhongPhep", khongPhep.size());
+            d.put("soCoPhep", coPhep.size());
+            d.put("ngayKhongPhep", khongPhep);
+            d.put("ngayCoPhep", coPhep);
+            kq.add(d);
+        }
+        kq.sort((a, b) -> {
+            int c = Integer.compare((int) b.get("soKhongPhep"), (int) a.get("soKhongPhep"));
+            return c != 0 ? c : String.valueOf(a.get("fullName")).compareTo(String.valueOf(b.get("fullName")));
+        });
+        return kq;
+    }
+
+    /** Bỏ dấu tiếng Việt, hạ chữ thường — để so tên không phụ thuộc cách gõ. */
+    private static String boDau(String s) {
+        if (s == null) return "";
+        String t = java.text.Normalizer.normalize(s, java.text.Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "").replace('đ', 'd').replace('Đ', 'D');
+        return t.toLowerCase().trim();
+    }
+
     /** Admin duyệt đơn → ghi nhận vắng có phép, trừ 10đ. */
     @Transactional
     public LeaveRequest approve(Long requestId, Long adminId, String note) {

@@ -4,6 +4,20 @@ spring:
     url: ${DATABASE_URL:}
     username: ${DB_USERNAME:}
     password: ${DB_PASSWORD:}
+    hikari:
+      # Supabase Free đi qua pooler (Supavisor, session mode, cổng 5432) — trần
+      # kết nối đồng thời thấp. 5 kết nối đủ cho 40 luồng Tomcat của một
+      # container nhỏ; nhiều hơn chỉ xếp hàng ở pooler chứ không nhanh hơn.
+      maximum-pool-size: 5
+      # Rỗi thì trả kết nối về, không giữ mở thường trực. Với Neon trước đây,
+      # 10 kết nối mở 24/7 là lý do DB không bao giờ được ngủ và hết 190 giờ
+      # compute vào ngày 18 hằng tháng. Supabase không tính giờ, nhưng thói
+      # quen này vẫn đúng: không chiếm chỗ ở pooler khi không dùng.
+      minimum-idle: 1
+      idle-timeout: 120000
+      max-lifetime: 600000
+      connection-timeout: 15000
+      keepalive-time: 0
   jpa:
     hibernate:
       ddl-auto: update

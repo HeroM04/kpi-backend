@@ -236,7 +236,7 @@ public class KpiController {
     @Operation(
             summary = "Xem KPI nhân sự trong phòng ban của mình (dành cho Trưởng phòng)",
             description = "Trưởng phòng xem KPI tất cả nhân sự trong phòng mình. " +
-                          "departmentId được đọc trực tiếp từ JWT token — không phụ thuộc vào cache phía client.",
+                          "Phòng ban đọc từ DB tại thời điểm gọi — không phụ thuộc token hay cache phía client.",
             security = @SecurityRequirement(name = "Bearer Authentication")
     )
     @GetMapping("/my-department")
@@ -245,8 +245,12 @@ public class KpiController {
             @AuthenticationPrincipal UserPrincipal currentUser,
             @RequestParam(required = false) String month) {
 
-        // Lấy departmentId từ JWT token — đây là nguồn dữ liệu đáng tin cậy duy nhất
-        Long departmentId = currentUser.getDepartmentId();
+        // Phòng ban đọc từ DB, không lấy từ JWT. Token ghi phòng ban lúc đăng nhập;
+        // Admin chuyển trưởng phòng từ KD08 sang KD28 thì token vẫn nói KD08 tới khi
+        // hết hạn (1 giờ) — trưởng phòng mới của KD28 vẫn thấy quân KD08.
+        Long departmentId = userRepository.findById(currentUser.getUserId())
+                .map(u -> u.getDepartment() != null ? u.getDepartment().getId() : null)
+                .orElse(currentUser.getDepartmentId());
         if (departmentId == null) {
             return ResponseEntity.badRequest().body(Map.of(
                 "status", "ERROR",
@@ -258,7 +262,7 @@ public class KpiController {
             month = kpiCalculationService.extractMonth(ZonedDateTime.now());
         }
 
-        // 1. Lấy tất cả nhân sự ACTIVE trong phòng ban của mình (theo JWT)
+        // 1. Lấy tất cả nhân sự ACTIVE trong phòng ban của mình
         List<User> activeUsers = userRepository.findByFilters(departmentId, null, "ACTIVE");
 
         // 2. Lấy điểm KPI đã có trong DB cho phòng ban đó

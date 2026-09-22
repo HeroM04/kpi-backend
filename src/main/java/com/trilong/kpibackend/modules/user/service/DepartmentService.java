@@ -17,6 +17,7 @@ public class DepartmentService {
 
     private final DepartmentRepository departmentRepository;
     private final UserRepository userRepository;
+    private final com.trilong.kpibackend.core.security.HoSoNongService hoSoNong;
 
     public List<DepartmentDTO> getAllDepartments() {
         return departmentRepository.findAll().stream()
@@ -94,6 +95,7 @@ public class DepartmentService {
         userRepository.findByFilters(id, null, null).forEach(user -> {
             user.setDepartment(null);
             userRepository.save(user);
+            hoSoNong.quen(user.getId());
         });
 
         departmentRepository.deleteById(id);

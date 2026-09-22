@@ -34,10 +34,27 @@ public class UserService {
     private final KpiScoreRepository kpiScoreRepository;
     private final KpiCalculationService kpiCalculationService;
     private final CheckinLogRepository checkinLogRepository;
+    private final com.trilong.kpibackend.core.security.HoSoNongService hoSoNong;
+    private final com.trilong.kpibackend.modules.notification.service.PushNotificationService pushNotificationService;
+    private final org.springframework.messaging.simp.SimpMessagingTemplate messagingTemplate;
 
     /** Dùng cho purgeUser — xóa thẳng theo tên bảng, không qua entity. */
     @jakarta.persistence.PersistenceContext
     private jakarta.persistence.EntityManager em;
+
+    /**
+     * Admin vừa sửa một nhân sự: quên bản chụp cũ để yêu cầu kế tiếp của người
+     * đó đã theo dữ liệu mới, và báo app của họ tải lại hồ sơ — qua WebSocket
+     * (app đang mở, thấy ngay) và tin nền Firebase (app đang ở nền). Hai đường
+     * đều là "cố gắng hết sức": không tới được thì app cũng tự đồng bộ lúc mở
+     * lại, không có gì hỏng.
+     */
+    private void baoHoSoDoi(Long userId) {
+        hoSoNong.quen(userId);
+        Map<String, String> tin = Map.of("type", "HO_SO_DOI");
+        try { messagingTemplate.convertAndSend("/topic/ho-so/" + userId, (Object) tin); } catch (Exception ignored) {}
+        try { pushNotificationService.guiTinNen(userId, tin); } catch (Exception ignored) {}
+    }
 
     public List<UserDTO> getAllUsers() {
         return userRepository.findAll().stream()
@@ -207,6 +224,7 @@ public class UserService {
         }
 
         User saved = userRepository.save(user);
+        baoHoSoDoi(id);
         return convertToDTO(saved);
     }
 
@@ -238,6 +256,7 @@ public class UserService {
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy nhân viên với ID: " + id));
         user.setStatus(status);
         userRepository.save(user);
+        hoSoNong.quen(id);
     }
 
     @Transactional
@@ -246,6 +265,7 @@ public class UserService {
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy nhân viên với ID: " + id));
         user.setStatus("INACTIVE"); // Xoá mềm để giữ data chấm công, kpi, lương
         userRepository.save(user);
+        hoSoNong.quen(id); // token còn hạn cũng bị từ chối ngay từ yêu cầu kế tiếp
     }
 
     /**
@@ -318,6 +338,7 @@ public class UserService {
         }
         em.createNativeQuery("DELETE FROM users WHERE id = :id").setParameter("id", id).executeUpdate();
         daXoa.put("users", 1);
+        hoSoNong.quen(id);
         return daXoa;
     }
 

@@ -245,12 +245,10 @@ public class KpiController {
             @AuthenticationPrincipal UserPrincipal currentUser,
             @RequestParam(required = false) String month) {
 
-        // Phòng ban đọc từ DB, không lấy từ JWT. Token ghi phòng ban lúc đăng nhập;
-        // Admin chuyển trưởng phòng từ KD08 sang KD28 thì token vẫn nói KD08 tới khi
-        // hết hạn (1 giờ) — trưởng phòng mới của KD28 vẫn thấy quân KD08.
-        Long departmentId = userRepository.findById(currentUser.getUserId())
-                .map(u -> u.getDepartment() != null ? u.getDepartment().getId() : null)
-                .orElse(currentUser.getDepartmentId());
+        // Phòng ban trong principal là bản DB hiện tại (JwtAuthFilter đè lên token
+        // qua HoSoNongService), nên Admin vừa chuyển trưởng phòng sang KD28 là
+        // yêu cầu này đã thấy KD28 — không phải chờ token hết hạn.
+        Long departmentId = currentUser.getDepartmentId();
         if (departmentId == null) {
             return ResponseEntity.badRequest().body(Map.of(
                 "status", "ERROR",

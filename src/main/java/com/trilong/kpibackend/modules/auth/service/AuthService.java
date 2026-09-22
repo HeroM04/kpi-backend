@@ -110,6 +110,8 @@ public class AuthService {
             throw new RuntimeException("Refresh token đã hết hạn hoặc bị thu hồi. Vui lòng đăng nhập lại.");
 
         User user = rt.getUser();
+        if (!"ACTIVE".equals(user.getStatus()))
+            throw new RuntimeException("Tài khoản đã bị khóa. Vui lòng liên hệ quản trị viên.");
 
         // Tạo access token mới
         String newAccessToken = jwtUtils.generateToken(user);

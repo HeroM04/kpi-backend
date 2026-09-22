@@ -91,6 +91,35 @@ public class PushNotificationService {
         guiToiCacToken(deviceTokenRepository.findByUserIdIn(userIds), tieuDe, noiDung, data);
     }
 
+    /**
+     * Gửi tin NỀN (không hiện gì trên màn hình) tới mọi thiết bị của một nhân sự,
+     * để app tự làm việc gì đó — ví dụ tải lại hồ sơ khi Admin vừa đổi phòng ban.
+     * iOS gọi là "background push": app được đánh thức vài giây, không có
+     * thông báo nào hiện ra.
+     */
+    @org.springframework.scheduling.annotation.Async
+    @org.springframework.transaction.annotation.Transactional
+    public void guiTinNen(Long userId, Map<String, String> data) {
+        if (!khaDung) return;
+        List<DeviceToken> thietBi = deviceTokenRepository.findByUserId(userId);
+        if (thietBi.isEmpty()) return;
+        List<String> tokenHong = new ArrayList<>();
+        for (DeviceToken tb : thietBi) {
+            Message.Builder mb = Message.builder()
+                    .setToken(tb.getToken())
+                    .setAndroidConfig(AndroidConfig.builder()
+                            .setPriority(AndroidConfig.Priority.HIGH).build())
+                    .setApnsConfig(ApnsConfig.builder()
+                            .putHeader("apns-push-type", "background")
+                            .putHeader("apns-priority", "5")
+                            .setAps(Aps.builder().setContentAvailable(true).build())
+                            .build());
+            if (data != null) data.forEach(mb::putData);
+            gui(mb.build(), tb.getToken(), tokenHong);
+        }
+        donTokenHong(tokenHong);
+    }
+
     private void guiToiCacToken(List<DeviceToken> thietBi, String tieuDe, String noiDung,
                                 Map<String, String> data) {
         if (thietBi.isEmpty()) return;
@@ -110,22 +139,29 @@ public class PushNotificationService {
                     .setApnsConfig(ApnsConfig.builder()
                             .setAps(Aps.builder().setSound("default").build()).build());
             if (data != null) data.forEach(mb::putData);
-
-            try {
-                FirebaseMessaging.getInstance().send(mb.build());
-            } catch (FirebaseMessagingException e) {
-                // Mã thiết bị hết hạn hoặc app bị gỡ → xóa để lần sau khỏi gửi nữa
-                var code = e.getMessagingErrorCode();
-                if (code == MessagingErrorCode.UNREGISTERED || code == MessagingErrorCode.INVALID_ARGUMENT) {
-                    tokenHong.add(tb.getToken());
-                } else {
-                    log.warn("[Push] Gửi thất bại tới token …{}: {}", duoiToken(tb.getToken()), e.getMessage());
-                }
-            } catch (Exception e) {
-                log.warn("[Push] Lỗi gửi thông báo: {}", e.getMessage());
-            }
+            gui(mb.build(), tb.getToken(), tokenHong);
         }
+        donTokenHong(tokenHong);
+    }
 
+    /** Gửi một tin; mã thiết bị đã chết thì ghi vào [tokenHong] để dọn sau. */
+    private void gui(Message tin, String token, List<String> tokenHong) {
+        try {
+            FirebaseMessaging.getInstance().send(tin);
+        } catch (FirebaseMessagingException e) {
+            // Mã thiết bị hết hạn hoặc app bị gỡ → xóa để lần sau khỏi gửi nữa
+            var code = e.getMessagingErrorCode();
+            if (code == MessagingErrorCode.UNREGISTERED || code == MessagingErrorCode.INVALID_ARGUMENT) {
+                tokenHong.add(token);
+            } else {
+                log.warn("[Push] Gửi thất bại tới token …{}: {}", duoiToken(token), e.getMessage());
+            }
+        } catch (Exception e) {
+            log.warn("[Push] Lỗi gửi thông báo: {}", e.getMessage());
+        }
+    }
+
+    private void donTokenHong(List<String> tokenHong) {
         for (String t : tokenHong) {
             try { deviceTokenRepository.deleteByToken(t); } catch (Exception ignored) {}
         }

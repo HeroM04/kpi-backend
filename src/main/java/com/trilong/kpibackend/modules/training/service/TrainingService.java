@@ -1,6 +1,7 @@
 package com.trilong.kpibackend.modules.training.service;
 
 import com.trilong.kpibackend.modules.kpi.entity.KpiAutoGrant;
+import com.trilong.kpibackend.modules.kpi.entity.KpiLedgerEntry;
 import com.trilong.kpibackend.modules.kpi.repository.KpiAutoGrantRepository;
 import com.trilong.kpibackend.modules.kpi.service.KpiCalculationService;
 import com.trilong.kpibackend.modules.training.dto.CreateTrainingSessionDTO;
@@ -34,6 +35,8 @@ public class TrainingService {
     private final TrainingAttendeeRepository trainingAttendeeRepository;
     private final TrainingRsvpRepository trainingRsvpRepository;
     private final KpiAutoGrantRepository kpiAutoGrantRepository;
+    private final com.trilong.kpibackend.modules.kpi.repository.KpiLedgerEntryRepository kpiLedgerEntryRepository;
+    private final com.trilong.kpibackend.modules.kpi.repository.KpiWeeklyScoreRepository kpiWeeklyScoreRepository;
     private final UserRepository userRepository;
     private final KpiCalculationService kpiCalculationService;
     private final com.trilong.kpibackend.modules.notification.service.PushNotificationService pushNotificationService;
@@ -57,6 +60,104 @@ public class TrainingService {
     /** Mã ghi nhận khoản điểm đào tạo tuần, để chạy lại không cộng trùng. */
     private static final String GRANT_TUAN = "TRAINING_WEEK";
 
+    private static final String DG_KHONG_TO_CHUC =
+            "Cả tuần công ty không tổ chức buổi đào tạo nào — cộng mặc định theo quy định";
+    private static final String DG_THU_HOI_SOM =
+            "Thu hồi điểm đào tạo tuần đã cộng sớm — điểm đào tạo chỉ chốt vào tối Chủ nhật";
+    private static final String DG_TRA_LAI =
+            "Trả lại điểm bị trừ nhầm khi chấm đào tạo tuần sớm — điểm đào tạo chỉ chốt vào tối Chủ nhật";
+
+    /**
+     * Dòng nhật ký này có phải khoản cộng/trừ của cơ chế điểm đào tạo TUẦN không
+     * — gồm cả câu chữ của các bản cũ, vì nhật ký tuần này còn nguyên những dòng đó.
+     */
+    static boolean laDongDiemDaoTaoTuan(String dienGiai) {
+        if (dienGiai == null) return false;
+        return dienGiai.startsWith("Tuần này công ty không tổ chức đào tạo")      // bản cũ, cộng sớm
+            || dienGiai.startsWith("Thiếu buổi đào tạo bắt buộc trong tuần")
+            || (dienGiai.startsWith("Đã dự đủ ") && dienGiai.contains("buổi đào tạo bắt buộc của tuần"))
+            || dienGiai.startsWith("Cả tuần công ty không tổ chức buổi đào tạo nào")
+            || dienGiai.startsWith("Tuần chưa khép nên chưa chốt điểm đào tạo")
+            || dienGiai.startsWith("Thu hồi điểm đào tạo tuần đã cộng sớm")
+            || dienGiai.startsWith("Trả lại điểm bị trừ nhầm khi chấm đào tạo tuần sớm");
+    }
+
+    /** Kết quả gỡ điểm đào tạo tuần đã cộng sớm. */
+    public record KetQuaThuHoi(String tuan, int soNguoi, int tongDiemThuHoi, int tongDiemTraLai) {}
+
+    /**
+     * Gỡ SẠCH mọi khoản điểm đào tạo tuần của TUẦN ĐANG CHẠY, cho mọi người.
+     *
+     * <p>Không trừ đại 15đ mỗi người: tuần này có người được cộng +15, bị gỡ −15
+     * nhưng khoản gỡ bị mức sàn 0đ nuốt (lúc đó nhóm đang 0 vì vắng không phép),
+     * rồi lại được +15 — thực giữ 30đ. Có người thì ngược lại, khoản gỡ ăn vào
+     * điểm chấm công. Cách đúng duy nhất: <b>chấm lại cả tuần của từng người từ
+     * nhật ký, bỏ qua mọi dòng của cơ chế đào tạo tuần</b>, theo đúng thứ tự và
+     * đúng trần 0–30 như lúc cộng thật, rồi đưa điểm tuần về đúng con số đó.
+     *
+     * <p>Chỉ đụng tuần ĐANG CHẠY: tuần đã khép thì điểm đào tạo lúc này là điểm
+     * chốt thật, không được gỡ. Chạy lại không làm gì — dòng điều chỉnh cũng là
+     * dòng của cơ chế đào tạo nên lần sau bị bỏ qua, và điểm đã khớp.
+     */
+    @Transactional
+    public KetQuaThuHoi goDiemDaoTaoTuanDangChay() {
+        ZonedDateTime bayGio = ZonedDateTime.now(VN_ZONE);
+        LocalDate thuHai = bayGio.toLocalDate().with(java.time.temporal.WeekFields.ISO.dayOfWeek(), 1);
+        String tuan = kpiCalculationService.getWeekString(bayGio);
+        if (tuanDaKhep(thuHai)) return new KetQuaThuHoi(tuan, 0, 0, 0);
+
+        Map<Long, List<KpiLedgerEntry>> theoNguoi = new java.util.LinkedHashMap<>();
+        for (KpiLedgerEntry e : kpiLedgerEntryRepository.findByCategoryAndWeekOrderByIdAsc("attendance", tuan)) {
+            theoNguoi.computeIfAbsent(e.getUserId(), k -> new java.util.ArrayList<>()).add(e);
+        }
+
+        int soNguoi = 0, thuHoi = 0, traLai = 0;
+        for (var muc : theoNguoi.entrySet()) {
+            List<KpiLedgerEntry> dong = muc.getValue();
+            if (dong.stream().noneMatch(e -> laDongDiemDaoTaoTuan(e.getReason()))) continue;
+
+            int dung = diemTuanKhongTinhDaoTao(dong);
+            Long uid = muc.getKey();
+            int hienTai = kpiWeeklyScoreRepository.findByUserIdAndWeek(uid, tuan)
+                    .map(w -> w.getAttendance()).orElse(0);
+            int chenh = dung - hienTai;
+            if (chenh == 0) continue;
+
+            kpiCalculationService.updateKpiPoints(uid, "attendance", chenh, mocGhiSo(thuHai),
+                    chenh < 0 ? DG_THU_HOI_SOM : DG_TRA_LAI);
+            soNguoi++;
+            if (chenh < 0) thuHoi += -chenh; else traLai += chenh;
+        }
+
+        // Ghi nhận tuần về 0 để lượt chấm hằng đêm không tính lại theo số cũ
+        for (KpiAutoGrant g : kpiAutoGrantRepository.findByPeriodAndGrantType(tuan, GRANT_TUAN)) {
+            if (g.getPoints() != null && g.getPoints() != 0) {
+                g.setPoints(0);
+                g.setReason("Chưa chốt — điểm đào tạo tuần " + tuan + " chỉ chốt vào tối Chủ nhật");
+                kpiAutoGrantRepository.save(g);
+            }
+        }
+
+        log.info("[Đào tạo] Gỡ điểm đào tạo tuần {} cộng sớm: {} người, thu hồi {}đ, trả lại {}đ",
+                tuan, soNguoi, thuHoi, traLai);
+        return new KetQuaThuHoi(tuan, soNguoi, thuHoi, traLai);
+    }
+
+    /**
+     * Điểm nhóm Phát triển cá nhân của tuần nếu KHÔNG có cơ chế đào tạo tuần:
+     * cộng lần lượt từng dòng theo thứ tự ghi, kẹp trong 0–30 đúng như
+     * {@code KpiCalculationService.updateKpiPoints} đã làm lúc cộng thật.
+     */
+    static int diemTuanKhongTinhDaoTao(List<KpiLedgerEntry> dongTheoThuTu) {
+        int diem = 0;
+        for (KpiLedgerEntry e : dongTheoThuTu) {
+            if (laDongDiemDaoTaoTuan(e.getReason())) continue;
+            int p = e.getPoints() == null ? 0 : e.getPoints();
+            diem = Math.max(0, Math.min(KpiCalculationService.CAP_PERSONAL, diem + p));
+        }
+        return diem;
+    }
+
     /**
      * Chấm lại điểm đào tạo của một nhân sự trong tuần chứa {@code mocTrongTuan}.
      *
@@ -70,14 +171,13 @@ public class TrainingService {
      *
      * <p>Chỉ xét buổi ĐÃ KẾT THÚC. Buổi còn ở phía trước chưa thể coi là bỏ lỡ.
      *
-     * <p><b>Khoản "tuần không có đào tạo" chỉ cộng khi TUẦN ĐÃ KHÉP.</b> Trước
-     * đây cộng ngay từ đầu tuần, nên thứ Hai là mọi người đã được 15đ kèm dòng
-     * "tuần này công ty không tổ chức đào tạo" — trong khi buổi học nằm ở thứ Tư,
-     * chỉ là chưa diễn ra. Đến khi buổi ấy kết thúc mà ai vắng thì điểm bị gỡ,
-     * Admin dời lịch một cái lại cộng vào: nhật ký đầy những dòng cộng rồi trừ
-     * cùng một tuần, và câu chữ thì sai sự thật. Giờ giữa tuần chỉ cộng khi đã
-     * có buổi kết thúc và nhân sự dự đủ; chưa buổi nào xong thì để trống, cuối
-     * tuần mới chốt.
+     * <p><b>Điểm đào tạo tuần CHỈ CHỐT KHI TUẦN ĐÃ KHÉP (sau 23:00 Chủ nhật).</b>
+     * Giữa tuần không cộng, không trừ gì. Trước đây cộng ngay từ đầu tuần, nên
+     * thứ Hai mọi người đã được 15đ kèm dòng "tuần này công ty không tổ chức đào
+     * tạo" — trong khi buổi học nằm ở thứ Tư, chỉ là chưa diễn ra. Buổi ấy kết
+     * thúc mà ai vắng thì gỡ, Admin dời lịch một cái lại cộng: nhật ký đầy dòng
+     * cộng rồi trừ cùng một tuần, có khoản trừ còn bị mức sàn 0đ nuốt mất nên
+     * người ta giữ luôn 30đ. Cuối tuần chốt một lần thì không còn những thứ đó.
      *
      * <p>Hàm này chạy lại bao nhiêu lần cũng ra cùng một kết quả: nó tính mức
      * điểm ĐÚNG của tuần rồi chỉ cộng/trừ phần chênh so với mức đã ghi nhận.
@@ -92,19 +192,17 @@ public class TrainingService {
         boolean khep = tuanDaKhep(thuHai);
 
         int mucDung;
-        String dienGiaiCong;
-        if (!daKetThuc.isEmpty()) {
+        String dienGiaiCong = null;
+        if (!khep) {
+            mucDung = 0;   // tuần đang chạy: chưa chốt, không cộng gì
+        } else if (!daKetThuc.isEmpty()) {
             boolean duHet = daKetThuc.stream()
                     .allMatch(s -> trainingAttendeeRepository.existsBySessionIdAndUserId(s.getId(), userId));
             mucDung = duHet ? CAP_TRAINING_PER_WEEK : 0;
             dienGiaiCong = "Đã dự đủ " + daKetThuc.size() + " buổi đào tạo bắt buộc của tuần";
-        } else if (khep) {
-            mucDung = CAP_TRAINING_PER_WEEK;
-            dienGiaiCong = "Cả tuần công ty không tổ chức buổi đào tạo nào — cộng mặc định theo quy định";
         } else {
-            // Tuần đang chạy và chưa buổi nào kết thúc: chưa có gì để chấm.
-            mucDung = 0;
-            dienGiaiCong = null;
+            mucDung = CAP_TRAINING_PER_WEEK;
+            dienGiaiCong = DG_KHONG_TO_CHUC;
         }
 
         var ghiNhan = kpiAutoGrantRepository
@@ -116,9 +214,8 @@ public class TrainingService {
         String dienGiai;
         if (chenh > 0) {
             dienGiai = dienGiaiCong;
-        } else if (daKetThuc.isEmpty()) {
-            // Gỡ lại khoản đã cộng nhầm từ đầu tuần theo cách tính cũ
-            dienGiai = "Tuần chưa khép nên chưa chốt điểm đào tạo — thu hồi khoản đã cộng sớm";
+        } else if (!khep) {
+            dienGiai = DG_THU_HOI_SOM;   // khoản cộng sớm theo cách tính cũ
         } else {
             dienGiai = "Thiếu buổi đào tạo bắt buộc trong tuần — thu hồi điểm đã cộng";
         }

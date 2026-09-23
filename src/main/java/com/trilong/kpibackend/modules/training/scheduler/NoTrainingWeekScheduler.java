@@ -16,8 +16,8 @@ import java.time.temporal.WeekFields;
  *
  * <p>Quy định: dự đủ mọi buổi đào tạo nhóm bắt buộc trong tuần thì được 15đ,
  * thiếu một buổi là không được gì. Tuần công ty không tổ chức buổi nào thì mặc
- * nhiên đủ điều kiện — không ai có cơ hội học nên không ai bị mất điểm; khoản
- * mặc định này chỉ cộng khi TUẦN ĐÃ KHÉP, không cộng trước từ đầu tuần.
+ * nhiên đủ điều kiện — không ai có cơ hội học nên không ai bị mất điểm. Mọi
+ * khoản điểm đào tạo tuần chỉ chốt khi TUẦN ĐÃ KHÉP; giữa tuần không cộng gì.
  *
  * <p>Việc chấm điểm nằm hết trong {@link TrainingService#chamDiemDaoTaoTuan},
  * và nó chạy lại bao nhiêu lần cũng ra cùng kết quả. Lớp này chỉ có nhiệm vụ
@@ -52,6 +52,31 @@ public class NoTrainingWeekScheduler {
         // Chốt bù tuần trước nếu đêm Chủ nhật máy chủ đang ngủ. Không có gì đổi
         // thì hàm chấm không ghi dòng nào, nên chạy thừa cũng vô hại.
         chamLai("chốt bù tuần trước", bayGio.minusDays(7));
+    }
+
+    /**
+     * Ngay khi máy chủ khởi động: gỡ sạch điểm đào tạo tuần đã cộng sớm của tuần
+     * đang chạy, theo quy định "cuối tuần mới chốt".
+     *
+     * <p>Tuần 39/2026 có khoản +15 "công ty không tổ chức đào tạo" cộng từ đầu
+     * tuần dù thứ Tư có buổi học. Chạy lúc khởi động để deploy xong là gỡ luôn,
+     * không phải chờ tới 23:55. Chỉ đụng tuần ĐANG CHẠY và chỉ dòng của cơ chế
+     * đào tạo tuần — điểm đào tạo 1-1 (nhóm Thực chiến) không liên quan. Lần
+     * khởi động sau không làm gì vì điểm đã khớp. Chạy nền để không làm chậm
+     * lúc máy chủ thức dậy.
+     */
+    @org.springframework.context.event.EventListener(org.springframework.boot.context.event.ApplicationReadyEvent.class)
+    @org.springframework.scheduling.annotation.Async
+    public void goDiemCongSomKhiKhoiDong() {
+        try {
+            var kq = trainingService.goDiemDaoTaoTuanDangChay();
+            if (kq.soNguoi() > 0) {
+                log.info("[Đào tạo] Khởi động: gỡ điểm đào tạo tuần {} cộng sớm cho {} người (thu hồi {}đ, trả lại {}đ).",
+                        kq.tuan(), kq.soNguoi(), kq.tongDiemThuHoi(), kq.tongDiemTraLai());
+            }
+        } catch (Exception e) {
+            log.error("[Đào tạo] Lỗi khi gỡ điểm đào tạo tuần cộng sớm: {}", e.getMessage(), e);
+        }
     }
 
     /** Tối Chủ nhật: chốt lần cuối cho tuần vừa khép lại. */

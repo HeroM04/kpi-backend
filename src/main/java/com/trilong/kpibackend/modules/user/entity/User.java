@@ -103,6 +103,19 @@ public class User {
     @Column(name = "kpi_notifications_seen_at")
     private ZonedDateTime kpiNotificationsSeenAt;
 
+    /**
+     * Mốc "đăng xuất khỏi mọi thiết bị": token cấp TRƯỚC thời điểm này bị từ chối.
+     *
+     * <p>Thu hồi refresh token thôi là chưa đủ. Access token là JWT tự chứng
+     * thực, máy chủ không tra DB nên nó vẫn dùng được cho tới khi hết hạn — đăng
+     * xuất xong mà người kia vẫn thao tác được cả tiếng. Có mốc này thì
+     * {@code JwtAuthFilter} so với {@code iat} của token và chặn ngay.
+     *
+     * <p>Null nghĩa là chưa từng đăng xuất toàn bộ — mọi token còn hạn đều nhận.
+     */
+    @Column(name = "sessions_valid_from")
+    private ZonedDateTime sessionsValidFrom;
+
     @PrePersist
     public void prePersist() {
         if (this.role == null) this.role = "SALE";

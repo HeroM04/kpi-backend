@@ -35,6 +35,7 @@ public class UserService {
     private final KpiCalculationService kpiCalculationService;
     private final CheckinLogRepository checkinLogRepository;
     private final com.trilong.kpibackend.core.security.HoSoNongService hoSoNong;
+    private final com.trilong.kpibackend.modules.auth.service.PhienDangNhapService phienDangNhapService;
     private final com.trilong.kpibackend.modules.notification.service.PushNotificationService pushNotificationService;
     private final org.springframework.messaging.simp.SimpMessagingTemplate messagingTemplate;
 
@@ -240,13 +241,20 @@ public class UserService {
         return referrerId;
     }
 
-    /** Admin đặt lại mật khẩu cho nhân viên */
+    /**
+     * Admin đặt lại mật khẩu cho nhân viên.
+     *
+     * <p>Kèm theo là đá mọi thiết bị đang đăng nhập tài khoản đó ra. Đặt lại mật
+     * khẩu thường là vì nghi tài khoản bị người khác dùng; đổi mật khẩu mà phiên
+     * cũ vẫn chạy thì không giải quyết được gì.
+     */
     @Transactional
     public void resetPassword(Long id, String newPassword) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy nhân viên với ID: " + id));
         user.setPasswordHash(passwordEncoder.encode(newPassword));
         userRepository.save(user);
+        phienDangNhapService.dangXuatMoiThietBi(id);
     }
 
     /** Cập nhật trạng thái nhân viên (ACTIVE / INACTIVE / SUSPENDED) */

@@ -35,6 +35,12 @@ public class UserPrincipal implements UserDetails {
     private boolean active;
     private String avatarUrl;     // Ảnh chân dung gốc xác thực khuôn mặt
 
+    /**
+     * Phiên đăng nhập (máy) mà yêu cầu này đến từ đó — id bản ghi refresh_tokens.
+     * Null với token đời cũ phát trước khi có quản lý phiên.
+     */
+    private Long sessionId;
+
     private List<String> permissions; // Thêm trường danh sách permissions để serialize cho client
 
     // ── Factory ─────────────────────────────────────────────────────────────

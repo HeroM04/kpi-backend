@@ -1,13 +1,19 @@
 package com.trilong.kpibackend.core.security;
 
+import com.trilong.kpibackend.modules.auth.repository.RefreshTokenRepository;
 import com.trilong.kpibackend.modules.user.entity.User;
 import com.trilong.kpibackend.modules.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.time.ZonedDateTime;
+import java.time.temporal.ChronoUnit;
+import java.util.Date;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -31,13 +37,33 @@ public class HoSoNongService {
 
     /** Những gì JwtAuthFilter cần để dựng principal đúng với DB. */
     public record BanChup(String role, Long departmentId, String status,
-                          String fullName, String avatarUrl, long hetHanLuc) {
+                          String fullName, String avatarUrl,
+                          ZonedDateTime phienHopLeTu, Set<Long> phienConHieuLuc,
+                          long hetHanLuc) {
         public boolean dangHoatDong() { return "ACTIVE".equals(status); }
+
+        /**
+         * Token phát trước mốc "đăng xuất mọi thiết bị" thì không nhận nữa.
+         * {@code iat} của JWT tính bằng giây nên so ở mức giây.
+         */
+        public boolean tokenQuaCu(Date phatLuc) {
+            return phienHopLeTu != null && phatLuc != null
+                    && phatLuc.toInstant().isBefore(phienHopLeTu.toInstant().truncatedTo(ChronoUnit.SECONDS));
+        }
+
+        /**
+         * Phiên (máy) này có còn được phép không. Token đời cũ không mang sid thì
+         * không chặn — nếu không, ngay khi lên bản mới là mọi người bị đá ra.
+         */
+        public boolean phienBiThuHoi(Long sid) {
+            return sid != null && !phienConHieuLuc.contains(sid);
+        }
     }
 
     private static final long SONG_MS = 60_000;
 
     private final UserRepository userRepository;
+    private final RefreshTokenRepository refreshTokenRepository;
     private final Map<Long, BanChup> bo = new ConcurrentHashMap<>();
 
     /**
@@ -52,7 +78,8 @@ public class HoSoNongService {
         if (cu != null && cu.hetHanLuc() > bayGio) return Optional.of(cu);
 
         try {
-            Optional<BanChup> moi = userRepository.findById(userId).map(u -> chup(u, bayGio));
+            Optional<BanChup> moi = userRepository.findById(userId).map(u -> chup(u, bayGio,
+                    new HashSet<>(refreshTokenRepository.timIdPhienConHieuLuc(userId, ZonedDateTime.now()))));
             moi.ifPresent(b -> bo.put(userId, b));
             if (moi.isEmpty()) bo.remove(userId);
             return moi;
@@ -73,13 +100,15 @@ public class HoSoNongService {
         bo.clear();
     }
 
-    private static BanChup chup(User u, long bayGio) {
+    private static BanChup chup(User u, long bayGio, Set<Long> phienConHieuLuc) {
         return new BanChup(
                 u.getRole(),
                 u.getDepartment() != null ? u.getDepartment().getId() : null,
                 u.getStatus(),
                 u.getFullName(),
                 u.getAvatarUrl(),
+                u.getSessionsValidFrom(),
+                phienConHieuLuc,
                 bayGio + SONG_MS);
     }
 }

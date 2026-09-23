@@ -25,9 +25,15 @@ public class JwtUtils {
     private long jwtExpirationMs;
 
     /**
-     * Tạo JWT token sau khi login thành công
+     * Tạo JWT token sau khi login thành công.
+     *
+     * @param sessionId id của bản ghi refresh_tokens ứng với lần đăng nhập này.
+     *                  Nhờ claim "sid" mà mỗi yêu cầu biết mình đến từ MÁY NÀO —
+     *                  để hiện danh sách phiên đang hoạt động và để thu hồi đúng
+     *                  một máy. Truyền null thì token không gắn phiên (token cũ
+     *                  phát trước khi có tính năng này cũng vậy).
      */
-    public String generateToken(User user) {
+    public String generateToken(User user, Long sessionId) {
         return Jwts.builder()
                 .subject(user.getId().toString())
                 .claim("phoneNumber", user.getPhoneNumber())
@@ -36,10 +42,15 @@ public class JwtUtils {
                 .claim("avatarUrl", user.getAvatarUrl())
                 .claim("departmentId",
                         user.getDepartment() != null ? user.getDepartment().getId() : null)
+                .claim("sid", sessionId)
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + jwtExpirationMs))
                 .signWith(getSignKey())
                 .compact();
+    }
+
+    public String generateToken(User user) {
+        return generateToken(user, null);
     }
 
     /**

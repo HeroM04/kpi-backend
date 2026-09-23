@@ -56,6 +56,14 @@ public class RefreshToken {
     @Column(name = "created_at", updatable = false)
     private ZonedDateTime createdAt;
 
+    /**
+     * Lần gần nhất phiên này gọi máy chủ — để biết máy nào CÒN ĐANG dùng, chứ
+     * không chỉ biết nó từng đăng nhập lúc nào. Ghi tối đa một lần mỗi phút nên
+     * không thành gánh nặng cho DB.
+     */
+    @Column(name = "last_seen_at")
+    private ZonedDateTime lastSeenAt;
+
     /** Kiểm tra token còn hạn sử dụng không */
     public boolean isExpired() {
         return ZonedDateTime.now().isAfter(expiresAt);

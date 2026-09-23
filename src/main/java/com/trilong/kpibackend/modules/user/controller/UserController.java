@@ -28,6 +28,7 @@ public class UserController {
 
     private final UserService userService;
     private final CloudinaryService cloudinaryService;
+    private final com.trilong.kpibackend.modules.auth.service.PhienDangNhapService phienDangNhapService;
     private final com.trilong.kpibackend.modules.user.service.ReferralRewardService referralRewardService;
 
     @Operation(summary = "Lấy danh sách nhân viên (có thể lọc theo phòng ban, role, trạng thái)")
@@ -107,6 +108,46 @@ public class UserController {
             userService.resetPassword(id, newPassword);
             return ResponseEntity.ok(Map.of("status", "SUCCESS",
                     "message", "Đặt lại mật khẩu thành công."));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("status", "ERROR", "message", e.getMessage()));
+        }
+    }
+
+    @Operation(summary = "Các thiết bị đang đăng nhập tài khoản của một nhân sự",
+               description = "Dành cho Admin: xem tài khoản đang được dùng ở những máy nào, " +
+                             "kèm địa chỉ IP và lần gọi máy chủ gần nhất.")
+    @GetMapping("/{id}/sessions")
+    @PreAuthorize("hasAuthority('user:manage')")
+    public ResponseEntity<?> danhSachPhien(@PathVariable Long id,
+                                           @AuthenticationPrincipal UserPrincipal currentUser) {
+        // Chỉ đánh dấu "máy này" khi Admin đang xem chính tài khoản mình
+        Long phienHienTai = id.equals(currentUser.getUserId()) ? currentUser.getSessionId() : null;
+        return ResponseEntity.ok(Map.of("status", "SUCCESS",
+                "data", phienDangNhapService.danhSach(id, phienHienTai)));
+    }
+
+    @Operation(summary = "Gỡ một thiết bị khỏi tài khoản của nhân sự",
+               description = "Thu hồi đúng một phiên; các thiết bị khác của người đó vẫn đăng nhập.")
+    @DeleteMapping("/{id}/sessions/{phienId}")
+    @PreAuthorize("hasAuthority('user:manage')")
+    public ResponseEntity<?> thuHoiPhien(@PathVariable Long id, @PathVariable Long phienId) {
+        boolean xong = phienDangNhapService.thuHoi(id, phienId);
+        return xong
+                ? ResponseEntity.ok(Map.of("status", "SUCCESS", "message", "Đã gỡ thiết bị khỏi tài khoản."))
+                : ResponseEntity.badRequest().body(Map.of("status", "ERROR",
+                        "message", "Không tìm thấy phiên đăng nhập này."));
+    }
+
+    @Operation(summary = "Đăng xuất một nhân sự khỏi mọi thiết bị",
+               description = "Thu hồi toàn bộ phiên và vô hiệu hóa mọi access token đã phát — " +
+                             "kể cả token còn hạn đang nằm trên máy người khác.")
+    @PostMapping("/{id}/logout-all")
+    @PreAuthorize("hasAuthority('user:manage')")
+    public ResponseEntity<?> dangXuatMoiThietBi(@PathVariable Long id) {
+        try {
+            int soPhien = phienDangNhapService.dangXuatMoiThietBi(id);
+            return ResponseEntity.ok(Map.of("status", "SUCCESS", "soPhien", soPhien,
+                    "message", "Đã đăng xuất khỏi " + soPhien + " thiết bị."));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("status", "ERROR", "message", e.getMessage()));
         }

@@ -34,4 +34,30 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long
     // Đếm số phiên đăng nhập đang active của user (giới hạn thiết bị)
     @Query("SELECT COUNT(rt) FROM RefreshToken rt WHERE rt.user = :user AND rt.revoked = false AND rt.expiresAt > :now")
     long countActiveSessionsByUser(@Param("user") User user, @Param("now") ZonedDateTime now);
+
+    // ── Quản lý phiên đăng nhập (màn hình "Ai đang đăng nhập") ───────────────
+
+    /** Các phiên còn hiệu lực của một người, mới nhất trước. */
+    @Query("SELECT rt FROM RefreshToken rt WHERE rt.user.id = :userId AND rt.revoked = false "
+         + "AND rt.expiresAt > :now ORDER BY rt.createdAt DESC")
+    List<RefreshToken> timPhienConHieuLuc(@Param("userId") Long userId, @Param("now") ZonedDateTime now);
+
+    /** Id các phiên còn hiệu lực — JwtAuthFilter dùng để chặn token của phiên đã thu hồi. */
+    @Query("SELECT rt.id FROM RefreshToken rt WHERE rt.user.id = :userId AND rt.revoked = false "
+         + "AND rt.expiresAt > :now")
+    List<Long> timIdPhienConHieuLuc(@Param("userId") Long userId, @Param("now") ZonedDateTime now);
+
+    /** Ghi dấu phiên vừa gọi máy chủ. Update thẳng, không nạp cả entity. */
+    @Modifying
+    @Query("UPDATE RefreshToken rt SET rt.lastSeenAt = :now WHERE rt.id = :id")
+    void ghiNhanHoatDong(@Param("id") Long id, @Param("now") ZonedDateTime now);
+
+    /** Thu hồi đúng một phiên, kèm userId để không ai gỡ được phiên của người khác. */
+    @Modifying
+    @Query("UPDATE RefreshToken rt SET rt.revoked = true WHERE rt.id = :id AND rt.user.id = :userId")
+    int thuHoiMotPhien(@Param("id") Long id, @Param("userId") Long userId);
+
+    @Modifying
+    @Query("UPDATE RefreshToken rt SET rt.revoked = true WHERE rt.user.id = :userId")
+    int thuHoiTatCa(@Param("userId") Long userId);
 }

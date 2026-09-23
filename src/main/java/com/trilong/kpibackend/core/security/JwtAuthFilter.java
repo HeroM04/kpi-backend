@@ -37,6 +37,9 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     @Autowired
     private HoSoNongService hoSoNong;
 
+    @Autowired
+    private com.trilong.kpibackend.modules.auth.service.PhienDangNhapService phienDangNhap;
+
     @Override
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
@@ -58,12 +61,22 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 String fullName = claims.get("fullName", String.class);
                 String avatarUrl = claims.get("avatarUrl", String.class);
 
+                Number sidClaim = (Number) claims.get("sid");
+                Long sid = sidClaim != null ? sidClaim.longValue() : null;
+
                 // DB nói gì thì theo đó; DB không trả lời thì dùng tạm token.
                 var banChup = hoSoNong.lay(userId);
                 if (banChup.isPresent()) {
                     var b = banChup.get();
                     if (!b.dangHoatDong()) {
                         logger.info("Từ chối token của nhân sự " + userId + " (trạng thái " + b.status() + ")");
+                        filterChain.doFilter(request, response);
+                        return;
+                    }
+                    // Đã bấm "đăng xuất mọi thiết bị", hoặc riêng máy này bị gỡ.
+                    // Chặn ngay tại đây chứ không đợi token hết hạn.
+                    if (b.tokenQuaCu(claims.getIssuedAt()) || b.phienBiThuHoi(sid)) {
+                        logger.info("Từ chối token cũ của nhân sự " + userId + " (phiên " + sid + ")");
                         filterChain.doFilter(request, response);
                         return;
                     }
@@ -78,6 +91,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                         claims.get("phoneNumber", String.class),
                         fullName, role, departmentId, avatarUrl
                 );
+                principal.setSessionId(sid);
+                phienDangNhap.ghiNhanHoatDong(sid);   // chạy nền, tối đa 1 lần/phút mỗi phiên
 
                 // Tạo authentication object và set vào SecurityContext
                 UsernamePasswordAuthenticationToken authentication =

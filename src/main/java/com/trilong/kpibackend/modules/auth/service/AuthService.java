@@ -36,6 +36,8 @@ public class AuthService {
     @Autowired private RefreshTokenRepository refreshTokenRepository;
     @Autowired private BCryptPasswordEncoder passwordEncoder;
     @Autowired private JwtUtils jwtUtils;
+    @Autowired private com.trilong.kpibackend.core.security.HoSoNongService hoSoNong;
+    @Autowired private PhienDangNhapService phienDangNhapService;
 
     @Value("${app.jwt.expiration-ms:3600000}")
     private long accessTokenExpMs;
@@ -60,21 +62,25 @@ public class AuthService {
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash()))
             throw new RuntimeException("Mật khẩu không chính xác");
 
-        // 4. Tạo access token JWT
-        String accessToken = jwtUtils.generateToken(user);
-
-        // 5. Tạo refresh token UUID và lưu DB
+        // 4. Ghi phiên đăng nhập TRƯỚC, để access token mang được id phiên (claim
+        //    "sid"). Nhờ vậy mới biết mỗi yêu cầu đến từ máy nào, hiện được danh
+        //    sách "ai đang đăng nhập" và gỡ được đúng một máy.
         String rawRefreshToken = UUID.randomUUID().toString();
         String deviceInfo = httpRequest.getHeader("User-Agent");
         String ipAddress  = getClientIp(httpRequest);
 
-        refreshTokenRepository.save(RefreshToken.builder()
+        RefreshToken phien = refreshTokenRepository.save(RefreshToken.builder()
                 .user(user)
                 .token(rawRefreshToken)
                 .expiresAt(ZonedDateTime.now().plusSeconds(refreshTokenExpMs / 1000))
                 .deviceInfo(deviceInfo != null ? deviceInfo.substring(0, Math.min(deviceInfo.length(), 200)) : "Unknown")
                 .ipAddress(ipAddress)
+                .lastSeenAt(ZonedDateTime.now())
                 .build());
+
+        // 5. Tạo access token JWT gắn với phiên vừa ghi
+        String accessToken = jwtUtils.generateToken(user, phien.getId());
+        hoSoNong.quen(user.getId());   // để phiên mới được nhận ngay, không đợi hết 60 giây
 
         // 6. Build response
         Department dept = user.getDepartment();
@@ -113,21 +119,24 @@ public class AuthService {
         if (!"ACTIVE".equals(user.getStatus()))
             throw new RuntimeException("Tài khoản đã bị khóa. Vui lòng liên hệ quản trị viên.");
 
-        // Tạo access token mới
-        String newAccessToken = jwtUtils.generateToken(user);
-
         // Rotate refresh token (best practice — revoke cũ, tạo mới)
         rt.setRevoked(true);
         refreshTokenRepository.save(rt);
 
         String newRawRefreshToken = UUID.randomUUID().toString();
-        refreshTokenRepository.save(RefreshToken.builder()
+        RefreshToken phienMoi = refreshTokenRepository.save(RefreshToken.builder()
                 .user(user)
                 .token(newRawRefreshToken)
                 .expiresAt(ZonedDateTime.now().plusSeconds(refreshTokenExpMs / 1000))
                 .deviceInfo(rt.getDeviceInfo())
                 .ipAddress(rt.getIpAddress())
+                .lastSeenAt(ZonedDateTime.now())
                 .build());
+
+        // Access token mới gắn với phiên mới — phiên cũ vừa bị thu hồi nên token
+        // phát theo nó cũng phải hết hiệu lực.
+        String newAccessToken = jwtUtils.generateToken(user, phienMoi.getId());
+        hoSoNong.quen(user.getId());
 
         Department dept = user.getDepartment();
         return LoginResponseDTO.builder()
@@ -181,8 +190,13 @@ public class AuthService {
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
 
-        // Revoke TẤT CẢ refresh token để buộc đăng nhập lại trên mọi thiết bị
-        refreshTokenRepository.revokeAllByUser(user);
+        // Đá mọi thiết bị ra, kể cả access token còn hạn.
+        //
+        // Trước đây chỉ thu hồi refresh token, mà web không dùng refresh token —
+        // nên đổi mật khẩu xong, trình duyệt của người kia vẫn thao tác được cho
+        // tới khi token hết hạn. Đổi mật khẩu vì nghi lộ tài khoản mà vẫn phải
+        // chờ cả tiếng thì vô nghĩa.
+        phienDangNhapService.dangXuatMoiThietBi(user.getId());
     }
 
     // ── Profile ──────────────────────────────────────────────────────────────

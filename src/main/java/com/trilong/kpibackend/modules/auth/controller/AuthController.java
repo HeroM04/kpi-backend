@@ -43,6 +43,9 @@ public class AuthController {
     @Autowired
     private AuthService authService;
 
+    @Autowired
+    private com.trilong.kpibackend.modules.auth.service.PhienDangNhapService phienDangNhapService;
+
     // ── POST /login ──────────────────────────────────────────────────────────
 
     @Operation(
@@ -96,6 +99,51 @@ public class AuthController {
         authService.logout(request);
         return ResponseEntity.ok(Map.of("status", "SUCCESS",
                 "message", "Đăng xuất thành công. Vui lòng xóa token khỏi thiết bị."));
+    }
+
+    // ── Phiên đăng nhập ──────────────────────────────────────────────────────
+
+    @Operation(
+            summary = "Các thiết bị đang đăng nhập tài khoản này",
+            description = "Danh sách phiên còn hiệu lực: thiết bị, địa chỉ IP, lúc đăng nhập và " +
+                    "lần gọi máy chủ gần nhất. Phiên của chính máy đang xem được đánh dấu.",
+            security = @SecurityRequirement(name = "Bearer Authentication")
+    )
+    @GetMapping("/sessions")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<?> danhSachPhien(@AuthenticationPrincipal UserPrincipal currentUser) {
+        return ResponseEntity.ok(Map.of("status", "SUCCESS",
+                "data", phienDangNhapService.danhSach(currentUser.getUserId(), currentUser.getSessionId())));
+    }
+
+    @Operation(
+            summary = "Đăng xuất khỏi mọi thiết bị",
+            description = "Thu hồi toàn bộ phiên của chính mình VÀ vô hiệu hóa mọi access token đã " +
+                    "phát — kể cả token còn hạn trên máy người khác. Máy nào cũng phải đăng nhập lại.",
+            security = @SecurityRequirement(name = "Bearer Authentication")
+    )
+    @PostMapping("/logout-all")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<?> dangXuatMoiThietBi(@AuthenticationPrincipal UserPrincipal currentUser) {
+        int soPhien = phienDangNhapService.dangXuatMoiThietBi(currentUser.getUserId());
+        return ResponseEntity.ok(Map.of("status", "SUCCESS", "soPhien", soPhien,
+                "message", "Đã đăng xuất khỏi " + soPhien + " thiết bị. Vui lòng đăng nhập lại."));
+    }
+
+    @Operation(
+            summary = "Gỡ một thiết bị khỏi tài khoản",
+            description = "Thu hồi đúng một phiên; các thiết bị khác vẫn đăng nhập bình thường.",
+            security = @SecurityRequirement(name = "Bearer Authentication")
+    )
+    @DeleteMapping("/sessions/{phienId}")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<?> thuHoiPhien(@AuthenticationPrincipal UserPrincipal currentUser,
+                                         @PathVariable Long phienId) {
+        boolean xong = phienDangNhapService.thuHoi(currentUser.getUserId(), phienId);
+        return xong
+                ? ResponseEntity.ok(Map.of("status", "SUCCESS", "message", "Đã gỡ thiết bị khỏi tài khoản."))
+                : ResponseEntity.badRequest().body(Map.of("status", "ERROR",
+                        "message", "Không tìm thấy phiên đăng nhập này."));
     }
 
     // ── GET /me ──────────────────────────────────────────────────────────────

@@ -300,10 +300,41 @@ public class TrainingService {
         return trainingAttendeeRepository.findByUserId(userId);
     }
 
+    /**
+     * Độ dài một vòng đổi mã QR điểm danh, tính bằng mili-giây.
+     *
+     * <p>Chính thức là <b>30 giây</b> — phải khớp {@code GIAY_DOI_MA} trong
+     * {@code ManageTraining.jsx} (Web Admin) và {@code qr_token_display.dart}
+     * (app). Vẫn nhận <b>10 giây</b> của bản cũ vì máy nhân viên chưa cài bản
+     * mới thì màn hình giảng viên trên app cũ vẫn sinh token theo vòng 10 giây;
+     * bỏ đi là cả buổi học không ai điểm danh được. Gỡ mốc 10 giây sau khi toàn
+     * bộ máy đã cập nhật.
+     */
+    private static final long[] VONG_DOI_MA_MS = { 30_000L, 10_000L };
+
+    /**
+     * Token có đúng là mã đang chiếu không.
+     *
+     * <p>Nhận thêm vòng liền trước và liền sau: đồng hồ hai máy lệch nhau vài
+     * giây, và người quét đúng lúc mã sắp đổi thì yêu cầu tới máy chủ khi mã đã
+     * sang vòng mới — không nới ra thì họ bị báo hết hạn dù vừa quét đúng mã
+     * trên màn hình.
+     */
+    private boolean tokenHopLe(String tokenStr) {
+        long bayGio = System.currentTimeMillis();
+        for (long vong : VONG_DOI_MA_MS) {
+            long window = bayGio / vong;
+            for (long w = window - 1; w <= window + 1; w++) {
+                if (String.format("%06d", (w * 31337L) % 999999L).equals(tokenStr)) return true;
+            }
+        }
+        return false;
+    }
+
     @Transactional
     public TrainingAttendee attendTraining(Long userId, String qrData) {
         // Hỗ trợ cả 2 format:
-        // 1. Format mới: "roomCode:token" (token xoay 10s, đồng bộ Web Admin)
+        // 1. Format mới: "roomCode:token" (token xoay theo thời gian, đồng bộ Web Admin)
         // 2. Format cũ: "roomCode" (backward compatible)
         String roomCode;
         String tokenStr = null;
@@ -316,21 +347,8 @@ public class TrainingService {
             roomCode = qrData;
         }
 
-        // Verify token nếu có (tolerant ±1 window = 30s để tránh lỗi đồng hồ lệch nhẹ)
-        if (tokenStr != null && !tokenStr.isEmpty()) {
-            long nowWindow = System.currentTimeMillis() / 10000;
-            boolean valid = false;
-            for (long w = nowWindow - 1; w <= nowWindow + 1; w++) {
-                long expected = (w * 31337L) % 999999L;
-                String expectedStr = String.format("%06d", expected);
-                if (expectedStr.equals(tokenStr)) {
-                    valid = true;
-                    break;
-                }
-            }
-            if (!valid) {
-                throw new IllegalArgumentException("Mã QR đã hết hạn! Vui lòng quét lại mã QR mới nhất.");
-            }
+        if (tokenStr != null && !tokenStr.isEmpty() && !tokenHopLe(tokenStr)) {
+            throw new IllegalArgumentException("Mã QR đã hết hạn! Vui lòng quét lại mã QR mới nhất.");
         }
 
         TrainingSession session = trainingSessionRepository.findByRoomCode(roomCode)

@@ -32,11 +32,29 @@ public class OneOnOneTraining {
     @Column(name = "photo_url", length = 500)
     private String photoUrl;
 
+    /**
+     * PENDING → Admin duyệt (APPROVED, cộng điểm) hoặc từ chối (REJECTED).
+     *
+     * <p>Trước đây nộp là tự duyệt và cộng điểm ngay, nên chụp đại một tấm ảnh
+     * cũng có 5đ, Admin chỉ nhìn thấy sau khi điểm đã vào. Các báo cáo nộp trước
+     * khi đổi vẫn giữ APPROVED — Admin xem lại được và từ chối để thu hồi điểm.
+     */
     @Column(length = 50)
     @Builder.Default
-    private String status = "APPROVED"; // Tự động duyệt theo yêu cầu
+    private String status = "PENDING";
 
     @CreationTimestamp
     @Column(name = "submitted_at", updatable = false)
     private ZonedDateTime submittedAt;
+
+    /**
+     * Id người duyệt hoặc từ chối. Null với báo cáo tự duyệt đời cũ. Lưu id trần
+     * chứ không nối khóa ngoại: xóa vĩnh viễn một tài khoản Admin thì không bị
+     * DB chặn vì còn báo cáo nó từng duyệt.
+     */
+    @Column(name = "reviewed_by")
+    private Long reviewedBy;
+
+    @Column(name = "reviewed_at")
+    private ZonedDateTime reviewedAt;
 }

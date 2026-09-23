@@ -13,4 +13,5 @@ public class OneOnOneTrainingDto {
     private String photoUrl;
     private String status;
     private ZonedDateTime submittedAt;
+    private ZonedDateTime reviewedAt;
 }

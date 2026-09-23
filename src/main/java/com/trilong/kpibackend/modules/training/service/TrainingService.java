@@ -68,12 +68,16 @@ public class TrainingService {
      * bất kể nguồn: có mặt thật, được đánh dấu vì đã học nhóm kỹ năng đó, hay
      * được Admin duyệt miễn. Ba trường hợp đều nghĩa là "không nợ buổi này".
      *
-     * <p>Chỉ xét buổi ĐÃ KẾT THÚC. Buổi còn ở phía trước chưa thể coi là bỏ lỡ,
-     * nên giữa tuần ai đang theo kịp vẫn thấy đủ 15đ; lỡ một buổi thì điểm bị
-     * gỡ lại kèm dòng nhật ký nói rõ buổi nào.
+     * <p>Chỉ xét buổi ĐÃ KẾT THÚC. Buổi còn ở phía trước chưa thể coi là bỏ lỡ.
      *
-     * <p>Tuần không có buổi nào thì mặc nhiên đủ điều kiện — khớp với quy định
-     * cũ "tuần công ty không tổ chức đào tạo thì cộng mặc định 15đ".
+     * <p><b>Khoản "tuần không có đào tạo" chỉ cộng khi TUẦN ĐÃ KHÉP.</b> Trước
+     * đây cộng ngay từ đầu tuần, nên thứ Hai là mọi người đã được 15đ kèm dòng
+     * "tuần này công ty không tổ chức đào tạo" — trong khi buổi học nằm ở thứ Tư,
+     * chỉ là chưa diễn ra. Đến khi buổi ấy kết thúc mà ai vắng thì điểm bị gỡ,
+     * Admin dời lịch một cái lại cộng vào: nhật ký đầy những dòng cộng rồi trừ
+     * cùng một tuần, và câu chữ thì sai sự thật. Giờ giữa tuần chỉ cộng khi đã
+     * có buổi kết thúc và nhân sự dự đủ; chưa buổi nào xong thì để trống, cuối
+     * tuần mới chốt.
      *
      * <p>Hàm này chạy lại bao nhiêu lần cũng ra cùng một kết quả: nó tính mức
      * điểm ĐÚNG của tuần rồi chỉ cộng/trừ phần chênh so với mức đã ghi nhận.
@@ -84,8 +88,24 @@ public class TrainingService {
         LocalDate thuHai = mocTrongTuan.withZoneSameInstant(VN_ZONE).toLocalDate()
                 .with(java.time.temporal.WeekFields.ISO.dayOfWeek(), 1);
 
-        int soBuoiPhaiDu = demBuoiBatBuoc(userId, thuHai);
-        int mucDung = duDieuKienDiemDaoTao(userId, thuHai) ? CAP_TRAINING_PER_WEEK : 0;
+        List<TrainingSession> daKetThuc = buoiBatBuocTrongTuan(userId, thuHai);
+        boolean khep = tuanDaKhep(thuHai);
+
+        int mucDung;
+        String dienGiaiCong;
+        if (!daKetThuc.isEmpty()) {
+            boolean duHet = daKetThuc.stream()
+                    .allMatch(s -> trainingAttendeeRepository.existsBySessionIdAndUserId(s.getId(), userId));
+            mucDung = duHet ? CAP_TRAINING_PER_WEEK : 0;
+            dienGiaiCong = "Đã dự đủ " + daKetThuc.size() + " buổi đào tạo bắt buộc của tuần";
+        } else if (khep) {
+            mucDung = CAP_TRAINING_PER_WEEK;
+            dienGiaiCong = "Cả tuần công ty không tổ chức buổi đào tạo nào — cộng mặc định theo quy định";
+        } else {
+            // Tuần đang chạy và chưa buổi nào kết thúc: chưa có gì để chấm.
+            mucDung = 0;
+            dienGiaiCong = null;
+        }
 
         var ghiNhan = kpiAutoGrantRepository
                 .findByUserIdAndPeriodAndGrantType(userId, tuan, GRANT_TUAN);
@@ -94,16 +114,17 @@ public class TrainingService {
         if (chenh == 0) return;
 
         String dienGiai;
-        if (chenh < 0) {
-            dienGiai = "Thiếu buổi đào tạo bắt buộc trong tuần — thu hồi điểm đã cộng";
-        } else if (soBuoiPhaiDu == 0) {
-            dienGiai = "Tuần này công ty không tổ chức đào tạo — cộng mặc định theo quy định";
+        if (chenh > 0) {
+            dienGiai = dienGiaiCong;
+        } else if (daKetThuc.isEmpty()) {
+            // Gỡ lại khoản đã cộng nhầm từ đầu tuần theo cách tính cũ
+            dienGiai = "Tuần chưa khép nên chưa chốt điểm đào tạo — thu hồi khoản đã cộng sớm";
         } else {
-            dienGiai = "Đã dự đủ " + soBuoiPhaiDu + " buổi đào tạo bắt buộc của tuần";
+            dienGiai = "Thiếu buổi đào tạo bắt buộc trong tuần — thu hồi điểm đã cộng";
         }
 
         kpiCalculationService.updateKpiPoints(userId, "attendance", chenh,
-                thuHai.plusDays(2).atTime(12, 0).atZone(VN_ZONE), dienGiai);
+                mocGhiSo(thuHai), dienGiai);
 
         var g = ghiNhan.orElseGet(KpiAutoGrant::new);
         g.setUserId(userId);
@@ -117,18 +138,39 @@ public class TrainingService {
         kpiAutoGrantRepository.save(g);
     }
 
-    /** Nhân sự đã phủ hết các buổi đào tạo nhóm đã kết thúc trong tuần chưa. */
-    private boolean duDieuKienDiemDaoTao(Long userId, LocalDate thuHai) {
-        for (TrainingSession s : buoiBatBuocTrongTuan(userId, thuHai)) {
-            if (!trainingAttendeeRepository.existsBySessionIdAndUserId(s.getId(), userId)) {
-                return false; // nợ một buổi là mất cả 15đ
-            }
-        }
-        return true;
+    /**
+     * Tuần đã khép chưa — mốc để chốt khoản "cả tuần không có buổi đào tạo nào".
+     *
+     * <p>Lấy 23:00 Chủ nhật chứ không phải 00:00 thứ Hai: hai tác vụ hẹn giờ chốt
+     * tuần chạy lúc 23:45 và 23:55 Chủ nhật, để mốc ở nửa đêm thì chính chúng
+     * cũng coi là tuần chưa khép và không chốt được gì. Sau 23:00 Chủ nhật thì
+     * thực tế không còn buổi đào tạo nào diễn ra nữa.
+     */
+    private boolean tuanDaKhep(LocalDate thuHai) {
+        return tuanDaKhep(thuHai, ZonedDateTime.now(VN_ZONE));
     }
 
-    private int demBuoiBatBuoc(Long userId, LocalDate thuHai) {
-        return buoiBatBuocTrongTuan(userId, thuHai).size();
+    static boolean tuanDaKhep(LocalDate thuHai, ZonedDateTime bayGio) {
+        return bayGio.isAfter(thuHai.plusDays(6).atTime(23, 0).atZone(VN_ZONE));
+    }
+
+    /**
+     * Mốc thời gian ghi vào nhật ký điểm.
+     *
+     * <p>Đang trong tuần thì ghi đúng lúc chấm, để nhân sự đọc nhật ký thấy khoản
+     * điểm phát sinh hôm nào. Chấm bù một tuần đã qua thì neo vào trưa thứ Tư của
+     * tuần ấy — phải nằm trong tuần thì khoản điểm mới rơi đúng kỳ.
+     */
+    private ZonedDateTime mocGhiSo(LocalDate thuHai) {
+        return mocGhiSo(thuHai, ZonedDateTime.now(VN_ZONE));
+    }
+
+    static ZonedDateTime mocGhiSo(LocalDate thuHai, ZonedDateTime bayGio) {
+        ZonedDateTime dauTuan = thuHai.atStartOfDay(VN_ZONE);
+        ZonedDateTime sauTuan = thuHai.plusDays(7).atStartOfDay(VN_ZONE);
+        return (!bayGio.isBefore(dauTuan) && bayGio.isBefore(sauTuan))
+                ? bayGio
+                : thuHai.plusDays(2).atTime(12, 0).atZone(VN_ZONE);
     }
 
     /**

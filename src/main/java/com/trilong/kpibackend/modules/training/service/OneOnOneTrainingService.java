@@ -1,5 +1,7 @@
 package com.trilong.kpibackend.modules.training.service;
 
+import com.trilong.kpibackend.modules.kpi.entity.KpiLedgerEntry;
+import com.trilong.kpibackend.modules.kpi.repository.KpiLedgerEntryRepository;
 import com.trilong.kpibackend.modules.kpi.service.KpiCalculationService;
 import com.trilong.kpibackend.modules.notification.service.PushNotificationService;
 import com.trilong.kpibackend.modules.training.dto.OneOnOneTrainingDto;
@@ -31,6 +33,7 @@ public class OneOnOneTrainingService {
 
     private final OneOnOneTrainingRepository oneOnOneTrainingRepository;
     private final KpiCalculationService kpiCalculationService;
+    private final KpiLedgerEntryRepository kpiLedgerEntryRepository;
     private final PushNotificationService pushNotificationService;
     private final SimpMessagingTemplate messagingTemplate;
 
@@ -106,6 +109,88 @@ public class OneOnOneTrainingService {
                     Map.of("type", "one_on_one"));
         }
         return mapToDto(t);
+    }
+
+    /** Kết quả chuyển báo cáo tự duyệt về chờ duyệt, để báo lại cho Admin. */
+    public record KetQuaChuyenVeChoDuyet(int soBaoCao, int soNguoi, int tongDiemHoan, int khongTimThayNhatKy) {}
+
+    /** Diễn giải mà bản tự duyệt cũ ghi vào nhật ký — dùng để tìm lại khoản đã cộng. */
+    private static final String DIEN_GIAI_TU_DUYET_CU = "Báo cáo đào tạo 1-1";
+
+    /**
+     * Đưa mọi báo cáo 1-1 được TỰ DUYỆT theo cách cũ về CHỜ DUYỆT, hoàn lại điểm
+     * đã cộng, để Admin xét lại từng báo cáo.
+     *
+     * <p><b>Hoàn đúng số điểm đã thực vào, không phải cứ 5đ.</b> Nhóm Thực chiến
+     * có trần 40đ/tuần: ai đã đầy nhóm thì lần tự duyệt ấy thực ra cộng 0đ. Trừ
+     * đại 5đ là ăn vào điểm họ kiếm được từ gặp khách. Nhật ký điểm có ghi số
+     * thực nhận của từng khoản, nên ghép từng báo cáo với dòng nhật ký của nó
+     * (cùng người, cùng diễn giải, thời điểm gần nhất trong vòng 2 phút) rồi hoàn
+     * đúng con số đó. Ghép từng cặp một, nên hai báo cáo nộp cách nhau vài giây
+     * vẫn không dùng chung một dòng.
+     *
+     * <p>Không tìm được dòng nhật ký (hiếm — nhật ký chỉ hỏng khi có lỗi lúc ghi)
+     * thì hoàn 5đ theo quy định; điểm tuần không xuống dưới 0 nên không âm.
+     *
+     * <p>Chạy lại lần hai không làm gì: báo cáo đã về CHỜ DUYỆT không còn khớp
+     * điều kiện "tự duyệt".
+     */
+    @Transactional
+    public KetQuaChuyenVeChoDuyet chuyenBaoCaoTuDuyetVeChoDuyet() {
+        List<OneOnOneTraining> tuDuyet = oneOnOneTrainingRepository
+                .findByStatusAndReviewedByIsNullOrderBySubmittedAtAsc("APPROVED");
+
+        int tongHoan = 0, khongCoNhatKy = 0;
+        java.util.Set<Long> nguoi = new java.util.HashSet<>();
+        Map<Long, List<KpiLedgerEntry>> nhatKyTheoNguoi = new java.util.HashMap<>();
+        java.util.Set<Long> dongDaDung = new java.util.HashSet<>();
+
+        for (OneOnOneTraining t : tuDuyet) {
+            nguoi.add(t.getUserId());
+            List<KpiLedgerEntry> nhatKy = nhatKyTheoNguoi.computeIfAbsent(t.getUserId(), uid ->
+                    kpiLedgerEntryRepository.findByUserIdAndCategoryAndReason(uid, "meeting", DIEN_GIAI_TU_DUYET_CU));
+
+            KpiLedgerEntry khop = ghepNhatKy(t, nhatKy, dongDaDung);
+            int hoan;
+            ZonedDateTime moc;
+            if (khop != null) {
+                dongDaDung.add(khop.getId());
+                hoan = khop.getEffectivePoints() == null ? 0 : khop.getEffectivePoints();
+                moc = khop.getOccurredAt();   // cùng tuần với khoản đã cộng
+            } else {
+                khongCoNhatKy++;
+                hoan = KPI_POINTS_ONE_ON_ONE;
+                moc = lucNop(t);
+            }
+
+            t.setStatus("PENDING");
+            oneOnOneTrainingRepository.save(t);
+
+            if (hoan > 0) {
+                kpiCalculationService.updateKpiPoints(t.getUserId(), "meeting", -hoan, moc,
+                        "Báo cáo đào tạo 1-1 “" + tomTat(t.getContent()) + "” chuyển về chờ Admin duyệt"
+                                + " — hoàn lại " + hoan + "đ đã tự cộng. Duyệt xong sẽ cộng lại.");
+                tongHoan += hoan;
+            }
+        }
+
+        log.info("[1-1] Chuyển {} báo cáo tự duyệt về chờ duyệt ({} người), hoàn {}đ, {} báo cáo không có nhật ký",
+                tuDuyet.size(), nguoi.size(), tongHoan, khongCoNhatKy);
+        return new KetQuaChuyenVeChoDuyet(tuDuyet.size(), nguoi.size(), tongHoan, khongCoNhatKy);
+    }
+
+    /** Dòng nhật ký chưa dùng, gần thời điểm nộp nhất, cách không quá 2 phút. */
+    static KpiLedgerEntry ghepNhatKy(OneOnOneTraining t, List<KpiLedgerEntry> nhatKy, java.util.Set<Long> daDung) {
+        if (t.getSubmittedAt() == null) return null;
+        long nop = t.getSubmittedAt().toInstant().toEpochMilli();
+        KpiLedgerEntry tot = null;
+        long lechNhoNhat = 120_000;
+        for (KpiLedgerEntry e : nhatKy) {
+            if (daDung.contains(e.getId()) || e.getOccurredAt() == null) continue;
+            long lech = Math.abs(e.getOccurredAt().toInstant().toEpochMilli() - nop);
+            if (lech <= lechNhoNhat) { lechNhoNhat = lech; tot = e; }
+        }
+        return tot;
     }
 
     private OneOnOneTraining timTheoId(Long id) {

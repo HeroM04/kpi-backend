@@ -30,4 +30,7 @@ public interface KpiLedgerEntryRepository extends JpaRepository<KpiLedgerEntry, 
 
     @Query("SELECT MIN(e.month) FROM KpiLedgerEntry e WHERE e.userId = :userId")
     String thangCuNhat(@Param("userId") Long userId);
+
+    /** Mọi khoản điểm cùng một diễn giải của một người — để tìm lại khoản đã cộng mà hoàn đúng số. */
+    List<KpiLedgerEntry> findByUserIdAndCategoryAndReason(Long userId, String category, String reason);
 }

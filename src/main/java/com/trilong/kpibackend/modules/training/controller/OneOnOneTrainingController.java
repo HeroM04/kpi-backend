@@ -57,6 +57,22 @@ public class OneOnOneTrainingController {
         ));
     }
 
+    @Operation(summary = "Chuyển các báo cáo tự duyệt đời cũ về chờ duyệt",
+               description = "Báo cáo được máy chủ tự duyệt trước khi có bước duyệt tay: đưa về chờ duyệt "
+                           + "và hoàn lại đúng số điểm đã thực cộng. Chạy lại lần hai không làm gì thêm.")
+    @PostMapping("/reset-auto-approved")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> chuyenVeChoDuyet() {
+        try {
+            var kq = service.chuyenBaoCaoTuDuyetVeChoDuyet();
+            return ResponseEntity.ok(Map.of("status", "SUCCESS", "data", kq,
+                    "message", "Đã chuyển " + kq.soBaoCao() + " báo cáo của " + kq.soNguoi()
+                            + " nhân sự về chờ duyệt, hoàn lại " + kq.tongDiemHoan() + "đ."));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("status", "ERROR", "message", e.getMessage()));
+        }
+    }
+
     @Operation(summary = "Duyệt báo cáo đào tạo 1-1", description = "Cộng 5đ nhóm Thực chiến vào tuần nộp báo cáo.")
     @PutMapping("/{id}/approve")
     @PreAuthorize("hasRole('ADMIN')")

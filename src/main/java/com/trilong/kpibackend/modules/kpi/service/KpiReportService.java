@@ -458,8 +458,12 @@ public class KpiReportService {
         int nWeeks = weeks.size();
         int maxKpi = kpiCalculationService.getMaxKpiForMonth(month);
 
+        // Chỉ nhân sự thuộc diện chấm KPI. Văn phòng (Back-Office) và Admin chấm
+        // công bình thường nhưng không có điểm — đưa vào báo cáo KPI thì cả cột
+        // nào cũng 0, người đọc tưởng họ làm việc kém.
         List<User> users = userRepository.findAll().stream()
                 .filter(u -> !"INACTIVE".equalsIgnoreCase(nz(u.getStatus())))
+                .filter(KpiCalculationService::duocChamKpi)
                 .sorted(Comparator
                         .comparing((User u) -> u.getDepartment() != null ? u.getDepartment().getName() : "zzz")
                         .thenComparing(u -> nz(u.getFullName())))

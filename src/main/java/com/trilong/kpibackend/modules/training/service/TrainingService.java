@@ -195,13 +195,16 @@ public class TrainingService {
                 .toList();
     }
 
-    /** Chấm lại điểm đào tạo tuần này cho toàn bộ nhân sự đang làm việc. */
+    /** Chấm lại điểm đào tạo tuần này cho nhân sự thuộc diện chấm KPI. */
     @Transactional
     public int chamDiemDaoTaoTuanChoTatCa(ZonedDateTime mocTrongTuan) {
         int n = 0;
         for (User u : userRepository.findAll()) {
             if (!"ACTIVE".equals(u.getStatus())) continue;
-            if ("ADMIN".equals(u.getRole())) continue; // không thuộc diện chấm KPI
+            // Văn phòng và Admin không chấm KPI. Bỏ qua ngay ở đây thay vì để hàm
+            // chấm chạy rồi bị chặn ở khâu cộng điểm: mỗi đêm khỏi ghi thừa một
+            // dòng ghi nhận cho từng người của Back-Office.
+            if (!KpiCalculationService.duocChamKpi(u)) continue;
             try {
                 chamDiemDaoTaoTuan(u.getId(), mocTrongTuan);
                 n++;

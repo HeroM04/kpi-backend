@@ -138,8 +138,13 @@ public class KpiController {
             month = kpiCalculationService.extractMonth(ZonedDateTime.now());
         }
 
-        // 1. Lấy tất cả nhân sự đang hoạt động (có thể lọc theo phòng ban)
-        List<User> activeUsers = userRepository.findByFilters(departmentId, null, "ACTIVE");
+        // 1. Nhân sự đang làm việc VÀ thuộc diện chấm KPI. Văn phòng (Back-Office)
+        //    và Admin vẫn chấm công nhưng không có KPI — để họ trong danh sách thì
+        //    bảng nào cũng có mấy dòng 0đ, kéo tụt trung bình phòng và xếp chót
+        //    bảng vinh danh dù họ không hề bị chấm.
+        List<User> activeUsers = userRepository.findByFilters(departmentId, null, "ACTIVE").stream()
+                .filter(KpiCalculationService::duocChamKpi)
+                .toList();
 
         // 2. Lấy điểm KPI đã có trong DB
         List<KpiScore> scores = kpiScoreRepository.findByMonthAndDepartment(month, departmentId);
@@ -260,8 +265,10 @@ public class KpiController {
             month = kpiCalculationService.extractMonth(ZonedDateTime.now());
         }
 
-        // 1. Lấy tất cả nhân sự ACTIVE trong phòng ban của mình
-        List<User> activeUsers = userRepository.findByFilters(departmentId, null, "ACTIVE");
+        // 1. Nhân sự ACTIVE trong phòng ban của mình, chỉ người thuộc diện chấm KPI
+        List<User> activeUsers = userRepository.findByFilters(departmentId, null, "ACTIVE").stream()
+                .filter(KpiCalculationService::duocChamKpi)
+                .toList();
 
         // 2. Lấy điểm KPI đã có trong DB cho phòng ban đó
         List<KpiScore> scores = kpiScoreRepository.findByMonthAndDepartment(month, departmentId);

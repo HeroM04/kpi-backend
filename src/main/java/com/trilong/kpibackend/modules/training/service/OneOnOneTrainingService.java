@@ -93,14 +93,17 @@ public class OneOnOneTrainingService {
         if ("REJECTED".equals(t.getStatus())) return mapToDto(t);
 
         boolean daCongDiem = "APPROVED".equals(t.getStatus());
+        int dangGiu = diemDangGiu(t);
         t.setStatus("REJECTED");
         t.setReviewedBy(nguoiDuyet);
         t.setReviewedAt(ZonedDateTime.now());
         oneOnOneTrainingRepository.save(t);
 
         if (daCongDiem) {
-            kpiCalculationService.updateKpiPoints(t.getUserId(), "meeting", -KPI_POINTS_ONE_ON_ONE,
-                    lucNop(t), "Admin từ chối đào tạo 1-1 — " + tomTat(t.getContent()));
+            if (dangGiu > 0) {
+                kpiCalculationService.updateKpiPoints(t.getUserId(), "meeting", -dangGiu,
+                        lucNop(t), "Admin từ chối đào tạo 1-1 — " + tomTat(t.getContent()));
+            }
         } else {
             // Không có dòng điểm nào để nhân sự thấy trong nhật ký, nên phải báo
             // riêng — không thì họ chờ mãi một khoản điểm sẽ không bao giờ tới.
@@ -109,6 +112,49 @@ public class OneOnOneTrainingService {
                     Map.of("type", "one_on_one"));
         }
         return mapToDto(t);
+    }
+
+    /**
+     * Xóa hẳn một báo cáo — dùng cho báo cáo nộp trùng. Báo cáo đã duyệt thì thu
+     * hồi đúng số điểm nó đang giữ trước khi xóa, không thì điểm còn đó mà báo
+     * cáo sinh ra nó đã biến mất, không ai lần ra được.
+     *
+     * @return số điểm đã thu hồi (0 nếu báo cáo chưa được duyệt)
+     */
+    @Transactional
+    public int xoa(Long id) {
+        OneOnOneTraining t = timTheoId(id);
+        int dangGiu = diemDangGiu(t);
+        if (dangGiu > 0) {
+            kpiCalculationService.updateKpiPoints(t.getUserId(), "meeting", -dangGiu, lucNop(t),
+                    "Admin xóa báo cáo đào tạo 1-1 — " + tomTat(t.getContent()));
+        }
+        oneOnOneTrainingRepository.delete(t);
+        return dangGiu;
+    }
+
+    /**
+     * Số điểm báo cáo này THỰC đang giữ — để khi từ chối hay xóa thì thu hồi
+     * đúng số đó, không phải cứ 5đ.
+     *
+     * <p>Nhóm Thực chiến có trần 40đ/tuần: duyệt lúc nhóm đã đầy thì khoản 5đ
+     * vào được 0đ. Trừ đại 5đ khi xóa là ăn vào điểm gặp khách. Nhật ký ghi số
+     * thực nhận của lần duyệt, neo đúng thời điểm nộp, nên tìm lại được đúng dòng
+     * — kể cả hai báo cáo trùng nộp cách nhau vài giây, vì dòng của mỗi cái trùng
+     * khít giờ nộp của chính nó. Duyệt nhiều lần thì lấy lần sau cùng.
+     */
+    private int diemDangGiu(OneOnOneTraining t) {
+        if (!"APPROVED".equals(t.getStatus())) return 0;
+        List<KpiLedgerEntry> dong = new java.util.ArrayList<>(kpiLedgerEntryRepository
+                .findByUserIdAndCategoryAndReasonStartingWithOrderByIdAsc(t.getUserId(), "meeting", "Admin duyệt đào tạo 1-1"));
+        if (t.getReviewedBy() == null) {
+            // Tự duyệt đời cũ, chưa chuyển về chờ duyệt
+            dong.addAll(kpiLedgerEntryRepository.findByUserIdAndCategoryAndReason(t.getUserId(), "meeting", DIEN_GIAI_TU_DUYET_CU));
+            dong.sort(java.util.Comparator.comparing(KpiLedgerEntry::getId));
+        }
+        KpiLedgerEntry khop = ghepNhatKy(t, dong, java.util.Set.of());
+        if (khop == null || khop.getEffectivePoints() == null) return KPI_POINTS_ONE_ON_ONE;
+        return Math.max(0, khop.getEffectivePoints());
     }
 
     /** Kết quả chuyển báo cáo tự duyệt về chờ duyệt, để báo lại cho Admin. */

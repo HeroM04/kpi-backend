@@ -39,4 +39,7 @@ public interface KpiLedgerEntryRepository extends JpaRepository<KpiLedgerEntry, 
 
     /** Mọi khoản điểm cùng một diễn giải của một người — để tìm lại khoản đã cộng mà hoàn đúng số. */
     List<KpiLedgerEntry> findByUserIdAndCategoryAndReason(Long userId, String category, String reason);
+
+    /** Như trên nhưng khớp đầu câu — diễn giải có nối thêm nội dung phía sau. */
+    List<KpiLedgerEntry> findByUserIdAndCategoryAndReasonStartingWithOrderByIdAsc(Long userId, String category, String dauCau);
 }

@@ -78,6 +78,15 @@ class OneOnOneTrainingServiceTest {
     }
 
     @Test
+    @DisplayName("Duyệt — từ chối — duyệt lại: lấy dòng duyệt SAU CÙNG để biết báo cáo đang giữ bao nhiêu")
+    void duyetNhieuLanLayLanCuoi() {
+        var bc = baoCao(1, luc(11, 35, 26));
+        // Lần duyệt đầu vào đủ 5đ; lần duyệt lại gặp nhóm đã đầy nên vào 0đ.
+        List<KpiLedgerEntry> nhatKy = List.of(dong(901, luc(11, 35, 26), 5), dong(902, luc(11, 35, 26), 0));
+        assertEquals(902L, OneOnOneTrainingService.ghepNhatKy(bc, nhatKy, Set.of()).getId());
+    }
+
+    @Test
     @DisplayName("Chọn dòng gần thời điểm nộp nhất khi có nhiều dòng trong khoảng")
     void chonDongGanNhat() {
         var bc = baoCao(1, luc(11, 51, 12));

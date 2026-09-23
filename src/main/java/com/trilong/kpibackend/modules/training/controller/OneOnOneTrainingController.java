@@ -84,6 +84,20 @@ public class OneOnOneTrainingController {
         }
     }
 
+    @Operation(summary = "Xóa báo cáo đào tạo 1-1",
+               description = "Dùng cho báo cáo nộp trùng. Báo cáo đã duyệt thì thu hồi điểm nó đang giữ trước khi xóa.")
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> xoa(@PathVariable Long id) {
+        try {
+            int thuHoi = service.xoa(id);
+            return ResponseEntity.ok(Map.of("status", "SUCCESS", "data", Map.of("thuHoi", thuHoi),
+                    "message", thuHoi > 0 ? "Đã xóa báo cáo và thu hồi " + thuHoi + "đ." : "Đã xóa báo cáo."));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("status", "ERROR", "message", e.getMessage()));
+        }
+    }
+
     @Operation(summary = "Từ chối báo cáo đào tạo 1-1",
                description = "Báo cáo đã được duyệt trước đó thì thu hồi 5đ đã cộng.")
     @PutMapping("/{id}/reject")

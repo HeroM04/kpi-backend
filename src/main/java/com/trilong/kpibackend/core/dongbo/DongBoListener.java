@@ -85,21 +85,29 @@ public class DongBoListener implements PostCommitInsertEventListener,
      * <p>Tên loại phải khớp {@code DongBo.cacLoai} bên app.
      */
     public static DiaChi phanLoai(Object e) {
-        if (e instanceof CheckinLog c)         return new DiaChi("CHAM_CONG", c.getUserId());
-        if (e instanceof LeaveRequest l)       return new DiaChi("DON_VANG", l.getUserId());
-        if (e instanceof FieldBattle f)        return new DiaChi("THUC_CHIEN", idCua(f.getUser()));
-        if (e instanceof Deal d)               return new DiaChi("CHOT_CAN", idCua(d.getUser()));
-        if (e instanceof SocialPost p)         return new DiaChi("BAI_DANG", idCua(p.getUser()));
-        if (e instanceof Feedback f)           return new DiaChi("PHAN_HOI", f.getSenderId());
-        if (e instanceof ReferralSubmission r) return new DiaChi("GIEO_HAT", r.getReferrerId());
-        if (e instanceof OneOnOneTraining o)   return new DiaChi("DAO_TAO", o.getUserId());
-        if (e instanceof TrainingAttendee a)   return new DiaChi("DAO_TAO", a.getUserId());
-        if (e instanceof TrainingRsvp r)       return new DiaChi("DAO_TAO", r.getUserId());
+        if (e instanceof CheckinLog c)         return rieng("CHAM_CONG", c.getUserId());
+        if (e instanceof LeaveRequest l)       return rieng("DON_VANG", l.getUserId());
+        if (e instanceof FieldBattle f)        return rieng("THUC_CHIEN", idCua(f.getUser()));
+        if (e instanceof Deal d)               return rieng("CHOT_CAN", idCua(d.getUser()));
+        if (e instanceof SocialPost p)         return rieng("BAI_DANG", idCua(p.getUser()));
+        if (e instanceof Feedback f)           return rieng("PHAN_HOI", f.getSenderId());
+        if (e instanceof ReferralSubmission r) return rieng("GIEO_HAT", r.getReferrerId());
+        if (e instanceof OneOnOneTraining o)   return rieng("DAO_TAO", o.getUserId());
+        if (e instanceof TrainingAttendee a)   return rieng("DAO_TAO", a.getUserId());
+        if (e instanceof TrainingRsvp r)       return rieng("DAO_TAO", r.getUserId());
         // Dữ liệu chung: cả công ty cùng thấy
         if (e instanceof TrainingSession)      return new DiaChi("DAO_TAO", null);
         // Phòng ban đổi tọa độ/bán kính → mọi người tải lại hồ sơ để chấm công đúng
         if (e instanceof Department)           return new DiaChi("HO_SO", null);
         return null;
+    }
+
+    /**
+     * Dữ liệu riêng của một người. Thiếu chủ (dữ liệu hỏng) thì không báo —
+     * userId null ở chỗ gửi nghĩa là "cả công ty", không được để lọt sang đó.
+     */
+    private static DiaChi rieng(String loai, Long userId) {
+        return userId == null ? null : new DiaChi(loai, userId);
     }
 
     /**

@@ -666,17 +666,26 @@ public class CheckinService {
      * Chỉ tính khi CHECK_OUT, và không tính vào cuối tuần.
      */
     private void awardOvertimeIfEligible(Long userId, String actionType, ZonedDateTime time) {
-        if (!"CHECK_OUT".equals(actionType)) return;
-
-        DayOfWeek day = time.getDayOfWeek();
-        if (day == DayOfWeek.SATURDAY || day == DayOfWeek.SUNDAY) return;
-
-        if (time.toLocalTime().isBefore(OVERTIME_LIMIT)) return;
+        if (!duDieuKienTangCa(actionType, time)) return;
 
         kpiCalculationService.updateKpiPoints(userId, "meeting", KPI_OVERTIME, time,
                 "Tăng ca — về lúc " + gio(time));
         log.info("[Checkin]  Tăng ca userId={} về lúc {} → +{} KPI (nhóm Thực chiến)",
                 userId, time.toLocalTime(), KPI_OVERTIME);
+    }
+
+    /**
+     * Lần chấm công này có được tính tăng ca không: CHECK-OUT từ 20:00 giờ VN
+     * trở đi, ngày thường (không tính thứ Bảy, Chủ nhật). Quy về giờ VN ngay tại
+     * đây — máy chủ chạy UTC, so thẳng giờ UTC thì 20:30 tối VN thành 13:30 và
+     * không bao giờ đủ điều kiện.
+     */
+    static boolean duDieuKienTangCa(String actionType, ZonedDateTime time) {
+        if (!"CHECK_OUT".equals(actionType) || time == null) return false;
+        ZonedDateTime vn = time.withZoneSameInstant(VN_ZONE);
+        DayOfWeek day = vn.getDayOfWeek();
+        if (day == DayOfWeek.SATURDAY || day == DayOfWeek.SUNDAY) return false;
+        return !vn.toLocalTime().isBefore(OVERTIME_LIMIT);
     }
 
     /**

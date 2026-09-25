@@ -82,6 +82,14 @@ public class LeaveRequestService {
             if ("PENDING".equals(existing.getStatus())) {
                 throw new IllegalArgumentException("Bạn đã gửi đơn xin vắng cho ngày này, đang chờ duyệt.");
             }
+            // Máy đã chốt vắng không phép (−15đ) mà giờ nhân sự mới gửi đơn: hoàn
+            // −15 trước. Không hoàn thì đơn được duyệt vẫn giữ −15 (duyệt thấy cờ
+            // "đã trừ" nên bỏ qua), còn bị từ chối lại hoàn nhầm +10.
+            if ("UNEXCUSED".equals(existing.getStatus()) && Boolean.TRUE.equals(existing.getKpiApplied())) {
+                kpiCalculationService.updateKpiPoints(userId, "attendance", -KPI_LEAVE_UNEXCUSED, atNoon(date),
+                        "Đã gửi đơn xin vắng ngày " + ngay(date) + " — hoàn điểm vắng không phép, chờ Admin duyệt");
+                existing.setKpiApplied(false);
+            }
             // Đơn cũ bị từ chối → cho gửi lại bằng cách ghi đè
             existing.setReason(dto.getReason());
             existing.setStatus("PENDING");
@@ -268,11 +276,22 @@ public class LeaveRequestService {
         return leaveRequestRepository.save(req);
     }
 
-    /** Admin từ chối đơn. Nếu trước đó đã duyệt thì hoàn lại điểm đã trừ. */
+    /**
+     * Admin từ chối đơn. Nếu trước đó đã duyệt thì hoàn lại điểm nghỉ có phép.
+     *
+     * <p><b>Ngày nghỉ đã qua mà không chấm công → thành vắng không phép (−15đ).</b>
+     * Trước đây chỉ hoàn 10đ rồi thôi: Admin duyệt đơn, hôm sau bấm "Thu hồi
+     * duyệt" là người đó không bị trừ gì cho một ngày vắng giờ không còn được
+     * duyệt. Tác vụ chốt vắng cuối ngày không cứu được vì nó chỉ chốt ngày hôm
+     * nay. Ngày chưa tới (hoặc là hôm nay) thì để tác vụ cuối ngày tự xét.
+     */
     @Transactional
     public LeaveRequest reject(Long requestId, Long adminId, String note) {
         LeaveRequest req = leaveRequestRepository.findById(requestId)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn xin vắng."));
+        if ("UNEXCUSED".equals(req.getStatus())) {
+            throw new IllegalArgumentException("Đây là vắng không phép do hệ thống ghi nhận, không phải đơn xin vắng.");
+        }
 
         if (Boolean.TRUE.equals(req.getKpiApplied())) {
             kpiCalculationService.updateKpiPoints(req.getUserId(), "attendance",
@@ -285,7 +304,24 @@ public class LeaveRequestService {
         req.setReviewedBy(adminId);
         req.setReviewedAt(ZonedDateTime.now());
         req.setReviewNote(note);
+
+        LocalDate ngayNghi = req.getLeaveDate();
+        if (ngayNghi.isBefore(LocalDate.now(VN_ZONE)) && ngayNghi.getDayOfWeek() != DayOfWeek.SUNDAY
+                && !coChamCongTrongNgay(req.getUserId(), ngayNghi)) {
+            req.setStatus("UNEXCUSED");
+            req.setKpiApplied(true);
+            kpiCalculationService.updateKpiPoints(req.getUserId(), "attendance",
+                    KPI_LEAVE_UNEXCUSED, atNoon(ngayNghi),
+                    "Vắng không phép ngày " + ngay(ngayNghi) + " — đơn xin vắng bị từ chối, hôm đó không chấm công");
+        }
         return leaveRequestRepository.save(req);
+    }
+
+    /** Có bản ghi chấm công hợp lệ (không bị từ chối) trong ngày, giờ VN. */
+    private boolean coChamCongTrongNgay(Long userId, LocalDate ngay) {
+        return checkinLogRepository.findByUserIdAndCheckinTimeBetween(userId,
+                        ngay.atStartOfDay(VN_ZONE), ngay.plusDays(1).atStartOfDay(VN_ZONE))
+                .stream().anyMatch(c -> !"REJECTED".equals(c.getStatus()));
     }
 
     // --------------------------------------------------------------- Cuối ngày

@@ -133,9 +133,9 @@ public class CheckinController {
             @AuthenticationPrincipal UserPrincipal currentUser,
             @RequestParam(required = false) String date) {
         try {
-            LocalDate targetDate = (date != null && !date.trim().isEmpty())
-                    ? LocalDate.parse(date)
-                    : LocalDate.now();
+            // "Hôm nay" theo giờ VN — LocalDate.now() trên máy chủ UTC là hôm qua
+            // suốt 00:00–07:00 sáng, nhân viên chấm công sớm mở app thấy trống trơn
+            LocalDate targetDate = com.trilong.kpibackend.core.utils.GioVN.ngayLoc(date);
             List<CheckinLog> logs = checkinService.getCheckinsByUserIdAndDate(currentUser.getUserId(), targetDate);
             return ResponseEntity.ok(Map.of("status", "SUCCESS", "data", logs));
         } catch (Exception e) {

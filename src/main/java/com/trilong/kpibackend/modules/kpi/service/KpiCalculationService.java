@@ -117,8 +117,17 @@ public class KpiCalculationService {
         return monthOfWeek(i.atZone(VN_ZONE).toLocalDate());
     }
 
+    /**
+     * Mã tuần ISO (yyyy-Www) theo GIỜ VIỆT NAM.
+     *
+     * <p>Trước đây tính theo múi giờ của chính mốc thời gian truyền vào. Máy chủ
+     * Render chạy UTC, nên mốc đọc từ DB hay {@code now()} mang múi UTC: việc làm
+     * lúc 00:00–07:00 sáng thứ Hai giờ VN (vẫn là Chủ nhật ở UTC) bị xếp vào
+     * TUẦN TRƯỚC — trong khi {@link #extractMonth} ngay trên đã quy về giờ VN, nên
+     * đầu tháng còn sinh ra dòng điểm tuần của tháng trước mang nhãn tháng này.
+     */
     public String getWeekString(ZonedDateTime dateTime) {
-        if (dateTime == null) dateTime = ZonedDateTime.now();
+        dateTime = (dateTime == null) ? ZonedDateTime.now(VN_ZONE) : dateTime.withZoneSameInstant(VN_ZONE);
         java.time.temporal.WeekFields weekFields = java.time.temporal.WeekFields.ISO;
         int weekNumber = dateTime.get(weekFields.weekOfWeekBasedYear());
         int year = dateTime.get(weekFields.weekBasedYear());

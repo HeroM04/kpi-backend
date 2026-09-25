@@ -48,9 +48,10 @@ public class SocialPostController {
     public ResponseEntity<?> getMyPosts(
             @AuthenticationPrincipal UserPrincipal currentUser,
             @RequestParam(required = false) String date) {
-        LocalDate filterDate = (date != null && !date.trim().isEmpty()) ? LocalDate.parse(date) : LocalDate.now();
+        // Ngày theo giờ VN — máy chủ chạy UTC, lấy thẳng toLocalDate() là lệch 7 tiếng
+        LocalDate filterDate = com.trilong.kpibackend.core.utils.GioVN.ngayLoc(date);
         List<SocialPost> posts = socialPostService.getMyPosts(currentUser.getUserId()).stream()
-                .filter(p -> p.getSubmittedAt() != null && p.getSubmittedAt().toLocalDate().equals(filterDate))
+                .filter(p -> filterDate.equals(com.trilong.kpibackend.core.utils.GioVN.ngayCua(p.getSubmittedAt())))
                 .toList();
         List<SocialPostResponseDTO> dtos = posts.stream().map(SocialPostResponseDTO::from).toList();
         return ResponseEntity.ok(Map.of("status", "SUCCESS", "data", dtos));

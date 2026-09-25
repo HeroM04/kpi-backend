@@ -1,0 +1,27 @@
+# Cấu hình riêng cho kiểm thử (@ActiveProfiles("test")).
+# CSDL H2 trong bộ nhớ, giả lập PostgreSQL — mỗi lần chạy test là DB trắng,
+# không đụng tới Supabase hay máy ai.
+spring:
+  datasource:
+    # NON_KEYWORDS: H2 coi month/week/year/value là từ khóa, PostgreSQL thì không —
+    # thiếu dòng này là các bảng điểm KPI (có cột month, week) không tạo được.
+    url: jdbc:h2:mem:kpitest;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH;NON_KEYWORDS=MONTH,WEEK,YEAR,DAY,VALUE,KEY
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    open-in-view: false
+    hibernate:
+      ddl-auto: create-drop
+
+app:
+  jwt:
+    secret: chi-dung-cho-kiem-thu-khong-phai-khoa-that-32ky-tu
+    expiration-ms: 3600000
+    refresh-expiration-ms: 604800000
+  rekognition:
+    enabled: false
+
+firebase:
+  service-account: ""

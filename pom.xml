@@ -154,6 +154,14 @@
 			<artifactId>spring-security-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+		<!-- CSDL trong bộ nhớ cho kiểm thử: chạy truy vấn JPA và móc đồng bộ
+		     sau commit trên Hibernate thật, không cần PostgreSQL. Chỉ dùng khi
+		     chạy test, không vào bản build chạy trên Render. -->
+		<dependency>
+			<groupId>com.h2database</groupId>
+			<artifactId>h2</artifactId>
+			<scope>test</scope>
+		</dependency>
 
 		<!-- Firebase Admin SDK: gửi thông báo đẩy tới thiết bị qua FCM -->
 		<dependency>

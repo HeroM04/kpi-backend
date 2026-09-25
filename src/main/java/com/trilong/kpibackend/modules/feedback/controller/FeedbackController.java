@@ -85,9 +85,10 @@ public class FeedbackController {
             @AuthenticationPrincipal UserPrincipal currentUser,
             @RequestParam(required = false) String date) {
         try {
-            LocalDate filterDate = (date != null && !date.trim().isEmpty()) ? LocalDate.parse(date) : LocalDate.now();
+            // Ngày theo giờ VN — máy chủ chạy UTC, lấy thẳng toLocalDate() là lệch 7 tiếng
+            LocalDate filterDate = com.trilong.kpibackend.core.utils.GioVN.ngayLoc(date);
             List<FeedbackResponseDTO> list = feedbackService.getFeedbacksBySender(currentUser.getUserId()).stream()
-                    .filter(f -> f.getCreatedAt() != null && f.getCreatedAt().toLocalDate().equals(filterDate))
+                    .filter(f -> filterDate.equals(com.trilong.kpibackend.core.utils.GioVN.ngayCua(f.getCreatedAt())))
                     .toList();
             return ResponseEntity.ok(Map.of("status", "SUCCESS", "data", list));
         } catch (Exception e) {

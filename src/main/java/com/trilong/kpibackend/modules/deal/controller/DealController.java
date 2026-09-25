@@ -48,9 +48,10 @@ public class DealController {
     public ResponseEntity<?> getMyDeals(
             @AuthenticationPrincipal UserPrincipal currentUser,
             @RequestParam(required = false) String date) {
-        LocalDate filterDate = (date != null && !date.trim().isEmpty()) ? LocalDate.parse(date) : LocalDate.now();
+        // Ngày theo giờ VN — máy chủ chạy UTC, lấy thẳng toLocalDate() là lệch 7 tiếng
+        LocalDate filterDate = com.trilong.kpibackend.core.utils.GioVN.ngayLoc(date);
         List<Deal> deals = dealService.getMyDeals(currentUser.getUserId()).stream()
-                .filter(d -> d.getSubmittedAt() != null && d.getSubmittedAt().toLocalDate().equals(filterDate))
+                .filter(d -> filterDate.equals(com.trilong.kpibackend.core.utils.GioVN.ngayCua(d.getSubmittedAt())))
                 .toList();
         List<DealResponseDTO> dtos = deals.stream().map(DealResponseDTO::from).toList();
         return ResponseEntity.ok(Map.of("status", "SUCCESS", "data", dtos));

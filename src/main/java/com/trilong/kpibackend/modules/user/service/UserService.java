@@ -118,7 +118,11 @@ public class UserService {
 
     @Transactional
     public UserDTO createUser(CreateUserDTO dto) {
-        if (userRepository.existsByPhoneNumber(dto.getPhoneNumber())) {
+        // SĐT là tên đăng nhập: lỡ dán kèm dấu cách là tài khoản không bao giờ
+        // đăng nhập được (app gửi SĐT đã bỏ khoảng trắng). Sửa SĐT thì đã cắt từ lâu.
+        String sdt = dto.getPhoneNumber() == null ? null : dto.getPhoneNumber().trim();
+        dto.setPhoneNumber(sdt);
+        if (userRepository.existsByPhoneNumber(sdt)) {
             throw new IllegalArgumentException("Số điện thoại này đã được đăng ký.");
         }
 

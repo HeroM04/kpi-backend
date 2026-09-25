@@ -461,11 +461,13 @@ public class TrainingService {
      * giây, và người quét đúng lúc mã sắp đổi thì yêu cầu tới máy chủ khi mã đã
      * sang vòng mới — không nới ra thì họ bị báo hết hạn dù vừa quét đúng mã
      * trên màn hình.
+     *
+     * <p>Với vòng 30 giây, mã còn được nhận 30–60 giây kể từ lúc hiện lên,
+     * tính tới {@code lucNhan} — lúc máy chủ nhận yêu cầu, không phải lúc xử lý.
      */
-    private boolean tokenHopLe(String tokenStr) {
-        long bayGio = System.currentTimeMillis();
+    static boolean tokenHopLe(String tokenStr, long lucNhan) {
         for (long vong : VONG_DOI_MA_MS) {
-            long window = bayGio / vong;
+            long window = lucNhan / vong;
             for (long w = window - 1; w <= window + 1; w++) {
                 if (String.format("%06d", (w * 31337L) % 999999L).equals(tokenStr)) return true;
             }
@@ -475,6 +477,16 @@ public class TrainingService {
 
     @Transactional
     public TrainingAttendee attendTraining(Long userId, String qrData) {
+        return attendTraining(userId, qrData, System.currentTimeMillis());
+    }
+
+    /**
+     * @param lucNhan lúc máy chủ nhận yêu cầu quét ({@code ThoiDiemNhanFilter}),
+     *                mã QR được đối chiếu theo mốc này chứ không theo lúc xử lý
+     *                xong phần xếp hàng chờ DB
+     */
+    @Transactional
+    public TrainingAttendee attendTraining(Long userId, String qrData, long lucNhan) {
         // Hỗ trợ cả 2 format:
         // 1. Format mới: "roomCode:token" (token xoay theo thời gian, đồng bộ Web Admin)
         // 2. Format cũ: "roomCode" (backward compatible)
@@ -489,7 +501,7 @@ public class TrainingService {
             roomCode = qrData;
         }
 
-        if (tokenStr != null && !tokenStr.isEmpty() && !tokenHopLe(tokenStr)) {
+        if (tokenStr != null && !tokenStr.isEmpty() && !tokenHopLe(tokenStr, lucNhan)) {
             throw new IllegalArgumentException("Mã QR đã hết hạn! Vui lòng quét lại mã QR mới nhất.");
         }
 

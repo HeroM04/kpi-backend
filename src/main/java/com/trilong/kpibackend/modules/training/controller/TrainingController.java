@@ -1,6 +1,7 @@
 package com.trilong.kpibackend.modules.training.controller;
 
 import com.trilong.kpibackend.core.security.UserPrincipal;
+import com.trilong.kpibackend.core.utils.ThoiDiemNhanFilter;
 import com.trilong.kpibackend.modules.training.dto.*;
 import com.trilong.kpibackend.modules.training.entity.TrainingAttendee;
 import com.trilong.kpibackend.modules.training.entity.TrainingSession;
@@ -8,6 +9,7 @@ import com.trilong.kpibackend.modules.training.service.TrainingService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -275,8 +277,10 @@ public class TrainingController {
     @PreAuthorize("hasAuthority('training:attend')")
     public ResponseEntity<?> attendTraining(
             @AuthenticationPrincipal UserPrincipal currentUser,
-            @Valid @RequestBody AttendRequestDTO request) {
-        TrainingAttendee attendee = trainingService.attendTraining(currentUser.getUserId(), request.getRoomCode());
+            @Valid @RequestBody AttendRequestDTO request,
+            HttpServletRequest httpRequest) {
+        TrainingAttendee attendee = trainingService.attendTraining(currentUser.getUserId(),
+                request.getRoomCode(), ThoiDiemNhanFilter.cua(httpRequest));
         return ResponseEntity.ok(Map.of(
                 "status", "SUCCESS",
                 "message", "Điểm danh buổi học thành công!",

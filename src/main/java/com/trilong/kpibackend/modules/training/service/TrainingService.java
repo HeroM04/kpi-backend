@@ -694,6 +694,24 @@ public class TrainingService {
         return kemThongTin(trainingRsvpRepository.donChoDuyet());
     }
 
+    private static final java.util.Set<String> TRANG_THAI_DON = java.util.Set.of("PENDING", "APPROVED", "REJECTED");
+
+    /**
+     * Đơn xin vắng theo trạng thái, để Admin xem lại đơn đã duyệt / đã từ chối.
+     *
+     * @param trangThai PENDING · APPROVED · REJECTED; bỏ trống hoặc ALL = tất cả
+     */
+    public List<TrainingRsvpResponseDTO> donXinVangDayDu(String trangThai) {
+        if (trangThai == null || trangThai.isBlank() || "ALL".equalsIgnoreCase(trangThai.trim())) {
+            return kemThongTin(trainingRsvpRepository.tatCaDonXinVang());
+        }
+        String tt = trangThai.trim().toUpperCase();
+        if (!TRANG_THAI_DON.contains(tt)) {
+            throw new IllegalArgumentException("Trạng thái đơn không hợp lệ: " + trangThai);
+        }
+        return kemThongTin(trainingRsvpRepository.donXinVangTheoTrangThai(tt));
+    }
+
     public List<TrainingRsvpResponseDTO> traLoiCuaBuoiDayDu(Long sessionId) {
         return kemThongTin(trainingRsvpRepository.findBySessionId(sessionId));
     }

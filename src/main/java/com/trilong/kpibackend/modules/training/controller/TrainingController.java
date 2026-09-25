@@ -87,6 +87,19 @@ public class TrainingController {
                 "data", trainingService.donXinVangChoDuyetDayDu()));
     }
 
+    @Operation(summary = "Đơn xin vắng đào tạo theo trạng thái (Admin)",
+            description = "status = PENDING · APPROVED · REJECTED · ALL (mặc định ALL)")
+    @GetMapping("/rsvp")
+    @PreAuthorize("hasAuthority('training:manage') or hasRole('ADMIN')")
+    public ResponseEntity<?> donXinVang(@RequestParam(required = false) String status) {
+        try {
+            return ResponseEntity.ok(Map.of("status", "SUCCESS",
+                    "data", trainingService.donXinVangDayDu(status)));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("status", "ERROR", "message", e.getMessage()));
+        }
+    }
+
     @Operation(summary = "Toàn bộ câu trả lời của một buổi đào tạo (Admin)")
     @GetMapping("/{sessionId}/rsvp")
     @PreAuthorize("hasAuthority('training:manage') or hasRole('ADMIN')")

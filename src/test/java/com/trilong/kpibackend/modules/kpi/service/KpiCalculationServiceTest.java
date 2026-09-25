@@ -156,6 +156,107 @@ class KpiCalculationServiceTest {
         }
     }
 
+    // ── Chốt căn → 100% ──────────────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("Chốt căn hiện 100% trên web/app (khớp báo cáo Excel)")
+    class ChotCan100 {
+
+        @Mock com.trilong.kpibackend.modules.deal.repository.DealRepository dealRepository;
+
+        private com.trilong.kpibackend.modules.deal.entity.Deal deal(long userId, ZonedDateTime nop) {
+            return com.trilong.kpibackend.modules.deal.entity.Deal.builder()
+                    .user(User.builder().id(userId).build()).status("APPROVED").submittedAt(nop).build();
+        }
+
+        @BeforeEach
+        void ganRepo() {
+            service = new KpiCalculationService(kpiScoreRepository, kpiWeeklyScoreRepository, kpiLedgerEntryRepository,
+                    userRepository, messagingTemplate, pushNotificationService, dealRepository);
+        }
+
+        @Test
+        @DisplayName("Người có chốt căn đã duyệt trong tháng được nhận ra, theo ngày nộp giờ VN")
+        void nhanRa() {
+            when(dealRepository.findByStatusOrderBySubmittedAtDesc("APPROVED")).thenReturn(List.of(
+                    deal(7L, ZonedDateTime.of(2026, 9, 15, 10, 0, 0, 0, VN)),
+                    // Chủ nhật 06/09 thuộc tuần của thứ Hai 31/08 → tháng 8, không tính vào tháng 9
+                    deal(8L, ZonedDateTime.of(2026, 9, 6, 20, 0, 0, 0, VN))));
+
+            assertThat(service.nguoiCoChotCan("2026-09")).containsExactly(7L);
+            assertThat(service.nguoiCoChotCan("2026-08")).containsExactly(8L);
+        }
+
+        @Test
+        @DisplayName("Có chốt căn → điểm hiển thị bằng chỉ tiêu tháng và deal > 0, dù bảng điểm deal = 0")
+        void hienThi100() {
+            KpiScore diem = KpiScore.builder().user(nguoi("SALE")).month("2026-09")
+                    .attendance(20).meeting(10).post(0).deal(0).total(30).build();
+
+            var co = com.trilong.kpibackend.modules.kpi.dto.KpiScoreResponseDTO.from(diem, 30, 400, true);
+            var khong = com.trilong.kpibackend.modules.kpi.dto.KpiScoreResponseDTO.from(diem, 30, 400, false);
+
+            assertThat(co.getTotal()).isEqualTo(400);
+            assertThat(co.getDeal()).isPositive();
+            assertThat(co.getWeeklyTotal()).isEqualTo(100);
+            assertThat(khong.getTotal()).isEqualTo(30);
+            assertThat(khong.getDeal()).isZero();
+            // Điểm ba nhóm vẫn giữ nguyên để xem chi tiết
+            assertThat(co.getAttendance()).isEqualTo(20);
+        }
+    }
+
+    // ── Số điểm thực đã cộng (để gỡ đúng số) ────────────────────────────────
+
+    @Nested
+    @DisplayName("Tra số điểm một khoản đã duyệt thực cộng được")
+    class DiemThucDaCong {
+
+        private final ZonedDateTime nop = ZonedDateTime.of(2026, 9, 23, 10, 0, 0, 0, VN);
+        private long id = 1;
+
+        private KpiLedgerEntry dong(ZonedDateTime luc, int thucNhan) {
+            KpiLedgerEntry e = new KpiLedgerEntry();
+            e.setId(id++);
+            e.setOccurredAt(luc);
+            e.setEffectivePoints(thucNhan);
+            return e;
+        }
+
+        private void nhatKy(KpiLedgerEntry... ds) {
+            when(kpiLedgerEntryRepository.findByUserIdAndCategoryAndReasonStartingWithOrderByIdAsc(7L, "meeting", "Admin duyệt thực chiến"))
+                    .thenReturn(List.of(ds));
+        }
+
+        @Test
+        @DisplayName("Duyệt lúc nhóm đã đầy → trả 0 (gỡ thì không trừ gì)")
+        void daDay() {
+            nhatKy(dong(nop, 0));
+            assertThat(service.diemThucDaCong(7L, "meeting", "Admin duyệt thực chiến", nop, 10)).isZero();
+        }
+
+        @Test
+        @DisplayName("Duyệt → gỡ → duyệt lại: lấy lần duyệt sau cùng")
+        void layLanSauCung() {
+            nhatKy(dong(nop, 10), dong(nop, 4));
+            assertThat(service.diemThucDaCong(7L, "meeting", "Admin duyệt thực chiến", nop, 10)).isEqualTo(4);
+        }
+
+        @Test
+        @DisplayName("Không lẫn với báo cáo nộp lúc khác")
+        void khongLan() {
+            nhatKy(dong(nop.plusMinutes(30), 10), dong(nop, 3));
+            assertThat(service.diemThucDaCong(7L, "meeting", "Admin duyệt thực chiến", nop, 10)).isEqualTo(3);
+        }
+
+        @Test
+        @DisplayName("Không có dòng nhật ký → dùng số quy định")
+        void khongCoNhatKy() {
+            nhatKy();
+            assertThat(service.diemThucDaCong(7L, "meeting", "Admin duyệt thực chiến", nop, 10)).isEqualTo(10);
+        }
+    }
+
     // ── Cộng/trừ điểm ────────────────────────────────────────────────────────
 
     @Nested

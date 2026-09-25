@@ -96,8 +96,7 @@ public class SocialPostService {
             boolean nowApproved = "APPROVED".equals(newStatus);
 
             if (wasApproved && !nowApproved) {
-                kpiCalculationService.updateKpiPoints(post.getUser().getId(), "post", -KPI_POINTS_POST,
-                        post.getSubmittedAt(), "Admin gỡ duyệt: " + moTa(post));
+                thuHoiDiem(post, "Admin gỡ duyệt: ");
             } else if (!wasApproved && nowApproved) {
                 kpiCalculationService.updateKpiPoints(post.getUser().getId(), "post", KPI_POINTS_POST,
                         post.getSubmittedAt(), "Admin duyệt: " + moTa(post));
@@ -148,10 +147,9 @@ public class SocialPostService {
         User approver = userRepository.findById(approvedById)
                 .orElseThrow(() -> new IllegalArgumentException("KhÃ´ng tÃ¬m tháº¥y ngÆ°á»i duyá»‡t"));
 
-        // Náº¿u Ä‘ang á»Ÿ tráº¡ng thÃ¡i APPROVED, pháº£i trá»« Ä‘iá»ƒm KPI trÆ°á»›c khi reject
+        // Đang APPROVED thì thu hồi đúng số điểm bài này thực đã cộng
         if ("APPROVED".equals(post.getStatus())) {
-            kpiCalculationService.updateKpiPoints(post.getUser().getId(), "post", -KPI_POINTS_POST,
-                    post.getSubmittedAt(), "Admin từ chối: " + moTa(post));
+            thuHoiDiem(post, "Admin từ chối: ");
         }
 
         post.setStatus("REJECTED");
@@ -166,12 +164,25 @@ public class SocialPostService {
         SocialPost post = socialPostRepository.findById(postId)
                 .orElseThrow(() -> new IllegalArgumentException("KhÃ´ng tÃ¬m tháº¥y bÃ i viáº¿t MXH cÃ³ ID: " + postId));
 
-        // Náº¿u Ä‘ang á»Ÿ tráº¡ng thÃ¡i APPROVED, pháº£i trá»« Ä‘iá»ƒm KPI trÆ°á»›c khi xÃ³a
+        // Đang APPROVED thì thu hồi đúng số điểm bài này thực đã cộng
         if ("APPROVED".equals(post.getStatus())) {
-            kpiCalculationService.updateKpiPoints(post.getUser().getId(), "post", -KPI_POINTS_POST,
-                    post.getSubmittedAt(), "Admin xóa bản ghi: " + moTa(post));
+            thuHoiDiem(post, "Admin xóa bản ghi: ");
         }
 
         socialPostRepository.delete(post);
+    }
+
+    /**
+     * Gỡ điểm của một bài đã duyệt — đúng số THỰC đã cộng. Nhóm Lan tỏa trần
+     * 30đ/tuần: bài duyệt lúc nhóm đã đầy thì vào 0đ; trừ đại 5đ là ăn vào điểm
+     * của các bài khác. Tìm dòng duyệt theo đầu câu "Admin duyệt: " chứ không theo
+     * nguyên câu, vì nội dung bài có thể đã được sửa sau khi duyệt.
+     */
+    private void thuHoiDiem(SocialPost post, String dauCau) {
+        Long uid = post.getUser().getId();
+        int dangGiu = kpiCalculationService.diemThucDaCong(uid, "post", "Admin duyệt: ",
+                post.getSubmittedAt(), KPI_POINTS_POST);
+        if (dangGiu <= 0) return;
+        kpiCalculationService.updateKpiPoints(uid, "post", -dangGiu, post.getSubmittedAt(), dauCau + moTa(post));
     }
 }

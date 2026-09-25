@@ -35,6 +35,7 @@ public class KpiCalculationService {
     private final UserRepository userRepository;
     private final SimpMessagingTemplate messagingTemplate;
     private final com.trilong.kpibackend.modules.notification.service.PushNotificationService pushNotificationService;
+    private final com.trilong.kpibackend.modules.deal.repository.DealRepository dealRepository;
 
     private static final DateTimeFormatter MONTH_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM");
     private static final ZoneId VN_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
@@ -219,6 +220,50 @@ public class KpiCalculationService {
         }
         return new KpiGrade(0, "Không đạt KPI",
                 "Chỉ đạt " + totalPoints + " điểm, chưa tới ngưỡng " + min50, min50, min100, newbie);
+    }
+
+    /**
+     * Số điểm một khoản đã duyệt THỰC SỰ cộng được — để khi từ chối hay xóa thì
+     * thu hồi đúng số đó, không phải số quy định.
+     *
+     * <p>Mỗi nhóm có trần tuần (Thực chiến 40đ, Lan tỏa 30đ). Duyệt một báo cáo
+     * lúc nhóm đã đầy thì nó vào 0đ; trừ đại 10đ khi gỡ nó là ăn vào điểm người
+     * ta kiếm từ những báo cáo khác. Nhật ký ghi số thực nhận của từng khoản,
+     * neo đúng thời điểm nộp của bản ghi, nên tìm lại được dòng duyệt của nó.
+     * Duyệt nhiều lần (duyệt → gỡ → duyệt lại) thì lấy lần sau cùng.
+     *
+     * @param dauCauDuyet đầu câu diễn giải lúc DUYỆT, ví dụ "Admin duyệt thực chiến"
+     * @param mocNop      thời điểm nộp — cũng là mốc đã truyền vào lúc cộng
+     * @param macDinh     không tìm thấy dòng nhật ký (hiếm) thì dùng số quy định
+     */
+    public int diemThucDaCong(Long userId, String nhom, String dauCauDuyet, ZonedDateTime mocNop, int macDinh) {
+        if (userId == null || mocNop == null) return macDinh;
+        long nop = mocNop.toInstant().toEpochMilli();
+        KpiLedgerEntry khop = null;
+        long lechNhoNhat = 120_000;
+        for (KpiLedgerEntry e : kpiLedgerEntryRepository
+                .findByUserIdAndCategoryAndReasonStartingWithOrderByIdAsc(userId, nhom, dauCauDuyet)) {
+            if (e.getOccurredAt() == null) continue;
+            long lech = Math.abs(e.getOccurredAt().toInstant().toEpochMilli() - nop);
+            if (lech <= lechNhoNhat) { lechNhoNhat = lech; khop = e; }   // bằng nhau → dòng sau thắng
+        }
+        if (khop == null || khop.getEffectivePoints() == null) return macDinh;
+        return Math.max(0, khop.getEffectivePoints());
+    }
+
+    /**
+     * Những ai có chốt căn ĐÃ DUYỆT trong tháng KPI — tháng tính theo ngày nộp,
+     * cùng quy tắc tuần thuộc tháng của thứ Hai. Đây là cách báo cáo Excel xếp
+     * loại "đạt 100% nhờ chốt căn"; màn hình web/app phải dùng đúng cách này, không
+     * thì cùng một người Excel báo 100% mà web báo điểm thường.
+     */
+    public java.util.Set<Long> nguoiCoChotCan(String month) {
+        java.util.Set<Long> ds = new java.util.HashSet<>();
+        for (var d : dealRepository.findByStatusOrderBySubmittedAtDesc("APPROVED")) {
+            if (d.getUser() == null || d.getSubmittedAt() == null) continue;
+            if (month.equals(extractMonth(d.getSubmittedAt()))) ds.add(d.getUser().getId());
+        }
+        return ds;
     }
 
     /**

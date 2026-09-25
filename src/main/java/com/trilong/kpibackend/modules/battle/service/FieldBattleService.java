@@ -126,12 +126,8 @@ public class FieldBattleService {
         User approver = userRepository.findById(approvedById)
                 .orElseThrow(() -> new IllegalArgumentException("KhÃ´ng tÃ¬m tháº¥y ngÆ°á»i duyá»‡t"));
 
-        // Náº¿u Ä‘ang á»Ÿ tráº¡ng thÃ¡i APPROVED, pháº£i trá»« Ä‘iá»ƒm KPI trÆ°á»›c khi reject
-        if ("APPROVED".equals(battle.getStatus())) {
-            kpiCalculationService.updateKpiPoints(battle.getUser().getId(), "meeting", -diemCua(battle),
-                    battle.getSubmittedAt(),
-                    "Admin từ chối thực chiến — " + tenLoai(battle) + " " + battle.getCustomerName());
-        }
+        // Đang APPROVED thì thu hồi đúng số điểm báo cáo này thực đã cộng
+        thuHoiDiem(battle, "Admin từ chối thực chiến — ");
 
         battle.setStatus("REJECTED");
         battle.setApprovedBy(approver);
@@ -145,13 +141,24 @@ public class FieldBattleService {
         FieldBattle battle = fieldBattleRepository.findById(battleId)
                 .orElseThrow(() -> new IllegalArgumentException("KhÃ´ng tÃ¬m tháº¥y bÃ¡o cÃ¡o thá»±c chiáº¿n cÃ³ ID: " + battleId));
 
-        // Náº¿u Ä‘ang á»Ÿ tráº¡ng thÃ¡i APPROVED, pháº£i trá»« Ä‘iá»ƒm KPI trÆ°á»›c khi xÃ³a
-        if ("APPROVED".equals(battle.getStatus())) {
-            kpiCalculationService.updateKpiPoints(battle.getUser().getId(), "meeting", -diemCua(battle),
-                    battle.getSubmittedAt(),
-                    "Admin xóa báo cáo thực chiến — " + tenLoai(battle) + " " + battle.getCustomerName());
-        }
+        // Đang APPROVED thì thu hồi đúng số điểm báo cáo này thực đã cộng
+        thuHoiDiem(battle, "Admin xóa báo cáo thực chiến — ");
 
         fieldBattleRepository.delete(battle);
+    }
+
+    /**
+     * Gỡ điểm của một báo cáo đã duyệt — đúng số THỰC đã cộng, không phải số quy
+     * định. Nhóm Thực chiến trần 40đ/tuần: báo cáo duyệt lúc nhóm đã đầy thì vào
+     * 0đ; trừ đại 10đ là ăn vào điểm của những lần gặp khách khác.
+     */
+    private void thuHoiDiem(FieldBattle battle, String dauCau) {
+        if (!"APPROVED".equals(battle.getStatus())) return;
+        Long uid = battle.getUser().getId();
+        int dangGiu = kpiCalculationService.diemThucDaCong(uid, "meeting", "Admin duyệt thực chiến",
+                battle.getSubmittedAt(), diemCua(battle));
+        if (dangGiu <= 0) return;
+        kpiCalculationService.updateKpiPoints(uid, "meeting", -dangGiu, battle.getSubmittedAt(),
+                dauCau + tenLoai(battle) + " " + battle.getCustomerName());
     }
 }

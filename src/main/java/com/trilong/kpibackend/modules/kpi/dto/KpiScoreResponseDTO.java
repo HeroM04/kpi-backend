@@ -26,16 +26,28 @@ public class KpiScoreResponseDTO {
     private boolean isFlagged;
 
     public static KpiScoreResponseDTO from(KpiScore score, int weeklyTotal, int maxMonthlyKpi) {
+        return from(score, weeklyTotal, maxMonthlyKpi, false);
+    }
+
+    /**
+     * @param coChotCan tháng này nhân sự có chốt căn đã duyệt — tra từ bảng chốt
+     *                  căn (cùng cách báo cáo Excel xếp loại). Duyệt chốt căn cố ý
+     *                  KHÔNG cộng điểm nên cột {@code deal} của bảng điểm luôn 0;
+     *                  trước đây chỉ nhìn cột đó nên web/app không bao giờ hiện
+     *                  "Hoàn thành 100% (Chốt căn)", trong khi Excel thì có.
+     */
+    public static KpiScoreResponseDTO from(KpiScore score, int weeklyTotal, int maxMonthlyKpi, boolean coChotCan) {
         if (score == null) return null;
-        
-        // LUẬT KPI: Nếu chốt căn (deal > 0), tự động đạt tối đa KPI Tháng và KPI Tuần
+
+        // LUẬT KPI: Nếu chốt căn, tự động đạt tối đa KPI Tháng và KPI Tuần
+        boolean chotCan = coChotCan || score.getDeal() > 0;
         int displayTotal = score.getTotal();
         int displayWeeklyTotal = weeklyTotal;
-        if (score.getDeal() > 0) {
+        if (chotCan) {
             displayTotal = maxMonthlyKpi;
             displayWeeklyTotal = 100; // KPI Tuần chuẩn là 100
         }
-        
+
         return KpiScoreResponseDTO.builder()
                 .id(score.getId())
                 .userId(score.getUser().getId())
@@ -46,7 +58,8 @@ public class KpiScoreResponseDTO {
                 .attendance(score.getAttendance())
                 .meeting(score.getMeeting())
                 .post(score.getPost())
-                .deal(score.getDeal())
+                // Web và app nhận biết chốt căn qua deal > 0
+                .deal(chotCan ? Math.max(1, score.getDeal()) : score.getDeal())
                 .total(displayTotal)
                 .weeklyTotal(displayWeeklyTotal)
                 .isFlagged(score.isFlagged())

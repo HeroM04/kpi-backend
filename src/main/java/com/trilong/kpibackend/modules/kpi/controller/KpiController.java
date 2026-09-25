@@ -159,6 +159,7 @@ public class KpiController {
         // 3. Map (nếu ai chưa có điểm thì trả về 0)
         String finalMonth = month;
         int maxMonthlyKpi = kpiCalculationService.getMaxKpiForMonth(finalMonth);
+        java.util.Set<Long> coChotCan = kpiCalculationService.nguoiCoChotCan(finalMonth);
         List<KpiScoreResponseDTO> dtos = activeUsers.stream()
                 .map(user -> {
                     KpiScore score = scoreMap.get(user.getId());
@@ -175,7 +176,7 @@ public class KpiController {
                                 .build();
                     }
                     int weeklyTotal = weeklyScoreMap.getOrDefault(user.getId(), 0);
-                    return KpiScoreResponseDTO.from(score, weeklyTotal, maxMonthlyKpi);
+                    return KpiScoreResponseDTO.from(score, weeklyTotal, maxMonthlyKpi, coChotCan.contains(user.getId()));
                 })
                 .toList();
 
@@ -204,9 +205,10 @@ public class KpiController {
                 .map(com.trilong.kpibackend.modules.kpi.entity.KpiWeeklyScore::getTotal)
                 .orElse(0);
         int maxMonthlyKpi = kpiCalculationService.getMaxKpiForMonth(month);
+        boolean coChotCan = kpiCalculationService.nguoiCoChotCan(month).contains(userId);
 
         if (optScore.isPresent()) {
-            return ResponseEntity.ok(Map.of("status", "SUCCESS", "data", KpiScoreResponseDTO.from(optScore.get(), weeklyTotal, maxMonthlyKpi)));
+            return ResponseEntity.ok(Map.of("status", "SUCCESS", "data", KpiScoreResponseDTO.from(optScore.get(), weeklyTotal, maxMonthlyKpi, coChotCan)));
         } else {
             // Trả về bản ghi trống nếu chưa có điểm trong tháng này
             User user = userRepository.findById(userId)
@@ -221,7 +223,7 @@ public class KpiController {
                     .total(0)
                     .isFlagged(false)
                     .build();
-            return ResponseEntity.ok(Map.of("status", "SUCCESS", "data", KpiScoreResponseDTO.from(dummy, weeklyTotal, maxMonthlyKpi)));
+            return ResponseEntity.ok(Map.of("status", "SUCCESS", "data", KpiScoreResponseDTO.from(dummy, weeklyTotal, maxMonthlyKpi, coChotCan)));
         }
     }
 
@@ -284,6 +286,7 @@ public class KpiController {
         // 3. Map — ai chưa có điểm thì trả về 0
         String finalMonth = month;
         int maxMonthlyKpi = kpiCalculationService.getMaxKpiForMonth(finalMonth);
+        java.util.Set<Long> coChotCan = kpiCalculationService.nguoiCoChotCan(finalMonth);
         List<KpiScoreResponseDTO> dtos = activeUsers.stream()
                 .map(user -> {
                     KpiScore score = scoreMap.get(user.getId());
@@ -300,7 +303,7 @@ public class KpiController {
                                 .build();
                     }
                     int weeklyTotal = weeklyScoreMap.getOrDefault(user.getId(), 0);
-                    return KpiScoreResponseDTO.from(score, weeklyTotal, maxMonthlyKpi);
+                    return KpiScoreResponseDTO.from(score, weeklyTotal, maxMonthlyKpi, coChotCan.contains(user.getId()));
                 })
                 .toList();
 

@@ -50,7 +50,7 @@ public class FeedbackController {
 
     @Operation(summary = "Nhân viên gửi góp ý kèm ảnh",
             description = "multipart/form-data: title, category, content, rating, isAnonymous và tối đa 5 file 'images' "
-                    + "(JPG/PNG/WebP, ≤ 10 MB). Ảnh lưu riêng tư trên S3, DB chỉ giữ khóa.")
+                    + "(JPG/PNG/WebP). Ảnh lên Cloudinary như các phần khác, DB chỉ giữ link.")
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> submitFeedbackWithImages(
@@ -76,12 +76,10 @@ public class FeedbackController {
             ));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("status", "ERROR", "message", e.getMessage()));
-        } catch (IllegalStateException e) {
-            return ResponseEntity.status(503).body(Map.of("status", "ERROR", "message", e.getMessage()));
         } catch (Exception e) {
             log.error("[Góp ý] Không lưu được góp ý kèm ảnh của userId={}: {}", currentUser.getUserId(), e.getMessage(), e);
             return ResponseEntity.status(502).body(Map.of("status", "ERROR",
-                    "message", "Không lưu được ảnh lên kho ảnh. Thử lại sau, hoặc gửi góp ý không kèm ảnh."));
+                    "message", "Không tải được ảnh lên. Thử lại sau, hoặc gửi góp ý không kèm ảnh."));
         }
     }
 

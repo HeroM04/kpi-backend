@@ -30,7 +30,7 @@ public class FeedbackResponseDTO {
     private ZonedDateTime resolvedAt;
     private Long resolvedById;
     private String resolvedByFullName;
-    /** Link xem ảnh đính kèm, ký tạm có hạn 24 giờ. Không có ảnh thì rỗng. */
+    /** Link Cloudinary của ảnh đính kèm. Không có ảnh thì rỗng. */
     @Builder.Default
     private List<String> imageUrls = List.of();
 }

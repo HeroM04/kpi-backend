@@ -77,6 +77,24 @@ public class CloudinaryService {
      *
      * @param publicId public_id của ảnh cần xoá (lấy từ uploadResult khi upload)
      */
+    /**
+     * public_id của ảnh từ link Cloudinary, để xóa ảnh khi chỉ lưu link.
+     * {@code https://res.cloudinary.com/<cloud>/image/upload/v1727/kpi-system/abc.jpg} → {@code kpi-system/abc}.
+     * Link không phải của Cloudinary thì null.
+     */
+    public static String publicIdTuUrl(String url) {
+        if (url == null) return null;
+        int i = url.indexOf("/upload/");
+        if (i < 0 || !url.contains("res.cloudinary.com/")) return null;
+        String sau = url.substring(i + "/upload/".length());
+        int hoi = sau.indexOf('?');
+        if (hoi >= 0) sau = sau.substring(0, hoi);
+        sau = sau.replaceFirst("^v\\d+/", "");
+        int cham = sau.lastIndexOf('.');
+        if (cham > sau.lastIndexOf('/')) sau = sau.substring(0, cham);
+        return sau.isEmpty() ? null : sau;
+    }
+
     @SuppressWarnings("unchecked")
     public void deleteImage(String publicId) {
         try {

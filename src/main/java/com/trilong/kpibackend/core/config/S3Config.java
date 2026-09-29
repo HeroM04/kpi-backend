@@ -8,7 +8,6 @@ import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 
 /**
  * S3Config — chỉ khởi tạo S3Client khi storage type là "s3".
@@ -30,16 +29,6 @@ public class S3Config {
     @Bean
     public S3Client s3Client() {
         return S3Client.builder()
-                .credentialsProvider(StaticCredentialsProvider.create(
-                        AwsBasicCredentials.create(accessKey, secretKey)))
-                .region(Region.of(region))
-                .build();
-    }
-
-    /** Ký link xem có hạn cho ảnh riêng tư — bucket không cần mở công khai. */
-    @Bean
-    public S3Presigner s3Presigner() {
-        return S3Presigner.builder()
                 .credentialsProvider(StaticCredentialsProvider.create(
                         AwsBasicCredentials.create(accessKey, secretKey)))
                 .region(Region.of(region))

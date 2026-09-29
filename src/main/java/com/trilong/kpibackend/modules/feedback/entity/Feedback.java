@@ -64,11 +64,12 @@ public class Feedback {
     private User resolvedBy;
 
     /**
-     * Khóa S3 của ảnh đính kèm (ảnh chụp màn hình lỗi…), cách nhau bởi dấu phẩy.
-     * Chỉ lưu khóa, không lưu ảnh hay link — link xem được ký tạm mỗi lần đọc.
+     * Link Cloudinary của ảnh đính kèm (ảnh chụp màn hình lỗi…), cách nhau bởi
+     * dấu phẩy — giống ảnh chấm công, thực chiến: ảnh nằm trên Cloudinary, DB
+     * chỉ giữ link.
      */
-    @Column(name = "image_keys", length = 1000)
-    private String imageKeys;
+    @Column(name = "image_urls", length = 2000)
+    private String imageUrls;
 
     @PrePersist
     public void prePersist() {

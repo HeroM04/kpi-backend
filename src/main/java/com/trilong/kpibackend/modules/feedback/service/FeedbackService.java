@@ -1,6 +1,6 @@
 package com.trilong.kpibackend.modules.feedback.service;
 
-import com.trilong.kpibackend.core.storage.AnhRiengTuService;
+import com.trilong.kpibackend.core.service.CloudinaryService;
 import com.trilong.kpibackend.modules.feedback.dto.FeedbackResponseDTO;
 import com.trilong.kpibackend.modules.feedback.entity.Feedback;
 import com.trilong.kpibackend.modules.feedback.repository.FeedbackRepository;
@@ -20,7 +20,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 @Slf4j
 @Service
@@ -30,15 +29,12 @@ public class FeedbackService {
     /** Số ảnh đính kèm tối đa cho một góp ý. */
     public static final int TOI_DA_ANH = 5;
 
-    /** Thư mục trên S3 chứa ảnh góp ý. */
-    static final String THU_MUC_ANH = "feedback";
-
     private static final String KHONG_TIM_THAY = "Không tìm thấy góp ý có mã ";
 
     private final FeedbackRepository feedbackRepository;
     private final UserRepository userRepository;
     private final SimpMessagingTemplate messagingTemplate;
-    private final AnhRiengTuService anhRiengTu;
+    private final CloudinaryService cloudinary;
 
     /** Góp ý không kèm ảnh (app cũ gửi JSON). */
     @Transactional
@@ -49,8 +45,9 @@ public class FeedbackService {
     /**
      * Góp ý kèm ảnh chụp màn hình, gửi một lượt cùng nội dung.
      *
-     * <p>Ảnh lên S3 trước, lưu góp ý sau. Lưu hỏng thì xóa những ảnh vừa đưa lên,
-     * không để ảnh mồ côi trong kho.
+     * <p>Ảnh lên Cloudinary như ảnh chấm công, thực chiến; DB chỉ giữ link. Ảnh
+     * mang tên ngẫu nhiên nên góp ý ẩn danh không lộ người gửi qua link ảnh.
+     * Lưu góp ý hỏng thì xóa những ảnh vừa đưa lên, không để ảnh mồ côi.
      */
     public FeedbackResponseDTO createWithImages(Long senderId, Map<String, Object> request,
                                                 List<MultipartFile> anh) throws java.io.IOException {
@@ -60,19 +57,27 @@ public class FeedbackService {
             throw new IllegalArgumentException("Tối đa " + TOI_DA_ANH + " ảnh cho một góp ý.");
         }
 
-        List<String> khoa = new ArrayList<>();
+        List<String> link = new ArrayList<>();
         try {
             for (MultipartFile f : coNoiDung) {
-                khoa.add(anhRiengTu.taiLen(f, THU_MUC_ANH));
+                link.add(cloudinary.uploadImage(f));
             }
-            return luuVaPhat(senderId, request, khoa);
+            return luuVaPhat(senderId, request, link);
         } catch (RuntimeException | java.io.IOException e) {
-            khoa.forEach(anhRiengTu::xoa);
+            xoaAnh(link);
             throw e;
         }
     }
 
-    private FeedbackResponseDTO luuVaPhat(Long senderId, Map<String, Object> request, List<String> khoaAnh) {
+    /** Xóa ảnh trên Cloudinary theo link; lỗi thì bỏ qua (CloudinaryService tự ghi log). */
+    private void xoaAnh(List<String> link) {
+        for (String url : link) {
+            String publicId = CloudinaryService.publicIdTuUrl(url);
+            if (publicId != null) cloudinary.deleteImage(publicId);
+        }
+    }
+
+    private FeedbackResponseDTO luuVaPhat(Long senderId, Map<String, Object> request, List<String> linkAnh) {
         String title = (String) request.get("title");
         String category = (String) request.get("category");
         Integer rating = request.get("rating") != null ? Integer.valueOf(request.get("rating").toString()) : 5;
@@ -86,7 +91,7 @@ public class FeedbackService {
         if (content == null) {
             content = (String) request.get("message");
         }
-        if ((content == null || content.isBlank()) && !khoaAnh.isEmpty()) {
+        if ((content == null || content.isBlank()) && !linkAnh.isEmpty()) {
             content = "(Xem ảnh đính kèm)";
         }
 
@@ -105,7 +110,7 @@ public class FeedbackService {
                 .title(title)
                 .category(category)
                 .rating(rating)
-                .imageKeys(ghepKhoa(khoaAnh))
+                .imageUrls(ghepLink(linkAnh))
                 .build();
 
         Feedback savedFeedback = feedbackRepository.saveAndFlush(feedback);
@@ -196,8 +201,7 @@ public class FeedbackService {
                 .resolvedAt(f.getResolvedAt())
                 .resolvedById(f.getResolvedBy() != null ? f.getResolvedBy().getId() : null)
                 .resolvedByFullName(f.getResolvedBy() != null ? f.getResolvedBy().getFullName() : null)
-                .imageUrls(tachKhoa(f.getImageKeys()).stream()
-                        .map(anhRiengTu::linkXem).filter(Objects::nonNull).toList())
+                .imageUrls(tachLink(f.getImageUrls()))
                 .build();
     }
 
@@ -226,34 +230,34 @@ public class FeedbackService {
         return mapToDTO(saved);
     }
 
-    /** Xóa góp ý (Admin/HR), ảnh đính kèm trên S3 xóa theo sau khi DB đã xóa xong. */
+    /** Xóa góp ý (Admin/HR), ảnh đính kèm trên Cloudinary xóa theo sau khi DB đã xóa xong. */
     @Transactional
     public void deleteFeedback(Long id) {
         Feedback feedback = feedbackRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException(KHONG_TIM_THAY + id));
-        List<String> anh = tachKhoa(feedback.getImageKeys());
+        List<String> anh = tachLink(feedback.getImageUrls());
         feedbackRepository.delete(feedback);
 
         if (anh.isEmpty()) return;
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
-                public void afterCommit() { anh.forEach(anhRiengTu::xoa); }
+                public void afterCommit() { xoaAnh(anh); }
             });
         } else {
-            anh.forEach(anhRiengTu::xoa);
+            xoaAnh(anh);
         }
     }
 
     // ── Phần thuần ───────────────────────────────────────────────────────────
 
-    static List<String> tachKhoa(String s) {
+    static List<String> tachLink(String s) {
         if (s == null || s.isBlank()) return List.of();
         return Arrays.stream(s.split(",")).map(String::trim).filter(k -> !k.isEmpty()).toList();
     }
 
-    static String ghepKhoa(List<String> khoa) {
-        return khoa == null || khoa.isEmpty() ? null : String.join(",", khoa);
+    static String ghepLink(List<String> link) {
+        return link == null || link.isEmpty() ? null : String.join(",", link);
     }
 
     /** Form multipart gửi "true"/"false" dạng chữ, JSON gửi boolean. */

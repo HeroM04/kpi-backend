@@ -1,6 +1,6 @@
 package com.trilong.kpibackend.modules.feedback.service;
 
-import com.trilong.kpibackend.core.storage.AnhRiengTuService;
+import com.trilong.kpibackend.core.service.CloudinaryService;
 import com.trilong.kpibackend.modules.feedback.entity.Feedback;
 import com.trilong.kpibackend.modules.feedback.repository.FeedbackRepository;
 import com.trilong.kpibackend.modules.user.repository.UserRepository;
@@ -26,18 +26,19 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
-/** Góp ý kèm ảnh chụp màn hình: ảnh lên S3, DB chỉ giữ khóa. */
+/** Góp ý kèm ảnh chụp màn hình: ảnh lên Cloudinary như các phần khác, DB giữ link. */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
 class FeedbackAnhTest {
 
+    private static final String GOC = "https://res.cloudinary.com/trilong/image/upload/v1727600000/kpi-system/";
+
     @Mock FeedbackRepository feedbackRepository;
     @Mock UserRepository userRepository;
     @Mock SimpMessagingTemplate messagingTemplate;
-    @Mock AnhRiengTuService anhRiengTu;
+    @Mock CloudinaryService cloudinary;
     @InjectMocks FeedbackService service;
 
     private int dem = 0;
@@ -49,8 +50,7 @@ class FeedbackAnhTest {
             f.setId(90L);
             return f;
         });
-        when(anhRiengTu.taiLen(any(), eq("feedback"))).thenAnswer(i -> "feedback/2026/09/anh-" + (++dem) + ".jpg");
-        when(anhRiengTu.linkXem(any())).thenAnswer(i -> "https://s3.example/" + i.getArgument(0) + "?ky=tam");
+        when(cloudinary.uploadImage(any())).thenAnswer(i -> GOC + "anh-" + (++dem) + ".jpg");
         when(userRepository.findById(any())).thenReturn(Optional.empty());
     }
 
@@ -63,38 +63,38 @@ class FeedbackAnhTest {
     }
 
     @Test
-    @DisplayName("Gửi kèm 2 ảnh → DB lưu 2 khóa S3, trả về 2 link xem ký tạm")
+    @DisplayName("Gửi kèm 2 ảnh → ảnh lên Cloudinary, DB lưu 2 link, trả về đúng 2 link")
     void guiKemAnh() throws Exception {
         var kq = service.createWithImages(7L, noiDung(), List.of(anh(), anh()));
 
         ArgumentCaptor<Feedback> luu = ArgumentCaptor.forClass(Feedback.class);
         verify(feedbackRepository).saveAndFlush(luu.capture());
-        assertThat(luu.getValue().getImageKeys()).isEqualTo("feedback/2026/09/anh-1.jpg,feedback/2026/09/anh-2.jpg");
-        assertThat(kq.getImageUrls()).hasSize(2).allMatch(u -> u.startsWith("https://s3.example/feedback/"));
+        assertThat(luu.getValue().getImageUrls()).isEqualTo(GOC + "anh-1.jpg," + GOC + "anh-2.jpg");
+        assertThat(kq.getImageUrls()).containsExactly(GOC + "anh-1.jpg", GOC + "anh-2.jpg");
     }
 
     @Test
-    @DisplayName("Quá 5 ảnh → từ chối trước khi đưa ảnh nào lên S3")
+    @DisplayName("Quá 5 ảnh → từ chối trước khi đưa ảnh nào lên")
     void quaNamAnh() throws Exception {
         List<MultipartFile> sauAnh = new ArrayList<>();
         for (int i = 0; i < 6; i++) sauAnh.add(anh());
 
         assertThatThrownBy(() -> service.createWithImages(7L, noiDung(), sauAnh))
                 .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("5 ảnh");
-        verify(anhRiengTu, never()).taiLen(any(), any());
+        verify(cloudinary, never()).uploadImage(any());
         verify(feedbackRepository, never()).saveAndFlush(any());
     }
 
     @Test
-    @DisplayName("Ảnh thứ hai lỗi → xóa ảnh thứ nhất đã lên S3, không lưu góp ý dở dang")
+    @DisplayName("Ảnh thứ hai lỗi → xóa ảnh thứ nhất đã lên Cloudinary, không lưu góp ý dở dang")
     void loiGiuaChungDonAnh() throws Exception {
-        when(anhRiengTu.taiLen(any(), eq("feedback")))
-                .thenReturn("feedback/2026/09/dau.jpg")
-                .thenThrow(new IllegalArgumentException("Chỉ nhận ảnh JPG, PNG hoặc WebP."));
+        when(cloudinary.uploadImage(any()))
+                .thenReturn(GOC + "dau.jpg")
+                .thenThrow(new IllegalArgumentException("Chỉ chấp nhận file ảnh (jpg, png, webp, ...)."));
 
         assertThatThrownBy(() -> service.createWithImages(7L, noiDung(), List.of(anh(), anh())))
-                .hasMessageContaining("JPG");
-        verify(anhRiengTu).xoa("feedback/2026/09/dau.jpg");
+                .hasMessageContaining("file ảnh");
+        verify(cloudinary).deleteImage("kpi-system/dau");
         verify(feedbackRepository, never()).saveAndFlush(any());
     }
 
@@ -112,7 +112,7 @@ class FeedbackAnhTest {
     void khongAnh() {
         var kq = service.createAndBroadcastFeedback(7L, noiDung());
         assertThat(kq.getImageUrls()).isEmpty();
-        verifyNoInteractions(anhRiengTu);
+        verifyNoInteractions(cloudinary);
     }
 
     @Test
@@ -128,25 +128,35 @@ class FeedbackAnhTest {
     }
 
     @Test
-    @DisplayName("Tách/ghép chuỗi khóa ảnh lưu trong DB")
-    void tachGhepKhoa() {
-        assertThat(FeedbackService.tachKhoa(null)).isEmpty();
-        assertThat(FeedbackService.tachKhoa(" a.jpg , ,b.png")).containsExactly("a.jpg", "b.png");
-        assertThat(FeedbackService.ghepKhoa(List.of())).isNull();
-        assertThat(FeedbackService.ghepKhoa(List.of("a.jpg", "b.png"))).isEqualTo("a.jpg,b.png");
+    @DisplayName("Tách/ghép chuỗi link ảnh lưu trong DB")
+    void tachGhepLink() {
+        assertThat(FeedbackService.tachLink(null)).isEmpty();
+        assertThat(FeedbackService.tachLink(" a.jpg , ,b.png")).containsExactly("a.jpg", "b.png");
+        assertThat(FeedbackService.ghepLink(List.of())).isNull();
+        assertThat(FeedbackService.ghepLink(List.of("a.jpg", "b.png"))).isEqualTo("a.jpg,b.png");
     }
 
     @Test
-    @DisplayName("Xóa góp ý → xóa luôn ảnh trên S3")
+    @DisplayName("Xóa góp ý → xóa luôn ảnh trên Cloudinary")
     void xoaGopYXoaAnh() {
         Feedback f = Feedback.builder().id(90L).content("x").targetType("COMPANY")
-                .imageKeys("feedback/2026/09/a.jpg,feedback/2026/09/b.jpg").build();
+                .imageUrls(GOC + "a.jpg," + GOC + "b.webp").build();
         when(feedbackRepository.findById(90L)).thenReturn(Optional.of(f));
 
         service.deleteFeedback(90L);
 
         verify(feedbackRepository).delete(f);
-        verify(anhRiengTu).xoa("feedback/2026/09/a.jpg");
-        verify(anhRiengTu).xoa("feedback/2026/09/b.jpg");
+        verify(cloudinary).deleteImage("kpi-system/a");
+        verify(cloudinary).deleteImage("kpi-system/b");
+    }
+
+    @Test
+    @DisplayName("Lấy public_id từ link Cloudinary để xóa ảnh")
+    void publicIdTuLink() {
+        assertThat(CloudinaryService.publicIdTuUrl(GOC + "abc-123.jpg")).isEqualTo("kpi-system/abc-123");
+        assertThat(CloudinaryService.publicIdTuUrl(
+                "https://res.cloudinary.com/x/image/upload/kpi-system/khong-version.png?_a=1")).isEqualTo("kpi-system/khong-version");
+        assertThat(CloudinaryService.publicIdTuUrl("https://example.com/upload/a.jpg")).isNull();
+        assertThat(CloudinaryService.publicIdTuUrl(null)).isNull();
     }
 }

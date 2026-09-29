@@ -1,46 +1,95 @@
 package com.trilong.kpibackend.modules.feedback.service;
 
+import com.trilong.kpibackend.core.storage.AnhRiengTuService;
 import com.trilong.kpibackend.modules.feedback.dto.FeedbackResponseDTO;
 import com.trilong.kpibackend.modules.feedback.entity.Feedback;
 import com.trilong.kpibackend.modules.feedback.repository.FeedbackRepository;
 import com.trilong.kpibackend.modules.user.entity.User;
 import com.trilong.kpibackend.modules.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class FeedbackService {
 
+    /** Số ảnh đính kèm tối đa cho một góp ý. */
+    public static final int TOI_DA_ANH = 5;
+
+    /** Thư mục trên S3 chứa ảnh góp ý. */
+    static final String THU_MUC_ANH = "feedback";
+
+    private static final String KHONG_TIM_THAY = "Không tìm thấy góp ý có mã ";
+
     private final FeedbackRepository feedbackRepository;
     private final UserRepository userRepository;
     private final SimpMessagingTemplate messagingTemplate;
+    private final AnhRiengTuService anhRiengTu;
 
+    /** Góp ý không kèm ảnh (app cũ gửi JSON). */
     @Transactional
     public FeedbackResponseDTO createAndBroadcastFeedback(Long senderId, Map<String, Object> request) {
-        // 1. Map dá»¯ liá»‡u má»›i bá»• sung
+        return luuVaPhat(senderId, request, List.of());
+    }
+
+    /**
+     * Góp ý kèm ảnh chụp màn hình, gửi một lượt cùng nội dung.
+     *
+     * <p>Ảnh lên S3 trước, lưu góp ý sau. Lưu hỏng thì xóa những ảnh vừa đưa lên,
+     * không để ảnh mồ côi trong kho.
+     */
+    public FeedbackResponseDTO createWithImages(Long senderId, Map<String, Object> request,
+                                                List<MultipartFile> anh) throws java.io.IOException {
+        List<MultipartFile> coNoiDung = anh == null ? List.of()
+                : anh.stream().filter(f -> f != null && !f.isEmpty()).toList();
+        if (coNoiDung.size() > TOI_DA_ANH) {
+            throw new IllegalArgumentException("Tối đa " + TOI_DA_ANH + " ảnh cho một góp ý.");
+        }
+
+        List<String> khoa = new ArrayList<>();
+        try {
+            for (MultipartFile f : coNoiDung) {
+                khoa.add(anhRiengTu.taiLen(f, THU_MUC_ANH));
+            }
+            return luuVaPhat(senderId, request, khoa);
+        } catch (RuntimeException | java.io.IOException e) {
+            khoa.forEach(anhRiengTu::xoa);
+            throw e;
+        }
+    }
+
+    private FeedbackResponseDTO luuVaPhat(Long senderId, Map<String, Object> request, List<String> khoaAnh) {
         String title = (String) request.get("title");
         String category = (String) request.get("category");
         Integer rating = request.get("rating") != null ? Integer.valueOf(request.get("rating").toString()) : 5;
 
-        // Default title if empty
         if (title == null || title.trim().isEmpty()) {
-            title = category != null ? category : "GÃ³p Ã½ tá»« nhÃ¢n viÃªn";
+            title = category != null ? category : "Góp ý từ nhân viên";
         }
 
-        // Support both "content" and "message"
+        // Nhận cả "content" lẫn "message"
         String content = (String) request.get("content");
         if (content == null) {
             content = (String) request.get("message");
         }
+        if ((content == null || content.isBlank()) && !khoaAnh.isEmpty()) {
+            content = "(Xem ảnh đính kèm)";
+        }
 
-        // Default targetType to COMPANY if null/empty
         String fbTargetType = (String) request.get("targetType");
         if (fbTargetType == null || fbTargetType.trim().isEmpty()) {
             fbTargetType = "COMPANY";
@@ -52,17 +101,18 @@ public class FeedbackService {
                 .targetId(request.get("targetId") != null ? Long.valueOf(request.get("targetId").toString()) : null)
                 .content(content)
                 .status("UNREAD")
-                .isAnonymous(request.get("isAnonymous") != null ? (Boolean) request.get("isAnonymous") : false)
+                .isAnonymous(laDung(request.get("isAnonymous")))
                 .title(title)
                 .category(category)
                 .rating(rating)
+                .imageKeys(ghepKhoa(khoaAnh))
                 .build();
 
         Feedback savedFeedback = feedbackRepository.saveAndFlush(feedback);
-        try { messagingTemplate.convertAndSend("/topic/admin/requests", (Object) java.util.Map.of("type", "FEEDBACK", "message", "Co y kien/gop y moi tu nhan su!")); } catch(Exception e){}
+        try { messagingTemplate.convertAndSend("/topic/admin/requests", (Object) Map.of("type", "FEEDBACK", "message", "Co y kien/gop y moi tu nhan su!")); } catch (Exception e) {}
         FeedbackResponseDTO responseDTO = mapToDTO(savedFeedback);
 
-        // 2. PHÃT SÃ“NG REAL-TIME (BROADCAST)
+        // Phát thời gian thực cho màn hình quản lý góp ý
         Map<String, Object> payload = Map.of(
                 "id", responseDTO.getId(),
                 "title", responseDTO.getTitle() != null ? responseDTO.getTitle() : "",
@@ -85,7 +135,8 @@ public class FeedbackService {
         return responseDTO;
     }
 
-    @Transactional(readOnly = true) public List<FeedbackResponseDTO> getAllFeedbacks() {
+    @Transactional(readOnly = true)
+    public List<FeedbackResponseDTO> getAllFeedbacks() {
         List<Feedback> list = feedbackRepository.findAll();
         return list.stream().map(this::mapToDTO).toList();
     }
@@ -93,10 +144,10 @@ public class FeedbackService {
     @Transactional
     public FeedbackResponseDTO replyFeedback(Long feedbackId, Long adminId, String replyText) {
         Feedback feedback = feedbackRepository.findById(feedbackId)
-                .orElseThrow(() -> new IllegalArgumentException("KhÃ´ng tÃ¬m tháº¥y Ã½ kiáº¿n pháº£n há»“i cÃ³ ID: " + feedbackId));
+                .orElseThrow(() -> new IllegalArgumentException(KHONG_TIM_THAY + feedbackId));
 
         User admin = userRepository.findById(adminId)
-                .orElseThrow(() -> new IllegalArgumentException("KhÃ´ng tÃ¬m tháº¥y quáº£n trá»‹ viÃªn"));
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy tài khoản quản trị"));
 
         feedback.setAdminReply(replyText);
         feedback.setStatus("RESOLVED");
@@ -104,10 +155,10 @@ public class FeedbackService {
         feedback.setResolvedAt(ZonedDateTime.now());
 
         Feedback savedFeedback = feedbackRepository.save(feedback);
-        try { messagingTemplate.convertAndSend("/topic/admin/requests", (Object) java.util.Map.of("type", "FEEDBACK", "message", "Co y kien/gop y moi tu nhan su!")); } catch(Exception e){}
+        try { messagingTemplate.convertAndSend("/topic/admin/requests", (Object) Map.of("type", "FEEDBACK", "message", "Co y kien/gop y moi tu nhan su!")); } catch (Exception e) {}
         FeedbackResponseDTO responseDTO = mapToDTO(savedFeedback);
 
-        // PhÃ¡t tÃ­n hiá»‡u qua WebSocket bÃ¡o cho user gá»­i pháº£n há»“i biáº¿t
+        // Báo cho người gửi biết góp ý đã được trả lời
         if (feedback.getSenderId() != null) {
             messagingTemplate.convertAndSend("/topic/feedbacks/user/" + feedback.getSenderId(), (Object) Map.of(
                     "id", responseDTO.getId(),
@@ -125,7 +176,7 @@ public class FeedbackService {
         if (!f.isAnonymous() && f.getSenderId() != null) {
             senderName = userRepository.findById(f.getSenderId())
                     .map(User::getFullName)
-                    .orElse("NhÃ¢n viÃªn áº©n danh");
+                    .orElse("Nhân viên ẩn danh");
         }
 
         return FeedbackResponseDTO.builder()
@@ -145,48 +196,69 @@ public class FeedbackService {
                 .resolvedAt(f.getResolvedAt())
                 .resolvedById(f.getResolvedBy() != null ? f.getResolvedBy().getId() : null)
                 .resolvedByFullName(f.getResolvedBy() != null ? f.getResolvedBy().getFullName() : null)
+                .imageUrls(tachKhoa(f.getImageKeys()).stream()
+                        .map(anhRiengTu::linkXem).filter(Objects::nonNull).toList())
                 .build();
     }
 
-    /**
-     * Láº¥y danh sÃ¡ch gÃ³p Ã½ cá»§a chÃ­nh nhÃ¢n viÃªn gá»­i.
-     */
+    /** Góp ý của chính người đang đăng nhập. */
     @Transactional(readOnly = true)
     public List<FeedbackResponseDTO> getFeedbacksBySender(Long senderId) {
         List<Feedback> list = feedbackRepository.findBySenderIdOrderByCreatedAtDesc(senderId);
         return list.stream().map(this::mapToDTO).toList();
     }
 
-    /**
-     * Láº¥y chi tiáº¿t má»™t gÃ³p Ã½.
-     */
     @Transactional(readOnly = true)
     public FeedbackResponseDTO getFeedbackById(Long id) {
         Feedback feedback = feedbackRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("KhÃ´ng tÃ¬m tháº¥y Ã½ kiáº¿n pháº£n há»“i cÃ³ ID: " + id));
+                .orElseThrow(() -> new IllegalArgumentException(KHONG_TIM_THAY + id));
         return mapToDTO(feedback);
     }
 
-    /**
-     * Cáº­p nháº­t tráº¡ng thÃ¡i gÃ³p Ã½ (Admin/HR).
-     */
+    /** Đổi trạng thái góp ý (Admin/HR). */
     @Transactional
     public FeedbackResponseDTO updateStatus(Long id, String status) {
         Feedback feedback = feedbackRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("KhÃ´ng tÃ¬m tháº¥y Ã½ kiáº¿n pháº£n há»“i cÃ³ ID: " + id));
+                .orElseThrow(() -> new IllegalArgumentException(KHONG_TIM_THAY + id));
         feedback.setStatus(status);
         Feedback saved = feedbackRepository.save(feedback);
-        try { messagingTemplate.convertAndSend("/topic/admin/requests", (Object) java.util.Map.of("type", "FEEDBACK", "message", "Co y kien/gop y moi tu nhan su!")); } catch(Exception e){}
+        try { messagingTemplate.convertAndSend("/topic/admin/requests", (Object) Map.of("type", "FEEDBACK", "message", "Co y kien/gop y moi tu nhan su!")); } catch (Exception e) {}
         return mapToDTO(saved);
     }
 
-    /**
-     * XÃ³a gÃ³p Ã½ (Admin/HR).
-     */
+    /** Xóa góp ý (Admin/HR), ảnh đính kèm trên S3 xóa theo sau khi DB đã xóa xong. */
     @Transactional
     public void deleteFeedback(Long id) {
         Feedback feedback = feedbackRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("KhÃ´ng tÃ¬m tháº¥y Ã½ kiáº¿n pháº£n há»“i cÃ³ ID: " + id));
+                .orElseThrow(() -> new IllegalArgumentException(KHONG_TIM_THAY + id));
+        List<String> anh = tachKhoa(feedback.getImageKeys());
         feedbackRepository.delete(feedback);
+
+        if (anh.isEmpty()) return;
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() { anh.forEach(anhRiengTu::xoa); }
+            });
+        } else {
+            anh.forEach(anhRiengTu::xoa);
+        }
+    }
+
+    // ── Phần thuần ───────────────────────────────────────────────────────────
+
+    static List<String> tachKhoa(String s) {
+        if (s == null || s.isBlank()) return List.of();
+        return Arrays.stream(s.split(",")).map(String::trim).filter(k -> !k.isEmpty()).toList();
+    }
+
+    static String ghepKhoa(List<String> khoa) {
+        return khoa == null || khoa.isEmpty() ? null : String.join(",", khoa);
+    }
+
+    /** Form multipart gửi "true"/"false" dạng chữ, JSON gửi boolean. */
+    static boolean laDung(Object v) {
+        if (v instanceof Boolean b) return b;
+        return v != null && "true".equalsIgnoreCase(v.toString().trim());
     }
 }

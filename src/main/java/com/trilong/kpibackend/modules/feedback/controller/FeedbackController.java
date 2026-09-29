@@ -7,15 +7,20 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/v1/feedbacks")
 @RequiredArgsConstructor
@@ -40,6 +45,43 @@ public class FeedbackController {
             ));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("status", "ERROR", "message", e.getMessage()));
+        }
+    }
+
+    @Operation(summary = "Nhân viên gửi góp ý kèm ảnh",
+            description = "multipart/form-data: title, category, content, rating, isAnonymous và tối đa 5 file 'images' "
+                    + "(JPG/PNG/WebP, ≤ 10 MB). Ảnh lưu riêng tư trên S3, DB chỉ giữ khóa.")
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<?> submitFeedbackWithImages(
+            @AuthenticationPrincipal UserPrincipal currentUser,
+            @RequestParam(required = false) String title,
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) String content,
+            @RequestParam(required = false) Integer rating,
+            @RequestParam(required = false) String isAnonymous,
+            @RequestPart(value = "images", required = false) List<MultipartFile> images) {
+        Map<String, Object> request = new HashMap<>();
+        request.put("title", title);
+        request.put("category", category);
+        request.put("content", content);
+        if (rating != null) request.put("rating", rating);
+        request.put("isAnonymous", isAnonymous);
+        try {
+            FeedbackResponseDTO response = feedbackService.createWithImages(currentUser.getUserId(), request, images);
+            return ResponseEntity.ok(Map.of(
+                    "status", "SUCCESS",
+                    "message", "Đã gửi góp ý thành công!",
+                    "data", response
+            ));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("status", "ERROR", "message", e.getMessage()));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(503).body(Map.of("status", "ERROR", "message", e.getMessage()));
+        } catch (Exception e) {
+            log.error("[Góp ý] Không lưu được góp ý kèm ảnh của userId={}: {}", currentUser.getUserId(), e.getMessage(), e);
+            return ResponseEntity.status(502).body(Map.of("status", "ERROR",
+                    "message", "Không lưu được ảnh lên kho ảnh. Thử lại sau, hoặc gửi góp ý không kèm ảnh."));
         }
     }
 

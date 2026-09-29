@@ -53,6 +53,7 @@ class AuthServiceTest {
     void chuanBi() {
         ReflectionTestUtils.setField(service, "accessTokenExpMs", 3_600_000L);
         ReflectionTestUtils.setField(service, "refreshTokenExpMs", 604_800_000L);
+        ReflectionTestUtils.setField(service, "refreshTokenExpAppMs", 7_776_000_000L);
         nguoi = User.builder().id(7L).fullName("Sale A").phoneNumber("0912345678")
                 .passwordHash(passwordEncoder.encode("dung-mat-khau")).role("SALE").status("ACTIVE").build();
         when(userRepository.findByPhoneNumber("0912345678")).thenReturn(Optional.of(nguoi));
@@ -105,10 +106,111 @@ class AuthServiceTest {
         RefreshTokenRequestDTO d = new RefreshTokenRequestDTO();
         d.setRefreshToken("cu");
 
-        service.refreshToken(d);
+        var kq = service.refreshToken(d);
 
         assertThat(cu.isRevoked()).isTrue();
         verify(jwtUtils).generateToken(nguoi, 501L);
+        // Ghi lại cũ được thay bằng mới — để lần gửi lại token cũ còn tìm được
+        assertThat(cu.getReplacedById()).isEqualTo(501L);
+        assertThat(cu.getRotatedAt()).isNotNull();
+        assertThat(kq.getRefreshToken()).isNotEqualTo("cu");
+    }
+
+    private RefreshTokenRequestDTO guiLai(String token) {
+        RefreshTokenRequestDTO d = new RefreshTokenRequestDTO();
+        d.setRefreshToken(token);
+        return d;
+    }
+
+    /** Token cũ đã bị xoay {@code giayTruoc} giây trước, kế nhiệm là {@code keId}. */
+    private RefreshToken daXoay(long id, String token, long keId, long giayTruoc) {
+        return RefreshToken.builder().id(id).user(nguoi).token(token).revoked(true)
+                .replacedById(keId).rotatedAt(ZonedDateTime.now().minusSeconds(giayTruoc))
+                .expiresAt(ZonedDateTime.now().plusDays(3)).build();
+    }
+
+    private RefreshToken conHieuLuc(long id, String token) {
+        return RefreshToken.builder().id(id).user(nguoi).token(token)
+                .expiresAt(ZonedDateTime.now().plusDays(80)).build();
+    }
+
+    @Test
+    @DisplayName("Mất câu trả lời lần làm mới trước: gửi lại token cũ trong 2 phút → nhận lại đúng token mới, không bị đá ra")
+    void guiLaiTrongAnHan() {
+        when(refreshTokenRepository.findByToken("cu")).thenReturn(Optional.of(daXoay(400L, "cu", 501L, 30)));
+        when(refreshTokenRepository.findById(501L)).thenReturn(Optional.of(conHieuLuc(501L, "moi")));
+
+        var kq = service.refreshToken(guiLai("cu"));
+
+        assertThat(kq.getRefreshToken()).isEqualTo("moi");
+        verify(jwtUtils).generateToken(nguoi, 501L);
+        verify(refreshTokenRepository, never()).save(any());   // không xoay thêm
+    }
+
+    @Test
+    @DisplayName("App thử lại nhiều lần liền: lần theo chuỗi token kế nhiệm tới token còn hiệu lực")
+    void guiLaiNhieuLan() {
+        when(refreshTokenRepository.findByToken("cu")).thenReturn(Optional.of(daXoay(400L, "cu", 501L, 50)));
+        when(refreshTokenRepository.findById(501L)).thenReturn(Optional.of(daXoay(501L, "giua", 502L, 20)));
+        when(refreshTokenRepository.findById(502L)).thenReturn(Optional.of(conHieuLuc(502L, "moi-nhat")));
+
+        assertThat(service.refreshToken(guiLai("cu")).getRefreshToken()).isEqualTo("moi-nhat");
+    }
+
+    @Test
+    @DisplayName("Quá 2 phút sau khi xoay mới gửi lại token cũ → từ chối")
+    void quaAnHan() {
+        when(refreshTokenRepository.findByToken("cu")).thenReturn(Optional.of(daXoay(400L, "cu", 501L, 180)));
+        when(refreshTokenRepository.findById(501L)).thenReturn(Optional.of(conHieuLuc(501L, "moi")));
+
+        assertThatThrownBy(() -> service.refreshToken(guiLai("cu"))).hasMessageContaining("đăng nhập lại");
+        verify(jwtUtils, never()).generateToken(any(User.class), any());
+    }
+
+    @Test
+    @DisplayName("Phiên kế nhiệm đã bị gỡ (đăng xuất, đăng xuất mọi thiết bị) → từ chối dù còn trong ân hạn")
+    void keNhiemDaBiGo() {
+        RefreshToken ke = conHieuLuc(501L, "moi");
+        ke.setRevoked(true);
+        when(refreshTokenRepository.findByToken("cu")).thenReturn(Optional.of(daXoay(400L, "cu", 501L, 10)));
+        when(refreshTokenRepository.findById(501L)).thenReturn(Optional.of(ke));
+
+        assertThatThrownBy(() -> service.refreshToken(guiLai("cu"))).hasMessageContaining("đăng nhập lại");
+    }
+
+    @Test
+    @DisplayName("Token bị gỡ thẳng (không phải do xoay) thì không có ân hạn")
+    void goThangKhongAnHan() {
+        RefreshToken go = conHieuLuc(400L, "cu");
+        go.setRevoked(true);
+        when(refreshTokenRepository.findByToken("cu")).thenReturn(Optional.of(go));
+
+        assertThatThrownBy(() -> service.refreshToken(guiLai("cu"))).hasMessageContaining("đăng nhập lại");
+    }
+
+    @Test
+    @DisplayName("App điện thoại giữ đăng nhập 90 ngày, web admin 7 ngày")
+    void thoiHanTheoThietBi() {
+        when(http.getHeader("User-Agent")).thenReturn("Dart/3.5 (dart:io)");
+        service.login(dangNhap("0912345678", "dung-mat-khau"), http);
+        when(http.getHeader("User-Agent")).thenReturn("Mozilla/5.0 (Windows NT 10.0) Chrome/140.0");
+        service.login(dangNhap("0912345678", "dung-mat-khau"), http);
+
+        ArgumentCaptor<RefreshToken> phien = ArgumentCaptor.forClass(RefreshToken.class);
+        verify(refreshTokenRepository, times(2)).save(phien.capture());
+        ZonedDateTime bayGio = ZonedDateTime.now();
+        assertThat(phien.getAllValues().get(0).getExpiresAt())
+                .isBetween(bayGio.plusDays(89), bayGio.plusDays(91));
+        assertThat(phien.getAllValues().get(1).getExpiresAt())
+                .isBetween(bayGio.plusDays(6), bayGio.plusDays(8));
+    }
+
+    @Test
+    @DisplayName("Nhận ra app qua User-Agent của dart:io")
+    void nhanRaApp() {
+        assertThat(AuthService.laApp("Dart/3.5 (dart:io)")).isTrue();
+        assertThat(AuthService.laApp("Mozilla/5.0 (iPhone) Safari")).isFalse();
+        assertThat(AuthService.laApp(null)).isFalse();
     }
 
     @Test

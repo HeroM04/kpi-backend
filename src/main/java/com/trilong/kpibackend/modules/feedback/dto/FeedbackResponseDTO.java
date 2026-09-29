@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
+import java.util.List;
 
 @Data
 @Builder
@@ -29,4 +30,7 @@ public class FeedbackResponseDTO {
     private ZonedDateTime resolvedAt;
     private Long resolvedById;
     private String resolvedByFullName;
+    /** Link xem ảnh đính kèm, ký tạm có hạn 24 giờ. Không có ảnh thì rỗng. */
+    @Builder.Default
+    private List<String> imageUrls = List.of();
 }

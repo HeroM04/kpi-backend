@@ -64,6 +64,20 @@ public class RefreshToken {
     @Column(name = "last_seen_at")
     private ZonedDateTime lastSeenAt;
 
+    /**
+     * Token mới thay cho token này ở lần làm mới gần nhất, và lúc thay.
+     *
+     * <p>App gửi làm mới, máy chủ đã xoay token nhưng câu trả lời mất giữa đường
+     * (mạng chập chờn, Render chậm, app bị tắt). Lần sau app gửi lại token cũ —
+     * không có hai trường này là bị từ chối và đá ra màn hình đăng nhập. Có
+     * chúng thì trong thời gian ân hạn máy chủ trả lại đúng token kế nhiệm.
+     */
+    @Column(name = "replaced_by_id")
+    private Long replacedById;
+
+    @Column(name = "rotated_at")
+    private ZonedDateTime rotatedAt;
+
     /** Kiểm tra token còn hạn sử dụng không */
     public boolean isExpired() {
         return ZonedDateTime.now().isAfter(expiresAt);

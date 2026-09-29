@@ -63,6 +63,13 @@ public class Feedback {
     @JoinColumn(name = "resolved_by")
     private User resolvedBy;
 
+    /**
+     * Khóa S3 của ảnh đính kèm (ảnh chụp màn hình lỗi…), cách nhau bởi dấu phẩy.
+     * Chỉ lưu khóa, không lưu ảnh hay link — link xem được ký tạm mỗi lần đọc.
+     */
+    @Column(name = "image_keys", length = 1000)
+    private String imageKeys;
+
     @PrePersist
     public void prePersist() {
         if (this.status == null) this.status = "UNREAD";

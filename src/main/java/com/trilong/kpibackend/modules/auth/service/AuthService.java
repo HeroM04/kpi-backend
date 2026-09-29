@@ -45,6 +45,24 @@ public class AuthService {
     @Value("${app.jwt.refresh-expiration-ms:604800000}")
     private long refreshTokenExpMs;
 
+    /**
+     * Phiên của app điện thoại sống lâu hơn web: nhân viên mở app chấm công mỗi
+     * ngày, bắt đăng nhập lại sau 7 ngày nghỉ phép là vô lý. Web admin vẫn 7 ngày
+     * vì hay bị dùng trên máy tính người khác. Admin gỡ phiên từ xa được bất cứ lúc
+     * nào (Quản lý phiên đăng nhập).
+     */
+    @Value("${app.jwt.refresh-expiration-app-ms:7776000000}")
+    private long refreshTokenExpAppMs;
+
+    /** App Flutter gọi bằng dart:io nên User-Agent bắt đầu bằng "Dart/". */
+    static boolean laApp(String deviceInfo) {
+        return deviceInfo != null && deviceInfo.startsWith("Dart/");
+    }
+
+    private ZonedDateTime hetHanPhien(ZonedDateTime tu, String deviceInfo) {
+        return tu.plusSeconds((laApp(deviceInfo) ? refreshTokenExpAppMs : refreshTokenExpMs) / 1000);
+    }
+
     // ── Login ────────────────────────────────────────────────────────────────
 
     @Transactional
@@ -72,7 +90,7 @@ public class AuthService {
         RefreshToken phien = refreshTokenRepository.save(RefreshToken.builder()
                 .user(user)
                 .token(rawRefreshToken)
-                .expiresAt(ZonedDateTime.now().plusSeconds(refreshTokenExpMs / 1000))
+                .expiresAt(hetHanPhien(ZonedDateTime.now(), deviceInfo))
                 .deviceInfo(deviceInfo != null ? deviceInfo.substring(0, Math.min(deviceInfo.length(), 200)) : "Unknown")
                 .ipAddress(ipAddress)
                 .lastSeenAt(ZonedDateTime.now())
@@ -106,42 +124,88 @@ public class AuthService {
 
     // ── Refresh Token ────────────────────────────────────────────────────────
 
+    /**
+     * Sau khi xoay token, trong khoảng này gửi lại token cũ vẫn nhận về token
+     * kế nhiệm. Đủ cho một lần thử lại khi mất câu trả lời; kẻ trộm token cũ
+     * cũng chỉ có đúng 2 phút, và vẫn phải đăng nhập lại nếu phiên đã bị gỡ.
+     */
+    static final java.time.Duration AN_HAN_XOAY = java.time.Duration.ofMinutes(2);
+
+    /** Token cũ này có đang trong thời gian ân hạn sau khi bị xoay không. */
+    static boolean trongAnHanXoay(RefreshToken cu, ZonedDateTime bayGio) {
+        return cu.isRevoked() && cu.getReplacedById() != null && cu.getRotatedAt() != null
+                && !bayGio.isAfter(cu.getRotatedAt().plus(AN_HAN_XOAY));
+    }
+
     @Transactional
     public LoginResponseDTO refreshToken(RefreshTokenRequestDTO request) {
         RefreshToken rt = refreshTokenRepository
                 .findByToken(request.getRefreshToken())
                 .orElseThrow(() -> new RuntimeException("Refresh token không hợp lệ"));
 
-        if (!rt.isValid())
-            throw new RuntimeException("Refresh token đã hết hạn hoặc bị thu hồi. Vui lòng đăng nhập lại.");
+        if (!rt.isValid()) {
+            RefreshToken keNhiem = timKeNhiemTrongAnHan(rt);
+            if (keNhiem == null)
+                throw new RuntimeException("Refresh token đã hết hạn hoặc bị thu hồi. Vui lòng đăng nhập lại.");
+            // Lần làm mới trước đã thành công mà app không nhận được trả lời —
+            // trả lại đúng token đó, không xoay thêm lần nữa
+            User user = keNhiem.getUser();
+            if (!"ACTIVE".equals(user.getStatus()))
+                throw new RuntimeException("Tài khoản đã bị khóa. Vui lòng liên hệ quản trị viên.");
+            return phatToken(user, keNhiem);
+        }
 
         User user = rt.getUser();
         if (!"ACTIVE".equals(user.getStatus()))
             throw new RuntimeException("Tài khoản đã bị khóa. Vui lòng liên hệ quản trị viên.");
 
-        // Rotate refresh token (best practice — revoke cũ, tạo mới)
-        rt.setRevoked(true);
-        refreshTokenRepository.save(rt);
-
+        // Xoay refresh token: tạo mới, thu hồi cũ, ghi lại cũ được thay bằng mới
+        ZonedDateTime bayGio = ZonedDateTime.now();
         String newRawRefreshToken = UUID.randomUUID().toString();
         RefreshToken phienMoi = refreshTokenRepository.save(RefreshToken.builder()
                 .user(user)
                 .token(newRawRefreshToken)
-                .expiresAt(ZonedDateTime.now().plusSeconds(refreshTokenExpMs / 1000))
+                .expiresAt(hetHanPhien(bayGio, rt.getDeviceInfo()))
                 .deviceInfo(rt.getDeviceInfo())
                 .ipAddress(rt.getIpAddress())
-                .lastSeenAt(ZonedDateTime.now())
+                .lastSeenAt(bayGio)
                 .build());
 
-        // Access token mới gắn với phiên mới — phiên cũ vừa bị thu hồi nên token
-        // phát theo nó cũng phải hết hiệu lực.
-        String newAccessToken = jwtUtils.generateToken(user, phienMoi.getId());
+        rt.setRevoked(true);
+        rt.setReplacedById(phienMoi.getId());
+        rt.setRotatedAt(bayGio);
+        refreshTokenRepository.save(rt);
+
+        return phatToken(user, phienMoi);
+    }
+
+    /**
+     * Lần theo chuỗi token kế nhiệm khi token cũ vừa bị xoay trong thời gian ân
+     * hạn. Đi tối đa vài bước (app thử lại vài lần liền), gặp token còn hiệu lực
+     * thì trả về; gặp token đã bị gỡ hẳn (đăng xuất, "đăng xuất mọi thiết bị")
+     * hay quá ân hạn thì null.
+     */
+    private RefreshToken timKeNhiemTrongAnHan(RefreshToken cu) {
+        ZonedDateTime bayGio = ZonedDateTime.now();
+        RefreshToken hienTai = cu;
+        for (int buoc = 0; buoc < 5 && trongAnHanXoay(hienTai, bayGio); buoc++) {
+            RefreshToken ke = refreshTokenRepository.findById(hienTai.getReplacedById()).orElse(null);
+            if (ke == null) return null;
+            if (ke.isValid()) return ke;
+            hienTai = ke;
+        }
+        return null;
+    }
+
+    /** Access token mới gắn với phiên {@code phien}, kèm hồ sơ như lúc đăng nhập. */
+    private LoginResponseDTO phatToken(User user, RefreshToken phien) {
+        String newAccessToken = jwtUtils.generateToken(user, phien.getId());
         hoSoNong.quen(user.getId());
 
         Department dept = user.getDepartment();
         return LoginResponseDTO.builder()
                 .accessToken(newAccessToken)
-                .refreshToken(newRawRefreshToken)
+                .refreshToken(phien.getToken())
                 .tokenType("Bearer")
                 .expiresIn(accessTokenExpMs / 1000)
                 .userId(user.getId())

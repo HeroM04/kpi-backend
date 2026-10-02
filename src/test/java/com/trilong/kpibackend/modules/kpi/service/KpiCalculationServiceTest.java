@@ -99,6 +99,16 @@ class KpiCalculationServiceTest {
         }
 
         @Test
+        @DisplayName("Cột KPI tuần: tháng đang chấm lấy tuần này, tháng đã qua lấy tuần cuối của tháng đó")
+        void tuanHienThiCuaThang() {
+            // Thứ Sáu 02/10/2026 vẫn thuộc tuần 28/09–04/10 → tháng KPI 9
+            ZonedDateTime homNay = ZonedDateTime.of(2026, 10, 2, 9, 0, 0, 0, VN);
+            assertThat(service.tuanHienThiCuaThang("2026-09", homNay)).isEqualTo("2026-W40");
+            assertThat(service.tuanHienThiCuaThang("2026-08", homNay)).isEqualTo("2026-W36"); // tuần 31/08–06/09
+            assertThat(service.tuanHienThiCuaThang("khong-hop-le", homNay)).isEqualTo("2026-W40");
+        }
+
+        @Test
         @DisplayName("Danh sách tuần của tháng khớp chỉ tiêu tháng")
         void tuanCuaThang() {
             assertThat(service.getWeeksOfMonth("2026-09")).containsExactly("2026-W37", "2026-W38", "2026-W39", "2026-W40");

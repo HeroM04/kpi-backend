@@ -306,6 +306,22 @@ public class KpiCalculationService {
     }
 
     /**
+     * Tuần hiện ở cột "KPI tuần" khi xem một tháng KPI: tháng đang chấm thì là
+     * tuần hiện tại, tháng đã qua thì là TUẦN CUỐI của tháng đó. Trước đây luôn
+     * lấy tuần hiện tại nên xem lại tháng 8 vẫn ra điểm của tuần này.
+     */
+    public String tuanHienThiCuaThang(String monthStr, ZonedDateTime now) {
+        String tuanNay = getWeekString(now);
+        List<String> tuan = getWeeksOfMonth(monthStr);
+        if (tuan.isEmpty() || tuan.contains(tuanNay)) return tuanNay;
+        return tuan.get(tuan.size() - 1);
+    }
+
+    public String tuanHienThiCuaThang(String monthStr) {
+        return tuanHienThiCuaThang(monthStr, ZonedDateTime.now(VN_ZONE));
+    }
+
+    /**
      * Cộng (hoặc trừ) điểm KPI cho một nhân sự và ghi lại một dòng nhật ký.
      *
      * @param type      nhóm điểm: attendance / meeting / post / deal

@@ -151,7 +151,8 @@ public class KpiController {
         Map<Long, KpiScore> scoreMap = scores.stream().collect(java.util.stream.Collectors.toMap(s -> s.getUser().getId(), s -> s));
 
         // 2.5 Lấy điểm KPI Tuần
-        String currentWeek = kpiCalculationService.getWeekString(ZonedDateTime.now());
+        // Tháng đã qua thì lấy tuần cuối của tháng đó, không phải tuần đang chạy
+        String currentWeek = kpiCalculationService.tuanHienThiCuaThang(month);
         List<com.trilong.kpibackend.modules.kpi.entity.KpiWeeklyScore> weeklyScores = kpiWeeklyScoreRepository.findByWeekAndDepartment(currentWeek, departmentId);
         Map<Long, Integer> weeklyScoreMap = weeklyScores.stream()
                 .collect(java.util.stream.Collectors.toMap(w -> w.getUser().getId(), w -> w.getTotal()));
@@ -200,7 +201,7 @@ public class KpiController {
         Long userId = currentUser.getUserId();
         Optional<KpiScore> optScore = kpiScoreRepository.findByUserIdAndMonth(userId, month);
 
-        String currentWeek = kpiCalculationService.getWeekString(ZonedDateTime.now());
+        String currentWeek = kpiCalculationService.tuanHienThiCuaThang(month);
         int weeklyTotal = kpiWeeklyScoreRepository.findByUserIdAndWeek(userId, currentWeek)
                 .map(com.trilong.kpibackend.modules.kpi.entity.KpiWeeklyScore::getTotal)
                 .orElse(0);
@@ -278,7 +279,7 @@ public class KpiController {
                 .collect(java.util.stream.Collectors.toMap(s -> s.getUser().getId(), s -> s));
 
         // 2.5 Lấy điểm KPI Tuần
-        String currentWeek = kpiCalculationService.getWeekString(ZonedDateTime.now());
+        String currentWeek = kpiCalculationService.tuanHienThiCuaThang(month);
         List<com.trilong.kpibackend.modules.kpi.entity.KpiWeeklyScore> weeklyScores = kpiWeeklyScoreRepository.findByWeekAndDepartment(currentWeek, departmentId);
         Map<Long, Integer> weeklyScoreMap = weeklyScores.stream()
                 .collect(java.util.stream.Collectors.toMap(w -> w.getUser().getId(), w -> w.getTotal()));

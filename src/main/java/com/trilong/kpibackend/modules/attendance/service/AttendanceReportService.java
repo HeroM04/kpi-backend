@@ -38,8 +38,9 @@ public class AttendanceReportService {
         ZonedDateTime startZDT = startDate.atStartOfDay(zone);
         ZonedDateTime endZDT = endDate.atTime(23, 59, 59).atZone(zone);
 
-        List<User> users = userRepository.findAll();
         List<CheckinLog> logs = checkinLogRepository.findByCheckinTimeBetween(startZDT, endZDT);
+        Set<Long> coChamCong = nguoiCoChamCong(logs);
+        List<User> users = xepNguoiCoChamCongTruoc(userRepository.findAll(), coChamCong);
 
         // Gom nhóm log theo user_id, sau đó theo ngày
         Map<Long, Map<LocalDate, List<CheckinLog>>> logsByUserAndDate = logs.stream()
@@ -55,8 +56,21 @@ public class AttendanceReportService {
             CellStyle cellStyle = createNormalStyle(workbook);
 
             int currentRow = 0;
+            long soKhongChamCong = users.stream().filter(u -> !coChamCong.contains(u.getId())).count();
+            boolean daNganCach = false;
 
             for (User user : users) {
+                // Một dòng ngăn trước nhóm không chấm công để người xem biết từ đây trở
+                // xuống là ai, khỏi phải dò từng bảng toàn "Không có dữ liệu".
+                if (!daNganCach && !coChamCong.contains(user.getId())) {
+                    daNganCach = true;
+                    Row nganCach = sheet.createRow(currentRow++);
+                    nganCach.createCell(0).setCellValue(
+                            "NHÂN SỰ KHÔNG CÓ CHẤM CÔNG TRONG THÁNG (" + soKhongChamCong + " người)");
+                    nganCach.getCell(0).setCellStyle(infoStyle);
+                    currentRow++;
+                }
+
                 // Hàng thông tin nhân viên
                 Row infoRow = sheet.createRow(currentRow++);
                 infoRow.createCell(0).setCellValue("Mã nhân viên: " + user.getId());
@@ -209,6 +223,29 @@ public class AttendanceReportService {
             workbook.write(outputStream);
             return outputStream.toByteArray();
         }
+    }
+
+    /** Người có ít nhất một lượt chấm công không bị từ chối trong khoảng đã lấy. */
+    static Set<Long> nguoiCoChamCong(List<CheckinLog> logs) {
+        return logs.stream()
+                .filter(l -> !"REJECTED".equals(l.getStatus()))
+                .map(CheckinLog::getUserId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+    }
+
+    /**
+     * Người có chấm công trong tháng lên trước, người không có lượt hợp lệ nào
+     * (chưa chấm lần nào, hoặc chỉ toàn lượt bị từ chối) xuống cuối. Trong mỗi
+     * nhóm xếp theo mã nhân viên. Trước đây đi theo thứ tự trong
+     * CSDL nên người không chấm công nằm xen giữa, phải lướt qua cả tháng
+     * "Không có dữ liệu" mới tới người kế tiếp.
+     */
+    static List<User> xepNguoiCoChamCongTruoc(List<User> users, Set<Long> coChamCong) {
+        List<User> ds = new ArrayList<>(users);
+        ds.sort(Comparator.comparing((User u) -> !coChamCong.contains(u.getId()))
+                .thenComparing(User::getId, Comparator.nullsLast(Comparator.naturalOrder())));
+        return ds;
     }
 
     private String getVietnameseDayOfWeek(DayOfWeek dayOfWeek) {

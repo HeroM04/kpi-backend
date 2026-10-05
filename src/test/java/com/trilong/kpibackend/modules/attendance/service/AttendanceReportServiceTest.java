@@ -82,6 +82,44 @@ class AttendanceReportServiceTest {
     }
 
     @Test
+    @DisplayName("Ngày chỉ có giờ vào hoặc chỉ có giờ ra được 0,5 công; đủ vào–ra vẫn tính theo số giờ")
+    void thieuMotLuotDuocNuaCong() throws Exception {
+        when(userRepository.findAll()).thenReturn(List.of(nguoi(1, "A")));
+        when(checkinLogRepository.findByCheckinTimeBetween(any(), any())).thenReturn(List.of(
+                luot(1, "APPROVED", 8, 8, "CHECK_IN"),                                        // 08/09 chỉ vào
+                luot(1, "APPROVED", 9, 17, "CHECK_OUT"),                                      // 09/09 chỉ ra
+                luot(1, "APPROVED", 10, 8, "CHECK_IN"), luot(1, "APPROVED", 10, 17, "CHECK_OUT"), // 10/09 đủ 7,5h
+                luot(1, "REJECTED", 11, 8, "CHECK_IN")));                                     // 11/09 bị từ chối
+
+        byte[] file = service.generateMonthlyReport(2026, 9);
+
+        try (XSSFWorkbook wb = new XSSFWorkbook(new ByteArrayInputStream(file))) {
+            Sheet sheet = wb.getSheetAt(0);
+            java.util.Map<String, Double> congNgay = new java.util.HashMap<>();
+            java.util.Map<String, String> ghiChu = new java.util.HashMap<>();
+            double tong = -1;
+            for (Row row : sheet) {
+                Cell c0 = row.getCell(0);
+                if (c0 == null) continue;
+                String a = c0.getStringCellValue();
+                if (a.matches("\\d{2}/09/2026")) {
+                    congNgay.put(a, row.getCell(5).getNumericCellValue());
+                    ghiChu.put(a, row.getCell(6).getStringCellValue());
+                } else if (a.equals("TỔNG CỘNG")) {
+                    tong = row.getCell(5).getNumericCellValue();
+                }
+            }
+            assertThat(congNgay.get("08/09/2026")).isEqualTo(0.5);
+            assertThat(ghiChu.get("08/09/2026")).contains("Chỉ có giờ vào");
+            assertThat(congNgay.get("09/09/2026")).isEqualTo(0.5);
+            assertThat(ghiChu.get("09/09/2026")).contains("Chỉ có giờ ra");
+            assertThat(congNgay.get("10/09/2026")).isEqualTo(1.0);
+            assertThat(congNgay.get("11/09/2026")).isEqualTo(0.0);
+            assertThat(tong).isEqualTo(2.0);
+        }
+    }
+
+    @Test
     @DisplayName("Cả công ty đều có chấm công thì không có dòng ngăn")
     void khongCoDongNganKhiAiCungCham() throws Exception {
         when(userRepository.findAll()).thenReturn(List.of(nguoi(1, "A"), nguoi(2, "B")));

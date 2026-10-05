@@ -25,6 +25,9 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class AttendanceReportService {
 
+    /** Công của một ngày chỉ có giờ vào hoặc chỉ có giờ ra. */
+    static final double CONG_THIEU_MOT_LUOT = 0.5;
+
     private final CheckinLogRepository checkinLogRepository;
     private final UserRepository userRepository;
 
@@ -170,10 +173,11 @@ public class AttendanceReportService {
                             hours = (seconds - breakSeconds) / 3600.0;
                             if (hours < 0) hours = 0;
 
-                            // Quy tắc tính công:
+                            // Quy tắc tính công khi có đủ giờ vào và giờ ra:
                             // >= 5h -> 1 công
                             // >= 2h và < 5h -> 0.5 công
                             // < 2h -> 0 công
+                            // (thiếu giờ vào hoặc giờ ra: 0,5 công — xem nhánh dưới)
                             if (hours >= 5.0) {
                                 cong = 1.0;
                             } else if (hours >= 2.0) {
@@ -182,10 +186,14 @@ public class AttendanceReportService {
                                 cong = 0;
                             }
 
-                        } else if (firstIn.isPresent() && !lastOut.isPresent()) {
-                            note = "Quên Check-out";
-                        } else if (!firstIn.isPresent() && lastOut.isPresent()) {
-                            note = "Chỉ có Check-out";
+                        } else if (firstIn.isPresent()) {
+                            // Luật công ty: chỉ có giờ vào HOẶC chỉ có giờ ra thì tính 0,5 công
+                            // (không đo được số giờ nên không áp quy tắc theo giờ ở trên).
+                            cong = CONG_THIEU_MOT_LUOT;
+                            note = "Chỉ có giờ vào (quên check-out) — tính 0,5 công";
+                        } else if (lastOut.isPresent()) {
+                            cong = CONG_THIEU_MOT_LUOT;
+                            note = "Chỉ có giờ ra — tính 0,5 công";
                         }
 
                         row.createCell(4).setCellValue(Math.round(hours * 10.0) / 10.0);

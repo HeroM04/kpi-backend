@@ -217,6 +217,19 @@ public class CheckinService {
         return checkinLogRepository.findByUserIdAndCheckinTimeBetween(userId, start, end);
     }
 
+    /**
+     * Lịch sử chấm công của user trong một tháng dương lịch (giờ VN), sớm → muộn.
+     * App dùng cho chế độ xem "Theo tháng" ở tab Lịch sử, tự gom theo ngày.
+     */
+    public List<CheckinLog> getCheckinsByUserIdAndMonth(Long userId, java.time.YearMonth thang) {
+        ZonedDateTime start = thang.atDay(1).atStartOfDay(VN_ZONE);
+        ZonedDateTime end   = thang.plusMonths(1).atDay(1).atStartOfDay(VN_ZONE);
+        return checkinLogRepository.findByUserIdAndCheckinTimeBetween(userId, start, end).stream()
+                .sorted(java.util.Comparator.comparing(CheckinLog::getCheckinTime,
+                        java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder())))
+                .toList();
+    }
+
     /** Lấy toàn bộ lịch sử checkin của user */
     public List<CheckinLog> getCheckinsByUserId(Long userId) {
         return checkinLogRepository.findByUserIdOrderByCheckinTimeDesc(userId);

@@ -125,14 +125,21 @@ public class CheckinController {
 
     @Operation(
             summary = "📋 Lịch sử chấm công của tôi",
-            description = "Lấy danh sách check-in của user đang đăng nhập. Mặc định là hôm nay, có thể lọc theo ngày (YYYY-MM-DD)."
+            description = "Lấy danh sách check-in của user đang đăng nhập. Mặc định là hôm nay, có thể lọc theo ngày (YYYY-MM-DD) "
+                    + "hoặc cả tháng (month=YYYY-MM, tháng dương lịch, xếp sớm → muộn). Có month thì bỏ qua date."
     )
     @GetMapping("/my-checkins")
     @PreAuthorize("hasAuthority('attendance:view-my')")
     public ResponseEntity<?> getMyCheckins(
             @AuthenticationPrincipal UserPrincipal currentUser,
-            @RequestParam(required = false) String date) {
+            @RequestParam(required = false) String date,
+            @RequestParam(required = false) String month) {
         try {
+            if (month != null && !month.isBlank()) {
+                java.time.YearMonth thang = java.time.YearMonth.parse(month.trim());
+                return ResponseEntity.ok(Map.of("status", "SUCCESS",
+                        "data", checkinService.getCheckinsByUserIdAndMonth(currentUser.getUserId(), thang)));
+            }
             // "Hôm nay" theo giờ VN — LocalDate.now() trên máy chủ UTC là hôm qua
             // suốt 00:00–07:00 sáng, nhân viên chấm công sớm mở app thấy trống trơn
             LocalDate targetDate = com.trilong.kpibackend.core.utils.GioVN.ngayLoc(date);

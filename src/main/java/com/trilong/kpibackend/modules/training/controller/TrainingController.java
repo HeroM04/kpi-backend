@@ -254,11 +254,12 @@ public class TrainingController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> getMyTrainings(
             @AuthenticationPrincipal UserPrincipal currentUser,
-            @RequestParam(required = false) String date) {
+            @RequestParam(required = false) String date,
+            @RequestParam(required = false) String month) {
         // Ngày theo giờ VN — máy chủ chạy UTC, lấy thẳng toLocalDate() là lệch 7 tiếng
-        LocalDate filterDate = com.trilong.kpibackend.core.utils.GioVN.ngayLoc(date);
+        var loc = com.trilong.kpibackend.core.utils.GioVN.locNgayHoacThang(date, month); // month=yyyy-MM: cả tháng
         List<TrainingAttendee> attendees = trainingService.getMyTrainings(currentUser.getUserId()).stream()
-                .filter(a -> filterDate.equals(com.trilong.kpibackend.core.utils.GioVN.ngayCua(a.getAttendedAt())))
+                .filter(a -> loc.test(com.trilong.kpibackend.core.utils.GioVN.ngayCua(a.getAttendedAt())))
                 .toList();
         List<TrainingAttendeeResponseDTO> dtos = attendees.stream()
                 .map(TrainingAttendeeResponseDTO::from)

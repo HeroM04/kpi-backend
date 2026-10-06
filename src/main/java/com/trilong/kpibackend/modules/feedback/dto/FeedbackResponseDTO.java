@@ -5,7 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.time.ZonedDateTime;
 import java.util.List;
 
@@ -22,7 +22,8 @@ public class FeedbackResponseDTO {
     private String content;
     private String status;
     private boolean isAnonymous;
-    private LocalDateTime createdAt;
+    /** Có độ lệch múi giờ (xem GioVN.coMuiGio) — app và web đọc đúng giờ VN. */
+    private OffsetDateTime createdAt;
     private String title;
     private String category;
     private Integer rating;

@@ -193,7 +193,7 @@ public class FeedbackService {
                 .content(f.getContent())
                 .status(f.getStatus())
                 .isAnonymous(f.isAnonymous())
-                .createdAt(f.getCreatedAt())
+                .createdAt(com.trilong.kpibackend.core.utils.GioVN.coMuiGio(f.getCreatedAt()))
                 .title(f.getTitle())
                 .category(f.getCategory())
                 .rating(f.getRating())

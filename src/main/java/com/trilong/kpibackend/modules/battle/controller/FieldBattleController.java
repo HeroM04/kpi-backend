@@ -47,11 +47,12 @@ public class FieldBattleController {
     @PreAuthorize("hasAuthority('meeting:view-my') or hasRole('ADMIN')")
     public ResponseEntity<?> getMyBattles(
             @AuthenticationPrincipal UserPrincipal currentUser,
-            @RequestParam(required = false) String date) {
+            @RequestParam(required = false) String date,
+            @RequestParam(required = false) String month) {
         // Ngày theo giờ VN — máy chủ chạy UTC, lấy thẳng toLocalDate() là lệch 7 tiếng
-        LocalDate filterDate = com.trilong.kpibackend.core.utils.GioVN.ngayLoc(date);
+        var loc = com.trilong.kpibackend.core.utils.GioVN.locNgayHoacThang(date, month); // month=yyyy-MM: cả tháng
         List<FieldBattle> battles = fieldBattleService.getMyBattles(currentUser.getUserId()).stream()
-                .filter(b -> filterDate.equals(com.trilong.kpibackend.core.utils.GioVN.ngayCua(b.getSubmittedAt())))
+                .filter(b -> loc.test(com.trilong.kpibackend.core.utils.GioVN.ngayCua(b.getSubmittedAt())))
                 .toList();
         List<FieldBattleResponseDTO> dtos = battles.stream().map(FieldBattleResponseDTO::from).toList();
         return ResponseEntity.ok(Map.of("status", "SUCCESS", "data", dtos));

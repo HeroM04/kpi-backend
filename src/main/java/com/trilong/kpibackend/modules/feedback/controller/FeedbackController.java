@@ -123,12 +123,13 @@ public class FeedbackController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> getMyFeedbacks(
             @AuthenticationPrincipal UserPrincipal currentUser,
-            @RequestParam(required = false) String date) {
+            @RequestParam(required = false) String date,
+            @RequestParam(required = false) String month) {
         try {
             // Ngày theo giờ VN — máy chủ chạy UTC, lấy thẳng toLocalDate() là lệch 7 tiếng
-            LocalDate filterDate = com.trilong.kpibackend.core.utils.GioVN.ngayLoc(date);
+            var loc = com.trilong.kpibackend.core.utils.GioVN.locNgayHoacThang(date, month); // month=yyyy-MM: cả tháng
             List<FeedbackResponseDTO> list = feedbackService.getFeedbacksBySender(currentUser.getUserId()).stream()
-                    .filter(f -> filterDate.equals(com.trilong.kpibackend.core.utils.GioVN.ngayCua(f.getCreatedAt())))
+                    .filter(f -> loc.test(com.trilong.kpibackend.core.utils.GioVN.ngayCua(f.getCreatedAt())))
                     .toList();
             return ResponseEntity.ok(Map.of("status", "SUCCESS", "data", list));
         } catch (Exception e) {

@@ -70,5 +70,35 @@ class GioVNTest {
     void giaTriRong() {
         assertThat(GioVN.ngayCua((ZonedDateTime) null)).isNull();
         assertThat(GioVN.ngayCua((LocalDateTime) null)).isNull();
+        assertThat(GioVN.ngayCua((java.time.OffsetDateTime) null)).isNull();
+        assertThat(GioVN.coMuiGio(null)).isNull();
+    }
+
+    @Test
+    @DisplayName("Mốc không múi giờ gửi ra ngoài kèm độ lệch: app đọc ra đúng 05:30 giờ VN chứ không phải 22:30")
+    void coMuiGio() {
+        LocalDateTime ghiTheoGioMay = LocalDateTime.of(2026, 9, 23, 22, 30); // UTC trên Render
+        java.time.OffsetDateTime gui = GioVN.coMuiGio(ghiTheoGioMay);
+        assertThat(gui.toString()).isEqualTo("2026-09-23T22:30Z");
+        assertThat(gui.atZoneSameInstant(GioVN.VN).toLocalDateTime()).isEqualTo(LocalDateTime.of(2026, 9, 24, 5, 30));
+        assertThat(GioVN.ngayCua(gui)).isEqualTo(LocalDate.of(2026, 9, 24));
+    }
+
+    @Test
+    @DisplayName("Lọc lịch sử: có month thì cả tháng, không có thì đúng một ngày")
+    void locNgayHoacThang() {
+        var caThang = GioVN.locNgayHoacThang("2026-09-23", "2026-10");
+        assertThat(caThang.test(LocalDate.of(2026, 10, 1))).isTrue();
+        assertThat(caThang.test(LocalDate.of(2026, 10, 31))).isTrue();
+        assertThat(caThang.test(LocalDate.of(2026, 9, 30))).isFalse();
+        assertThat(caThang.test(LocalDate.of(2025, 10, 5))).isFalse();
+        assertThat(caThang.test(null)).isFalse();
+
+        var motNgay = GioVN.locNgayHoacThang("2026-09-23", null);
+        assertThat(motNgay.test(LocalDate.of(2026, 9, 23))).isTrue();
+        assertThat(motNgay.test(LocalDate.of(2026, 9, 24))).isFalse();
+        assertThat(motNgay.test(null)).isFalse();
+
+        assertThat(GioVN.locNgayHoacThang(null, " ").test(LocalDate.now(GioVN.VN))).isTrue();
     }
 }

@@ -2,8 +2,11 @@ package com.trilong.kpibackend.core.utils;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.YearMonth;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.function.Predicate;
 
 /**
  * "Ngày" theo giờ Việt Nam.
@@ -39,8 +42,36 @@ public final class GioVN {
         return t == null ? null : t.atZone(ZoneId.systemDefault()).withZoneSameInstant(VN).toLocalDate();
     }
 
+    /** Ngày (giờ VN) của một mốc có độ lệch múi giờ. */
+    public static LocalDate ngayCua(OffsetDateTime t) {
+        return t == null ? null : t.atZoneSameInstant(VN).toLocalDate();
+    }
+
+    /**
+     * Mốc KHÔNG có múi giờ (ghi theo giờ máy chạy) → mốc có độ lệch, để gửi ra
+     * ngoài. Gửi thẳng LocalDateTime thì app và web đọc "03:15" như giờ VN trong
+     * khi đó là 03:15 UTC trên Render — lệch 7 tiếng.
+     */
+    public static OffsetDateTime coMuiGio(LocalDateTime t) {
+        return t == null ? null : t.atZone(ZoneId.systemDefault()).toOffsetDateTime();
+    }
+
     /** Ngày trên tham số ?date=yyyy-MM-dd; bỏ trống thì là hôm nay (giờ VN). */
     public static LocalDate ngayLoc(String date) {
         return (date == null || date.isBlank()) ? homNay() : LocalDate.parse(date.trim());
+    }
+
+    /**
+     * Bộ lọc cho các API lịch sử "của tôi" trên app: có {@code month=yyyy-MM}
+     * thì nhận mọi ngày trong tháng đó, không thì đúng một ngày ({@code date},
+     * mặc định hôm nay). Ngày đưa vào phải là ngày giờ VN (qua {@link #ngayCua}).
+     */
+    public static Predicate<LocalDate> locNgayHoacThang(String date, String month) {
+        if (month != null && !month.isBlank()) {
+            YearMonth thang = YearMonth.parse(month.trim());
+            return d -> d != null && YearMonth.from(d).equals(thang);
+        }
+        LocalDate ngay = ngayLoc(date);
+        return ngay::equals;
     }
 }

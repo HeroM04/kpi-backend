@@ -29,27 +29,31 @@ class CheckinServiceTest {
     }
 
     @Test
-    @DisplayName("Ca sáng: tới 08:45:00 là đúng giờ, 08:45:01 là muộn")
+    @DisplayName("Ca sáng: hết phút 08:45 (08:45:59) vẫn đúng giờ, từ 08:46:00 là muộn")
     void mocCaSang() {
         assertThat(service.laDungGio(binhThuong, luc(8, 30, 0))).isTrue();
         assertThat(service.laDungGio(binhThuong, luc(8, 45, 0))).isTrue();
-        assertThat(service.laDungGio(binhThuong, luc(8, 45, 1))).isFalse();
+        assertThat(service.laDungGio(binhThuong, luc(8, 45, 30))).isTrue();
+        assertThat(service.laDungGio(binhThuong, luc(8, 45, 59))).isTrue();
+        assertThat(service.laDungGio(binhThuong, luc(8, 46, 0))).isFalse();
         assertThat(service.laDungGio(binhThuong, luc(11, 59, 0))).isFalse();
     }
 
     @Test
-    @DisplayName("Người được châm chước: tới 09:00 vẫn đúng giờ")
+    @DisplayName("Người được châm chước: hết phút 09:00 vẫn đúng giờ, từ 09:01:00 là muộn")
     void chamChuoc() {
         assertThat(service.laDungGio(chamChuoc9h, luc(8, 59, 0))).isTrue();
         assertThat(service.laDungGio(chamChuoc9h, luc(9, 0, 0))).isTrue();
-        assertThat(service.laDungGio(chamChuoc9h, luc(9, 0, 1))).isFalse();
+        assertThat(service.laDungGio(chamChuoc9h, luc(9, 0, 59))).isTrue();
+        assertThat(service.laDungGio(chamChuoc9h, luc(9, 1, 0))).isFalse();
     }
 
     @Test
-    @DisplayName("Ca chiều: 12:00–13:45 đúng giờ, sau 13:45 muộn — kể cả người được châm chước")
+    @DisplayName("Ca chiều: 12:00 đến hết phút 13:45 đúng giờ, từ 13:46 muộn — kể cả người được châm chước")
     void caChieu() {
         assertThat(service.laDungGio(binhThuong, luc(12, 0, 0))).isTrue();
         assertThat(service.laDungGio(binhThuong, luc(13, 45, 0))).isTrue();
+        assertThat(service.laDungGio(binhThuong, luc(13, 45, 59))).isTrue();
         assertThat(service.laDungGio(binhThuong, luc(13, 46, 0))).isFalse();
         assertThat(service.laDungGio(chamChuoc9h, luc(13, 46, 0))).isFalse();
     }

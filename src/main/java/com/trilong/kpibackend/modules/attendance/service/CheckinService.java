@@ -95,7 +95,7 @@ public class CheckinService {
     // tính điểm chuyên cần MỘT LẦN mỗi ngày — lần chấm công vào đầu tiên quyết
     // định điểm, các lần sau chỉ ghi nhận giờ chứ không cộng thêm.
 
-    /** Điểm danh từ 08:30; đến 08:45 vẫn tính ĐÚNG GIỜ (15 phút châm chước). */
+    /** Điểm danh từ 08:30; đến HẾT phút 08:45 (08:45:59) vẫn tính ĐÚNG GIỜ, 08:46 mới muộn. */
     private static final LocalTime ON_TIME_LIMIT = LocalTime.of(8, 45);
     /**
      * Mốc châm chước riêng: một số nhân sự được Admin cho phép đến 09:00 mới
@@ -704,11 +704,12 @@ public class CheckinService {
     /**
      * Điểm chuyên cần theo giờ chấm công vào, đúng quy định công ty:
      * <ul>
-     *   <li><b>Ca sáng</b> — đến 08:45 (hoặc 09:00 với người được châm chước
-     *       riêng) là đúng giờ <b>+5đ</b>; muộn hơn, trong buổi sáng, <b>−5đ</b></li>
-     *   <li><b>Ca chiều</b> — từ 12:00 đến 13:45 đúng giờ <b>+5đ</b>;
-     *       sau 13:45 <b>−5đ</b></li>
+     *   <li><b>Ca sáng</b> — đến hết phút 08:45 (hoặc 09:00 với người được châm
+     *       chước riêng) là đúng giờ <b>+5đ</b>; từ 08:46 (09:01), trong buổi sáng, <b>−5đ</b></li>
+     *   <li><b>Ca chiều</b> — từ 12:00 đến hết phút 13:45 đúng giờ <b>+5đ</b>;
+     *       từ 13:46 <b>−5đ</b></li>
      * </ul>
+     * Mốc tính theo phút, không theo giây — xem {@link #quaMoc}.
      *
      * <p>Không chấm công cả ngày mới là vắng không phép (−15đ), và việc đó do
      * {@code LeaveRequestService.closeDay} chốt lúc cuối ngày xử lý — đã đến
@@ -723,9 +724,18 @@ public class CheckinService {
             return 0;
         }
         if (time.isBefore(NOON)) {
-            return time.isAfter(mocDungGio) ? KPI_LATE : KPI_ON_TIME;
+            return quaMoc(time, mocDungGio) ? KPI_LATE : KPI_ON_TIME;
         }
-        return time.isAfter(AFTERNOON_ON_TIME_LIMIT) ? KPI_LATE : KPI_ON_TIME;
+        return quaMoc(time, AFTERNOON_ON_TIME_LIMIT) ? KPI_LATE : KPI_ON_TIME;
+    }
+
+    /**
+     * Muộn khi đã QUA HẾT phút của mốc: hạn 08:45 thì 08:45:59 vẫn đúng giờ,
+     * 08:46:00 mới là muộn. Trước đây so tới từng giây nên 08:45:30 bị trừ 5đ
+     * với lời giải thích "chấm công lúc 08:45 (hạn 08:45)" — người đọc thấy vô lý.
+     */
+    static boolean quaMoc(LocalTime gio, LocalTime moc) {
+        return gio.truncatedTo(java.time.temporal.ChronoUnit.MINUTES).isAfter(moc);
     }
 
     /**
@@ -790,11 +800,11 @@ public class CheckinService {
         }
         LocalTime t = time.withZoneSameInstant(VN_ZONE).toLocalTime();
         if (t.isBefore(NOON)) {
-            return t.isAfter(mocDungGio)
+            return quaMoc(t, mocDungGio)
                     ? "Đi muộn ca sáng — chấm công lúc " + hhmm + " (hạn " + mocDungGio + ")"
                     : "Đi làm đúng giờ — chấm công lúc " + hhmm;
         }
-        return t.isAfter(AFTERNOON_ON_TIME_LIMIT)
+        return quaMoc(t, AFTERNOON_ON_TIME_LIMIT)
                 ? "Đi muộn ca chiều — chấm công lúc " + hhmm + " (hạn " + AFTERNOON_ON_TIME_LIMIT + ")"
                 : "Vào ca chiều đúng giờ — chấm công lúc " + hhmm;
     }

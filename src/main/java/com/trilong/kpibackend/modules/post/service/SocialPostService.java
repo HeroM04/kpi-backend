@@ -32,11 +32,21 @@ public class SocialPostService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("KhÃ´ng tÃ¬m tháº¥y ngÆ°á»i dÃ¹ng"));
 
+        // Link và caption không bắt buộc (story, video xây kênh thường không có
+        // link); bằng chứng bắt buộc duy nhất là ẢNH CHỤP MÀN HÌNH bài đăng.
+        // Admin nhập tay trên web (form không có ô ảnh) thì không bắt.
+        boolean laAdmin = "ADMIN".equals(user.getRole());
+        if (!laAdmin && (dto.getScreenshotUrl() == null || dto.getScreenshotUrl().isBlank())) {
+            throw new IllegalArgumentException("Cần ảnh chụp màn hình bài đăng để Admin đối chiếu.");
+        }
+
         SocialPost post = SocialPost.builder()
                 .user(user)
                 .platform(dto.getPlatform())
                 .contentType(normalizeContentType(dto.getContentType()))
-                .link(dto.getLink())
+                // Cột link trong CSDL đang NOT NULL (ddl-auto: update không gỡ ràng
+                // buộc cũ) → không có link thì lưu chuỗi rỗng
+                .link(dto.getLink() == null ? "" : dto.getLink().trim())
                 .caption(dto.getCaption())
                 .screenshotUrl(dto.getScreenshotUrl())
                 .status("PENDING")

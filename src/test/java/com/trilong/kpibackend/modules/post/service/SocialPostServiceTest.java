@@ -99,6 +99,51 @@ class SocialPostServiceTest {
     }
 
     @Test
+    @DisplayName("Story / video chỉ có ảnh chụp, không link không caption → vẫn gửi được, link lưu rỗng")
+    void guiChiCoAnh() {
+        when(userRepository.findById(7L)).thenReturn(Optional.of(nhanSu));
+        SubmitPostDTO dto = new SubmitPostDTO();
+        dto.setPlatform("OTHER");
+        dto.setContentType("VIDEO");
+        dto.setScreenshotUrl("https://res.cloudinary.com/x/anh.jpg");
+
+        SocialPost p = service.submitPost(7L, dto);
+
+        assertThat(p.getLink()).isEmpty();          // cột link NOT NULL trong CSDL
+        assertThat(p.getCaption()).isNull();
+        assertThat(p.getStatus()).isEqualTo("PENDING");
+        assertThat(p.getContentType()).isEqualTo("VIDEO");
+    }
+
+    @Test
+    @DisplayName("Không có ảnh chụp màn hình → từ chối, báo rõ lý do")
+    void thieuAnh() {
+        when(userRepository.findById(7L)).thenReturn(Optional.of(nhanSu));
+        SubmitPostDTO dto = new SubmitPostDTO();
+        dto.setPlatform("FACEBOOK");
+        dto.setLink("https://fb.com/x");
+        dto.setScreenshotUrl("  ");
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.submitPost(7L, dto))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("ảnh chụp màn hình");
+        verify(repo, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Admin nhập tay trên web (không có ô ảnh) → vẫn thêm được")
+    void adminNhapTay() {
+        when(userRepository.findById(1L)).thenReturn(Optional.of(User.builder().id(1L).role("ADMIN").build()));
+        SubmitPostDTO dto = new SubmitPostDTO();
+        dto.setPlatform("Facebook");
+
+        SocialPost p = service.submitPost(1L, dto);
+
+        assertThat(p.getStatus()).isEqualTo("PENDING");
+        assertThat(p.getLink()).isEmpty();
+    }
+
+    @Test
     @DisplayName("Xóa bài đã duyệt → gỡ điểm rồi mới xóa")
     void xoa() {
         SocialPost p = bai("APPROVED");

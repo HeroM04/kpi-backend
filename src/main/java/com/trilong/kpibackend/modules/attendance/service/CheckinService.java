@@ -515,6 +515,8 @@ public class CheckinService {
                     && daTinhDiemTrongNgay(checkinLog.getUserId(), checkinLog.getCheckinTime(), checkinLog.getId())) {
                 kpiPoints = 0; // ngày này đã được tính điểm chuyên cần rồi
             }
+            // Thứ Bảy: vẫn ghi nhận chấm công nhưng không tính điểm chuyên cần
+            if (com.trilong.kpibackend.core.utils.GioVN.laThuBay(checkinLog.getCheckinTime())) kpiPoints = 0;
             if (kpiPoints != 0) {
                 kpiCalculationService.updateKpiPoints(
                         checkinLog.getUserId(), "attendance", kpiPoints, checkinLog.getCheckinTime(),
@@ -534,11 +536,15 @@ public class CheckinService {
             int kpiPoints = calculateAttendanceKpi(checkinLog.getActionType(),
                     checkinLog.getCheckinTime().withZoneSameInstant(VN_ZONE).toLocalTime(),
                     mocDungGioCua(checkinLog.getUserId()));
-            kpiCalculationService.updateKpiPoints(
-                    checkinLog.getUserId(), "attendance", -kpiPoints, checkinLog.getCheckinTime(),
-                    "Admin thu hồi duyệt chấm công lúc " + gio(checkinLog.getCheckinTime())
-                            + (reason != null && !reason.isBlank() ? " — " + reason.trim() : "")
-            );
+            // Thứ Bảy không tính điểm chuyên cần nên thu hồi cũng không có gì để gỡ
+            if (com.trilong.kpibackend.core.utils.GioVN.laThuBay(checkinLog.getCheckinTime())) kpiPoints = 0;
+            if (kpiPoints != 0) {
+                kpiCalculationService.updateKpiPoints(
+                        checkinLog.getUserId(), "attendance", -kpiPoints, checkinLog.getCheckinTime(),
+                        "Admin thu hồi duyệt chấm công lúc " + gio(checkinLog.getCheckinTime())
+                                + (reason != null && !reason.isBlank() ? " — " + reason.trim() : "")
+                );
+            }
             log.info("[Checkin]  Thu hồi {} #{} → {} KPI cho userId={}", checkinLog.getActionType(), id, (-kpiPoints > 0 ? "+" + (-kpiPoints) : (-kpiPoints)), checkinLog.getUserId());
         }
 
@@ -598,6 +604,8 @@ public class CheckinService {
         if (!"CHECK_OUT".equals(finalActionType) && daTinhDiemTrongNgay(userId, now, saved.getId())) {
             kpiPoints = 0;
         }
+        // Thứ Bảy: vẫn ghi nhận chấm công nhưng không tính điểm chuyên cần
+        if (com.trilong.kpibackend.core.utils.GioVN.laThuBay(now)) kpiPoints = 0;
         if (kpiPoints != 0) {
             kpiCalculationService.updateKpiPoints(userId, "attendance", kpiPoints, now,
                     dienGiaiChuyenCan(finalActionType, now, mocDungGio));

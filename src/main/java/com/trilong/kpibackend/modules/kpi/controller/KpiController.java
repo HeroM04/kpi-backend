@@ -35,6 +35,7 @@ public class KpiController {
     private final UserRepository userRepository;
     private final KpiCalculationService kpiCalculationService;
     private final com.trilong.kpibackend.modules.kpi.service.KpiReportService kpiReportService;
+    private final com.trilong.kpibackend.modules.attendance.service.HoanDiemThuBayService hoanDiemThuBayService;
 
     // ══════════════════════════════════════════════════════════════════
     //  XUẤT BÁO CÁO EXCEL
@@ -331,6 +332,24 @@ public class KpiController {
                 "status", "SUCCESS",
                 "message", isFlagged ? "Đã cắm cờ bản ghi KPI này." : "Đã gỡ cờ bản ghi KPI này.",
                 "data", KpiScoreResponseDTO.from(kpiScore)
+        ));
+    }
+
+    @Operation(
+            summary = "Hoàn điểm đi muộn đã trừ vào một ngày thứ Bảy",
+            description = "Thứ Bảy không tính điểm chuyên cần. Hoàn đúng số đã thực trừ cho từng người; "
+                    + "gọi lại nhiều lần không hoàn trùng. ngay=yyyy-MM-dd, phải là thứ Bảy.",
+            security = @SecurityRequirement(name = "Bearer Authentication")
+    )
+    @PostMapping("/hoan-diem-thu-bay")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Transactional
+    public ResponseEntity<?> hoanDiemThuBay(@RequestParam String ngay) {
+        var ketQua = hoanDiemThuBayService.hoanDiemDiMuon(java.time.LocalDate.parse(ngay.trim()));
+        return ResponseEntity.ok(Map.of(
+                "status", "SUCCESS",
+                "message", "Đã hoàn điểm cho " + ketQua.size() + " người.",
+                "data", ketQua
         ));
     }
 }

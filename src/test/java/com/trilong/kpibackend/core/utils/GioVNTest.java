@@ -85,6 +85,16 @@ class GioVNTest {
     }
 
     @Test
+    @DisplayName("Thứ Bảy theo giờ VN — kể cả mốc đọc từ DB mang múi UTC")
+    void thuBay() {
+        assertThat(GioVN.laThuBay(ZonedDateTime.of(2026, 10, 10, 9, 0, 0, 0, GioVN.VN))).isTrue();   // thứ Bảy
+        assertThat(GioVN.laThuBay(ZonedDateTime.of(2026, 10, 9, 9, 0, 0, 0, GioVN.VN))).isFalse();   // thứ Sáu
+        // 06:00 sáng thứ Bảy VN = 23:00 thứ Sáu UTC
+        assertThat(GioVN.laThuBay(ZonedDateTime.of(2026, 10, 10, 6, 0, 0, 0, GioVN.VN).withZoneSameInstant(ZoneOffset.UTC))).isTrue();
+        assertThat(GioVN.laThuBay(null)).isFalse();
+    }
+
+    @Test
     @DisplayName("Lọc lịch sử: có month thì cả tháng, không có thì đúng một ngày")
     void locNgayHoacThang() {
         var caThang = GioVN.locNgayHoacThang("2026-09-23", "2026-10");

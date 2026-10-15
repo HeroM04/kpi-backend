@@ -56,6 +56,15 @@ public final class GioVN {
         return t == null ? null : t.atZone(ZoneId.systemDefault()).toOffsetDateTime();
     }
 
+    /**
+     * Mốc này rơi vào thứ Bảy (giờ VN). Quy định 15/10/2026: thứ Bảy vẫn chấm
+     * công vào/ra bình thường nhưng KHÔNG tính điểm chuyên cần (không +5 đúng
+     * giờ, không −5 đi muộn).
+     */
+    public static boolean laThuBay(ZonedDateTime t) {
+        return t != null && t.withZoneSameInstant(VN).getDayOfWeek() == java.time.DayOfWeek.SATURDAY;
+    }
+
     /** Ngày trên tham số ?date=yyyy-MM-dd; bỏ trống thì là hôm nay (giờ VN). */
     public static LocalDate ngayLoc(String date) {
         return (date == null || date.isBlank()) ? homNay() : LocalDate.parse(date.trim());

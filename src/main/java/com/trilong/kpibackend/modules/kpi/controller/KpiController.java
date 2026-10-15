@@ -338,8 +338,8 @@ public class KpiController {
     @Operation(
             summary = "Chuẩn hóa điểm chuyên cần của một ngày thứ Bảy đã qua",
             description = "Thứ Bảy không tính điểm chuyên cần, nghỉ không bị trừ: hoàn điểm đi muộn và "
-                    + "điểm vắng đã trừ, thu lại điểm đúng giờ đã cộng, đúng số đã thực vào sổ; gỡ dấu vắng "
-                    + "trên bảng công; gọi lại nhiều lần không trùng. "
+                    + "điểm vắng đã trừ, thu lại điểm đúng giờ đã cộng, đúng số đã thực vào sổ; bảng công "
+                    + "giữ nguyên; gọi lại nhiều lần không trùng. "
                     + "ngay=yyyy-MM-dd, phải là thứ Bảy.",
             security = @SecurityRequirement(name = "Bearer Authentication")
     )

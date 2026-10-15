@@ -29,6 +29,7 @@ import static org.mockito.Mockito.*;
 /**
  * Chuẩn hóa thứ Bảy 10/10/2026: hoàn điểm đi muộn đã trừ, thu lại điểm đúng giờ
  * đã cộng, hoàn điểm vắng đã trừ — đúng số thực vào sổ, chạy lại không trùng.
+ * Bảng công (trạng thái vắng) giữ nguyên.
  */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -188,8 +189,8 @@ class HoanDiemThuBayServiceTest {
     }
 
     @Test
-    @DisplayName("Gỡ dấu vắng trên bảng công: bản máy tự ghi xóa, đơn bị từ chối về REJECTED, đơn chờ duyệt về PENDING, đơn có phép giữ P")
-    void goDauVang() {
+    @DisplayName("Bảng công giữ nguyên trạng thái vắng, chỉ bỏ cờ đã trừ điểm")
+    void giuBangCong() {
         LeaveRequest mayGhi = don(1L, "UNEXCUSED", true, "Hệ thống tự ghi nhận: không chấm công và không có đơn xin vắng được duyệt", null);
         LeaveRequest tuChoi = don(2L, "UNEXCUSED", true, "về quê", 99L);
         LeaveRequest choDuyet = don(3L, "UNEXCUSED", true, "ốm", null);
@@ -198,14 +199,10 @@ class HoanDiemThuBayServiceTest {
 
         service.chuanHoa(THU_BAY);
 
-        verify(leaveRepo).delete(mayGhi);
-        assertThat(tuChoi.getStatus()).isEqualTo("REJECTED");
-        assertThat(choDuyet.getStatus()).isEqualTo("PENDING");
+        assertThat(List.of(mayGhi, tuChoi, choDuyet)).allMatch(r -> "UNEXCUSED".equals(r.getStatus()));
         assertThat(coPhep.getStatus()).isEqualTo("APPROVED");
-        assertThat(List.of(tuChoi, choDuyet, coPhep)).allMatch(r -> !r.getKpiApplied());
-        verify(leaveRepo, never()).delete(tuChoi);
-        verify(leaveRepo, never()).delete(choDuyet);
-        verify(leaveRepo, never()).delete(coPhep);
+        assertThat(List.of(mayGhi, tuChoi, choDuyet, coPhep)).allMatch(r -> !r.getKpiApplied());
+        verify(leaveRepo, never()).delete(any(LeaveRequest.class));
     }
 
     private LeaveRequest don(long userId, String trangThai, boolean daTru, String lyDo, Long nguoiDuyet) {

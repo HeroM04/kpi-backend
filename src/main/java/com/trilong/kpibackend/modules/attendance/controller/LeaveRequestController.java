@@ -119,7 +119,7 @@ public class LeaveRequestController {
         }
     }
 
-    @Operation(summary = "Admin duyệt đơn xin vắng", description = "Ghi nhận vắng có phép, trừ 10đ KPI.")
+    @Operation(summary = "Admin duyệt đơn xin vắng", description = "Ghi nhận vắng có phép, trừ 10đ KPI (thứ Bảy không trừ).")
     @PutMapping("/{id}/approve")
     @PreAuthorize("hasAuthority('attendance:approve') or hasRole('ADMIN')")
     public ResponseEntity<?> approve(@PathVariable Long id,
@@ -130,7 +130,9 @@ public class LeaveRequestController {
             LeaveRequest req = leaveRequestService.approve(id, currentUser.getUserId(), note);
             return ResponseEntity.ok(Map.of(
                     "status", "SUCCESS",
-                    "message", "Đã duyệt vắng có phép (−10đ KPI).",
+                    "message", Boolean.TRUE.equals(req.getKpiApplied())
+                            ? "Đã duyệt vắng có phép (−10đ KPI)."
+                            : "Đã duyệt vắng có phép (thứ Bảy, không trừ điểm KPI).",
                     "data", leaveRequestService.toDTO(req)));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("status", "ERROR", "message", e.getMessage()));

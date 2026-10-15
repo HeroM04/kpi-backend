@@ -23,14 +23,15 @@ import java.util.Map;
 /**
  * Đưa điểm chuyên cần của một ngày thứ Bảy đã qua về đúng luật mới.
  *
- * <p>Quy định 15/10/2026: thứ Bảy vẫn chấm công nhưng không tính điểm chuyên
- * cần, nghỉ cũng không bị trừ (CheckinService, LeaveRequestService bỏ qua từ
- * nay). Các thứ Bảy trước đó đã lỡ tính thì chuẩn hóa bằng hàm này:
+ * <p>Quy định 15/10/2026: thứ Bảy vẫn chấm công, vẫn ghi vắng có / không phép
+ * trên bảng công như ngày thường, chỉ <b>không cộng / trừ điểm KPI</b>
+ * (CheckinService, LeaveRequestService bỏ phần điểm từ nay). Các thứ Bảy trước
+ * đó đã lỡ tính điểm thì chuẩn hóa bằng hàm này:
  * <ul>
  *   <li>Đi muộn bị trừ → HOÀN lại đúng số đã thực trừ.</li>
  *   <li>Đúng giờ được cộng → THU LẠI đúng số đã thực cộng.</li>
  *   <li>Vắng không phép (−15) / nghỉ có phép (−10) → HOÀN lại đúng số đã thực
- *       trừ, và gỡ dấu vắng trên bảng công.</li>
+ *       trừ. Bảng công giữ nguyên.</li>
  * </ul>
  * "Đã thực" = cột effective_points (nhóm chạm trần hay đang 0đ thì con số thực
  * khác 5 / 10 / 15), nên không ai được hoàn hay bị thu quá phần mình đã nhận.
@@ -126,38 +127,23 @@ public class HoanDiemThuBayService {
             }
         }
 
-        int goDau = goDauVang(ngay);
-        log.info("[Chuẩn hóa điểm thứ Bảy {}] {} người: {} — gỡ {} dấu vắng", d, ra.size(), ra, goDau);
+        int boCo = boCoDaTru(ngay);
+        log.info("[Chuẩn hóa điểm thứ Bảy {}] {} người: {} — {} bản ghi vắng bỏ cờ đã trừ", d, ra.size(), ra, boCo);
         return ra;
     }
 
     /**
-     * Bảng công thứ Bảy từ nay để trống khi nghỉ, nên ngày cũ cũng vậy. Bản ghi
-     * vắng không phép:
-     * <ul>
-     *   <li>máy tự tạo (lý do "Hệ thống tự ghi nhận…") → xóa;</li>
-     *   <li>vốn là đơn người gửi bị Admin từ chối → trả về "từ chối";</li>
-     *   <li>vốn là đơn còn chờ duyệt bị máy chốt đè → trả về "chờ duyệt"
-     *       (Admin duyệt thứ Bảy giờ không trừ điểm).</li>
-     * </ul>
-     * Đơn có phép giữ nguyên (P), chỉ bỏ cờ đã trừ. Mọi trường hợp cờ
-     * {@code kpiApplied} về false để không chỗ nào hoàn lại lần nữa.
+     * Bảng công giữ nguyên (thứ Bảy vẫn chấm công, vẫn ghi có phép / không
+     * phép) — chỉ bỏ cờ "đã trừ điểm" của các bản ghi vắng ngày đó, để app hiện
+     * không trừ điểm và không chỗ nào hoàn lại lần nữa.
      */
-    private int goDauVang(LocalDate ngay) {
+    private int boCoDaTru(LocalDate ngay) {
         int dem = 0;
         for (LeaveRequest r : leaveRequestRepository.findByLeaveDate(ngay)) {
-            if ("UNEXCUSED".equals(r.getStatus())) {
-                if (r.getReason() == null || r.getReason().startsWith("Hệ thống tự ghi nhận")) {
-                    leaveRequestRepository.delete(r);
-                } else {
-                    r.setStatus(r.getReviewedBy() != null ? "REJECTED" : "PENDING");
-                    r.setKpiApplied(false);
-                    leaveRequestRepository.save(r);
-                }
-                dem++;
-            } else if (Boolean.TRUE.equals(r.getKpiApplied())) {
+            if (Boolean.TRUE.equals(r.getKpiApplied())) {
                 r.setKpiApplied(false);
                 leaveRequestRepository.save(r);
+                dem++;
             }
         }
         return dem;

@@ -35,8 +35,9 @@ import java.util.Set;
  * Điểm trừ nằm trong nhóm "Phát triển cá nhân" (trần 30đ/tuần) và không kéo
  * điểm tuần xuống dưới 0 — cơ chế sàn nằm trong {@link KpiCalculationService}.
  *
- * <p>Thứ Bảy và Chủ nhật nghỉ không bị trừ (thứ Bảy từ 15/10/2026) nên cũng
- * không nhận đơn xin vắng cho hai ngày này.
+ * <p>Chủ nhật không phải ngày làm việc: không nhận đơn, không chốt vắng.
+ * <b>Thứ Bảy</b> (từ 15/10/2026) vẫn là ngày công — vẫn nhận đơn, vẫn ghi có
+ * phép / không phép trên bảng công — nhưng <b>không trừ điểm KPI</b>.
  */
 @Slf4j
 @Service
@@ -75,9 +76,6 @@ public class LeaveRequestService {
         }
         if (date.getDayOfWeek() == DayOfWeek.SUNDAY) {
             throw new IllegalArgumentException("Chủ nhật không phải ngày làm việc, không cần xin vắng.");
-        }
-        if (date.getDayOfWeek() == DayOfWeek.SATURDAY) {
-            throw new IllegalArgumentException("Thứ Bảy nghỉ không bị trừ điểm KPI, không cần xin vắng.");
         }
 
         LeaveRequest existing = leaveRequestRepository.findByUserIdAndLeaveDate(userId, date).orElse(null);
@@ -270,7 +268,7 @@ public class LeaveRequestService {
         req.setReviewedAt(ZonedDateTime.now());
         req.setReviewNote(note);
 
-        // Đơn thứ Bảy gửi từ trước khi có luật 15/10/2026: duyệt nhưng không trừ
+        // Thứ Bảy: vẫn ghi có phép trên bảng công nhưng không trừ điểm KPI
         if (!Boolean.TRUE.equals(req.getKpiApplied()) && !laThuBay(req.getLeaveDate())) {
             kpiCalculationService.updateKpiPoints(req.getUserId(), "attendance",
                     KPI_LEAVE_APPROVED, atNoon(req.getLeaveDate()),
@@ -314,12 +312,16 @@ public class LeaveRequestService {
 
         LocalDate ngayNghi = req.getLeaveDate();
         if (ngayNghi.isBefore(LocalDate.now(VN_ZONE)) && ngayNghi.getDayOfWeek() != DayOfWeek.SUNDAY
-                && !laThuBay(ngayNghi) && !coChamCongTrongNgay(req.getUserId(), ngayNghi)) {
+                && !coChamCongTrongNgay(req.getUserId(), ngayNghi)) {
             req.setStatus("UNEXCUSED");
-            req.setKpiApplied(true);
-            kpiCalculationService.updateKpiPoints(req.getUserId(), "attendance",
-                    KPI_LEAVE_UNEXCUSED, atNoon(ngayNghi),
-                    "Vắng không phép ngày " + ngay(ngayNghi) + " — đơn xin vắng bị từ chối, hôm đó không chấm công");
+            // Thứ Bảy: vẫn ghi không phép trên bảng công nhưng không trừ điểm KPI
+            boolean truDiem = !laThuBay(ngayNghi);
+            req.setKpiApplied(truDiem);
+            if (truDiem) {
+                kpiCalculationService.updateKpiPoints(req.getUserId(), "attendance",
+                        KPI_LEAVE_UNEXCUSED, atNoon(ngayNghi),
+                        "Vắng không phép ngày " + ngay(ngayNghi) + " — đơn xin vắng bị từ chối, hôm đó không chấm công");
+            }
         }
         return leaveRequestRepository.save(req);
     }
@@ -349,10 +351,8 @@ public class LeaveRequestService {
             log.info("[Leave] {} là Chủ nhật — bỏ qua chốt vắng mặt.", date);
             return 0;
         }
-        if (laThuBay(date)) {
-            log.info("[Leave] {} là thứ Bảy — nghỉ không bị trừ điểm, bỏ qua chốt vắng mặt.", date);
-            return 0;
-        }
+        // Thứ Bảy vẫn chốt vắng để bảng công ghi không phép, chỉ không trừ điểm KPI
+        boolean truDiem = !laThuBay(date);
 
         ZonedDateTime start = date.atStartOfDay(VN_ZONE);
         ZonedDateTime end = date.plusDays(1).atStartOfDay(VN_ZONE);
@@ -392,17 +392,19 @@ public class LeaveRequestService {
                     : "Hệ thống tự ghi nhận: không chấm công và không có đơn xin vắng được duyệt");
             mark.setStatus("UNEXCUSED");
             mark.setReviewedAt(ZonedDateTime.now());
-            mark.setKpiApplied(true);
+            mark.setKpiApplied(truDiem);
             leaveRequestRepository.save(mark);
 
-            kpiCalculationService.updateKpiPoints(user.getId(), "attendance",
-                    KPI_LEAVE_UNEXCUSED, atNoon(date),
-                    "Vắng không phép ngày " + ngay(date) + " — không chấm công và không có đơn xin nghỉ");
+            if (truDiem) {
+                kpiCalculationService.updateKpiPoints(user.getId(), "attendance",
+                        KPI_LEAVE_UNEXCUSED, atNoon(date),
+                        "Vắng không phép ngày " + ngay(date) + " — không chấm công và không có đơn xin nghỉ");
+            }
             count++;
         }
 
         log.info("[Leave] Chốt ngày {}: {} nhân sự vắng không phép ({} KPI mỗi người).",
-                date, count, KPI_LEAVE_UNEXCUSED);
+                date, count, truDiem ? KPI_LEAVE_UNEXCUSED : 0);
         return count;
     }
 

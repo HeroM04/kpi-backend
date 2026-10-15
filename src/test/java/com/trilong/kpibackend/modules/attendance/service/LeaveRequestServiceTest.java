@@ -33,8 +33,9 @@ import static org.mockito.Mockito.*;
 /**
  * Đơn xin vắng và chốt vắng không phép cuối ngày.
  *
- * <p>Luật: nghỉ có đơn được duyệt −10đ, vắng không đơn −15đ, thứ Bảy và Chủ
- * nhật không tính. Mọi tình huống duyệt / thu hồi duyệt / gửi lại phải cho ra đúng một
+ * <p>Luật: nghỉ có đơn được duyệt −10đ, vắng không đơn −15đ, Chủ nhật không
+ * tính. Thứ Bảy vẫn ghi có phép / không phép trên bảng công nhưng không trừ
+ * điểm KPI. Mọi tình huống duyệt / thu hồi duyệt / gửi lại phải cho ra đúng một
  * trong ba kết quả đó, không trừ trùng, không bỏ sót.
  */
 @ExtendWith(MockitoExtension.class)
@@ -162,19 +163,21 @@ class LeaveRequestServiceTest {
         }
 
         @Test
-        @DisplayName("Thứ Bảy nghỉ không bị trừ → không nhận đơn xin vắng thứ Bảy")
-        void khongNhanDonThuBay() {
+        @DisplayName("Thứ Bảy vẫn là ngày công → vẫn nhận đơn xin vắng, không đụng điểm")
+        void nhanDonThuBay() {
             com.trilong.kpibackend.modules.attendance.dto.LeaveRequestDTO dto =
                     new com.trilong.kpibackend.modules.attendance.dto.LeaveRequestDTO();
             dto.setLeaveDate(thuBaySau());
             dto.setReason("việc gia đình");
 
-            assertThatThrownBy(() -> service.submit(7L, dto)).hasMessageContaining("Thứ Bảy");
-            verify(leaveRepo, never()).save(any());
+            LeaveRequest r = service.submit(7L, dto);
+
+            assertThat(r.getStatus()).isEqualTo("PENDING");
+            verifyNoInteractions(kpi);
         }
 
         @Test
-        @DisplayName("Đơn thứ Bảy gửi từ trước luật mới: duyệt được nhưng không trừ 10đ")
+        @DisplayName("Duyệt đơn thứ Bảy → ghi có phép trên bảng công nhưng không trừ 10đ")
         void duyetDonThuBayKhongTru() {
             LeaveRequest r = don(8, thuBaySau(), "PENDING", false);
             service.approve(8L, 99L, null);
@@ -185,14 +188,15 @@ class LeaveRequestServiceTest {
         }
 
         @Test
-        @DisplayName("Từ chối đơn thứ Bảy đã qua, hôm đó không chấm công → không phạt vắng không phép")
+        @DisplayName("Từ chối đơn thứ Bảy đã qua, hôm đó không chấm công → ghi không phép nhưng không trừ 15đ")
         void tuChoiDonThuBayDaQua() {
             LeaveRequest r = don(9, thuBayTruoc(), "PENDING", false);
             when(checkinRepo.findByUserIdAndCheckinTimeBetween(eq(7L), any(), any())).thenReturn(List.of());
 
             service.reject(9L, 99L, null);
 
-            assertThat(r.getStatus()).isEqualTo("REJECTED");
+            assertThat(r.getStatus()).isEqualTo("UNEXCUSED");
+            assertThat(r.getKpiApplied()).isFalse();
             verifyNoInteractions(kpi);
         }
 
@@ -249,14 +253,19 @@ class LeaveRequestServiceTest {
         }
 
         @Test
-        @DisplayName("Thứ Bảy → không chốt ai (nghỉ thứ Bảy không bị trừ)")
+        @DisplayName("Thứ Bảy → vẫn ghi vắng không phép cho bảng công nhưng không trừ điểm KPI")
         void thuBay() {
             when(userRepository.findAll()).thenReturn(List.of(nguoi(1, "SALE", "ACTIVE")));
             when(checkinRepo.findByCheckinTimeBetween(any(), any())).thenReturn(List.of());
+            when(leaveRepo.findByUserIdAndLeaveDate(anyLong(), any())).thenReturn(Optional.empty());
 
-            assertThat(service.closeDay(LocalDate.of(2026, 10, 17))).isZero();
+            assertThat(service.closeDay(LocalDate.of(2026, 10, 17))).isEqualTo(1);
+
+            ArgumentCaptor<LeaveRequest> luu = ArgumentCaptor.forClass(LeaveRequest.class);
+            verify(leaveRepo).save(luu.capture());
+            assertThat(luu.getValue().getStatus()).isEqualTo("UNEXCUSED");
+            assertThat(luu.getValue().getKpiApplied()).isFalse();
             verifyNoInteractions(kpi);
-            verify(leaveRepo, never()).save(any());
         }
 
         @Test

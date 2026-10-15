@@ -12,8 +12,9 @@ import java.time.LocalDate;
 /**
  * Sửa dữ liệu một lần theo luật thứ Bảy (người dùng chốt 15/10/2026):
  * <ul>
- *   <li>Thứ Bảy 10/10/2026: hoàn điểm đi muộn đã trừ VÀ thu lại điểm đúng giờ
- *       đã cộng — thứ Bảy không tính điểm chuyên cần.</li>
+ *   <li>Thứ Bảy 10/10/2026: hoàn điểm đi muộn đã trừ, thu lại điểm đúng giờ
+ *       đã cộng, hoàn điểm vắng (−15 / −10) đã trừ — thứ Bảy không tính điểm
+ *       chuyên cần, nghỉ không bị trừ.</li>
  *   <li>Đơn nghỉ thứ Bảy đã duyệt từ 17/10 trở đi: hoàn −10đ — thứ Bảy nghỉ
  *       không bị trừ nữa.</li>
  * </ul>

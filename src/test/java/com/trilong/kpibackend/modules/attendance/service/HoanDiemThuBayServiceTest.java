@@ -1,5 +1,7 @@
 package com.trilong.kpibackend.modules.attendance.service;
 
+import com.trilong.kpibackend.modules.attendance.entity.LeaveRequest;
+import com.trilong.kpibackend.modules.attendance.repository.LeaveRequestRepository;
 import com.trilong.kpibackend.modules.kpi.entity.KpiLedgerEntry;
 import com.trilong.kpibackend.modules.kpi.repository.KpiLedgerEntryRepository;
 import com.trilong.kpibackend.modules.kpi.service.KpiCalculationService;
@@ -26,7 +28,7 @@ import static org.mockito.Mockito.*;
 
 /**
  * Chuẩn hóa thứ Bảy 10/10/2026: hoàn điểm đi muộn đã trừ, thu lại điểm đúng giờ
- * đã cộng — đúng số thực vào sổ, chạy lại không trùng.
+ * đã cộng, hoàn điểm vắng đã trừ — đúng số thực vào sổ, chạy lại không trùng.
  */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -37,6 +39,7 @@ class HoanDiemThuBayServiceTest {
 
     @Mock KpiLedgerEntryRepository ledger;
     @Mock KpiCalculationService kpi;
+    @Mock LeaveRequestRepository leaveRepo;
     @InjectMocks HoanDiemThuBayService service;
 
     private final List<KpiLedgerEntry> dong = new ArrayList<>();
@@ -70,8 +73,8 @@ class HoanDiemThuBayServiceTest {
         var kq = service.chuanHoa(THU_BAY);
 
         assertThat(kq).containsExactly(
-                new HoanDiemThuBayService.KetQua(7L, 5, 0),
-                new HoanDiemThuBayService.KetQua(8L, 2, 0));
+                new HoanDiemThuBayService.KetQua(7L, 5, 0, 0),
+                new HoanDiemThuBayService.KetQua(8L, 2, 0, 0));
         verify(kpi).updateKpiPoints(eq(7L), eq("attendance"), eq(5), any(), startsWith("Hoàn điểm đi muộn thứ Bảy 10/10/2026"));
         verify(kpi).updateKpiPoints(eq(8L), eq("attendance"), eq(2), any(), anyString());
         verify(kpi, never()).updateKpiPoints(eq(9L), anyString(), anyInt(), any(), anyString());
@@ -92,10 +95,10 @@ class HoanDiemThuBayServiceTest {
         var kq = service.chuanHoa(THU_BAY);
 
         assertThat(kq).containsExactly(
-                new HoanDiemThuBayService.KetQua(10L, 0, 5),
-                new HoanDiemThuBayService.KetQua(12L, 0, 3),
-                new HoanDiemThuBayService.KetQua(14L, 0, 5),
-                new HoanDiemThuBayService.KetQua(15L, 0, 5));
+                new HoanDiemThuBayService.KetQua(10L, 0, 5, 0),
+                new HoanDiemThuBayService.KetQua(12L, 0, 3, 0),
+                new HoanDiemThuBayService.KetQua(14L, 0, 5, 0),
+                new HoanDiemThuBayService.KetQua(15L, 0, 5, 0));
         verify(kpi).updateKpiPoints(eq(10L), eq("attendance"), eq(-5), any(), startsWith("Thu lại điểm đúng giờ thứ Bảy 10/10/2026"));
         verify(kpi).updateKpiPoints(eq(12L), eq("attendance"), eq(-3), any(), anyString());
         verify(kpi).updateKpiPoints(eq(14L), eq("attendance"), eq(-5), any(), anyString());
@@ -132,7 +135,7 @@ class HoanDiemThuBayServiceTest {
         them(7L, 5, "Hoàn điểm đi muộn thứ Bảy 10/10/2026 — thứ Bảy không tính điểm chuyên cần", 10, 9);
         them(10L, 5, "Đi làm đúng giờ — chấm công lúc 08:30", 10, 8);
 
-        assertThat(service.chuanHoa(THU_BAY)).containsExactly(new HoanDiemThuBayService.KetQua(10L, 0, 5));
+        assertThat(service.chuanHoa(THU_BAY)).containsExactly(new HoanDiemThuBayService.KetQua(10L, 0, 5, 0));
         verify(kpi, never()).updateKpiPoints(eq(7L), anyString(), anyInt(), any(), anyString());
     }
 
@@ -146,6 +149,74 @@ class HoanDiemThuBayServiceTest {
 
         assertThat(service.chuanHoa(THU_BAY)).isEmpty();
         verify(kpi, never()).updateKpiPoints(any(), any(), anyInt(), any(), any());
+    }
+
+    @Test
+    @DisplayName("Hoàn đúng số đã thực trừ vắng không phép / nghỉ có phép ngày 10/10; ngày thường giữ nguyên")
+    void hoanVang() {
+        them(20L, -15, "Vắng không phép ngày 10/10 — không chấm công và không có đơn xin nghỉ", 10, 12);
+        them(21L, -6, "Vắng không phép ngày 10/10 — không chấm công và không có đơn xin nghỉ", 10, 12);   // nhóm còn 6đ
+        them(22L, -10, "Nghỉ có phép ngày 10/10 — Admin đã duyệt đơn", 10, 12);
+        them(23L, -10, "Nghỉ có phép ngày 10/10 — Admin đã duyệt đơn", 10, 12);
+        them(23L, 10, "Hoàn lại điểm đơn nghỉ ngày 10/10 — Admin đổi sang từ chối", 10, 12);
+        them(23L, -15, "Vắng không phép ngày 10/10 — đơn xin vắng bị từ chối, hôm đó không chấm công", 10, 12);
+        them(24L, -15, "Vắng không phép ngày 09/10 — không chấm công và không có đơn xin nghỉ", 9, 12);   // thứ Sáu
+
+        var kq = service.chuanHoa(THU_BAY);
+
+        assertThat(kq).containsExactly(
+                new HoanDiemThuBayService.KetQua(20L, 0, 0, 15),
+                new HoanDiemThuBayService.KetQua(21L, 0, 0, 6),
+                new HoanDiemThuBayService.KetQua(22L, 0, 0, 10),
+                new HoanDiemThuBayService.KetQua(23L, 0, 0, 15));
+        verify(kpi).updateKpiPoints(eq(20L), eq("attendance"), eq(15), eq(ZonedDateTime.of(2026, 10, 10, 12, 0, 0, 0, VN)),
+                startsWith("Hoàn điểm vắng thứ Bảy 10/10/2026"));
+        verify(kpi).updateKpiPoints(eq(21L), eq("attendance"), eq(6), any(), anyString());
+        verify(kpi).updateKpiPoints(eq(22L), eq("attendance"), eq(10), any(), anyString());
+        verify(kpi).updateKpiPoints(eq(23L), eq("attendance"), eq(15), any(), anyString());
+        verify(kpi, never()).updateKpiPoints(eq(24L), anyString(), anyInt(), any(), anyString());
+    }
+
+    @Test
+    @DisplayName("Chạy lại sau khi đã hoàn vắng → không hoàn trùng")
+    void khongHoanVangTrung() {
+        them(20L, -15, "Vắng không phép ngày 10/10 — không chấm công và không có đơn xin nghỉ", 10, 12);
+        them(20L, 15, "Hoàn điểm vắng thứ Bảy 10/10/2026 — thứ Bảy nghỉ không bị trừ điểm", 10, 12);
+
+        assertThat(service.chuanHoa(THU_BAY)).isEmpty();
+        verify(kpi, never()).updateKpiPoints(any(), any(), anyInt(), any(), any());
+    }
+
+    @Test
+    @DisplayName("Gỡ dấu vắng trên bảng công: bản máy tự ghi xóa, đơn bị từ chối về REJECTED, đơn chờ duyệt về PENDING, đơn có phép giữ P")
+    void goDauVang() {
+        LeaveRequest mayGhi = don(1L, "UNEXCUSED", true, "Hệ thống tự ghi nhận: không chấm công và không có đơn xin vắng được duyệt", null);
+        LeaveRequest tuChoi = don(2L, "UNEXCUSED", true, "về quê", 99L);
+        LeaveRequest choDuyet = don(3L, "UNEXCUSED", true, "ốm", null);
+        LeaveRequest coPhep = don(4L, "APPROVED", true, "đám cưới", 99L);
+        when(leaveRepo.findByLeaveDate(THU_BAY)).thenReturn(List.of(mayGhi, tuChoi, choDuyet, coPhep));
+
+        service.chuanHoa(THU_BAY);
+
+        verify(leaveRepo).delete(mayGhi);
+        assertThat(tuChoi.getStatus()).isEqualTo("REJECTED");
+        assertThat(choDuyet.getStatus()).isEqualTo("PENDING");
+        assertThat(coPhep.getStatus()).isEqualTo("APPROVED");
+        assertThat(List.of(tuChoi, choDuyet, coPhep)).allMatch(r -> !r.getKpiApplied());
+        verify(leaveRepo, never()).delete(tuChoi);
+        verify(leaveRepo, never()).delete(choDuyet);
+        verify(leaveRepo, never()).delete(coPhep);
+    }
+
+    private LeaveRequest don(long userId, String trangThai, boolean daTru, String lyDo, Long nguoiDuyet) {
+        LeaveRequest r = new LeaveRequest();
+        r.setUserId(userId);
+        r.setLeaveDate(THU_BAY);
+        r.setStatus(trangThai);
+        r.setKpiApplied(daTru);
+        r.setReason(lyDo);
+        r.setReviewedBy(nguoiDuyet);
+        return r;
     }
 
     @Test

@@ -1,6 +1,8 @@
 package com.trilong.kpibackend.modules.attendance.service;
 
 import com.trilong.kpibackend.core.utils.GioVN;
+import com.trilong.kpibackend.modules.attendance.entity.LeaveRequest;
+import com.trilong.kpibackend.modules.attendance.repository.LeaveRequestRepository;
 import com.trilong.kpibackend.modules.kpi.entity.KpiLedgerEntry;
 import com.trilong.kpibackend.modules.kpi.repository.KpiLedgerEntryRepository;
 import com.trilong.kpibackend.modules.kpi.service.KpiCalculationService;
@@ -22,19 +24,22 @@ import java.util.Map;
  * Đưa điểm chuyên cần của một ngày thứ Bảy đã qua về đúng luật mới.
  *
  * <p>Quy định 15/10/2026: thứ Bảy vẫn chấm công nhưng không tính điểm chuyên
- * cần (CheckinService bỏ qua từ nay). Các thứ Bảy trước đó đã lỡ tính thì chuẩn
- * hóa bằng hàm này:
+ * cần, nghỉ cũng không bị trừ (CheckinService, LeaveRequestService bỏ qua từ
+ * nay). Các thứ Bảy trước đó đã lỡ tính thì chuẩn hóa bằng hàm này:
  * <ul>
  *   <li>Đi muộn bị trừ → HOÀN lại đúng số đã thực trừ.</li>
  *   <li>Đúng giờ được cộng → THU LẠI đúng số đã thực cộng.</li>
+ *   <li>Vắng không phép (−15) / nghỉ có phép (−10) → HOÀN lại đúng số đã thực
+ *       trừ, và gỡ dấu vắng trên bảng công.</li>
  * </ul>
  * "Đã thực" = cột effective_points (nhóm chạm trần hay đang 0đ thì con số thực
- * khác 5), nên không ai bị hoàn hay thu quá phần mình đã nhận.
+ * khác 5 / 10 / 15), nên không ai được hoàn hay bị thu quá phần mình đã nhận.
  *
  * <p>Chỉ ghi thêm dòng vào nhật ký, không sửa dòng cũ — nhân sự thấy cả hai vế
  * trong Thông báo. Chạy lại bao nhiêu lần cũng không trùng: phần đã hoàn / đã thu
- * (dòng mang câu {@link #DAU_HOAN} / {@link #DAU_THU}) và phần Admin đã thu hồi
- * duyệt được trừ ra trước khi tính.
+ * (dòng mang câu {@link #DAU_HOAN} / {@link #DAU_THU} / {@link #DAU_HOAN_VANG}),
+ * phần Admin đã thu hồi duyệt và các khoản hoàn đơn nghỉ đã có được trừ ra
+ * trước khi tính.
  */
 @Slf4j
 @Service
@@ -43,14 +48,16 @@ public class HoanDiemThuBayService {
 
     static final String DAU_HOAN = "Hoàn điểm đi muộn thứ Bảy ";
     static final String DAU_THU = "Thu lại điểm đúng giờ thứ Bảy ";
+    static final String DAU_HOAN_VANG = "Hoàn điểm vắng thứ Bảy ";
     private static final String DAU_THU_HOI = "Admin thu hồi duyệt chấm công";
     private static final DateTimeFormatter NGAY = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     private final KpiLedgerEntryRepository kpiLedgerEntryRepository;
     private final KpiCalculationService kpiCalculationService;
+    private final LeaveRequestRepository leaveRequestRepository;
 
-    /** Một người: được hoàn bao nhiêu (đi muộn), bị thu lại bao nhiêu (đúng giờ). */
-    public record KetQua(Long userId, int hoanDiMuon, int thuLaiDungGio) {}
+    /** Một người: được hoàn bao nhiêu (đi muộn, vắng), bị thu lại bao nhiêu (đúng giờ). */
+    public record KetQua(Long userId, int hoanDiMuon, int thuLaiDungGio, int hoanVang) {}
 
     @Transactional
     public List<KetQua> chuanHoa(LocalDate ngay) {
@@ -58,25 +65,33 @@ public class HoanDiemThuBayService {
             throw new IllegalArgumentException("Ngày " + ngay.format(NGAY) + " không phải thứ Bảy.");
         }
         String d = ngay.format(NGAY);
-        String duoi = " — thứ Bảy không tính điểm chuyên cần";
         String tuan = kpiCalculationService.getWeekString(ngay.atTime(12, 0).atZone(GioVN.VN));
 
         // Theo người, chỉ các dòng chuyên cần của đúng ngày đó:
         // [0] đã trừ đi muộn, [1] Admin thu hồi đã trả lại, [2] đã hoàn,
-        // [3] đã cộng đúng giờ, [4] Admin thu hồi đã gỡ, [5] đã thu lại
+        // [3] đã cộng đúng giờ, [4] Admin thu hồi đã gỡ, [5] đã thu lại,
+        // [6] đã trừ vắng (có/không phép), [7] đã hoàn vắng (gửi đơn, từ chối, hoàn thứ Bảy)
         Map<Long, int[]> theoNguoi = new LinkedHashMap<>();
         Map<Long, ZonedDateTime> moc = new LinkedHashMap<>();
         for (KpiLedgerEntry e : kpiLedgerEntryRepository.findByCategoryAndWeekOrderByIdAsc("attendance", tuan)) {
             if (e.getOccurredAt() == null || !ngay.equals(GioVN.ngayCua(e.getOccurredAt()))) continue;
             int thuc = e.getEffectivePoints() == null ? 0 : e.getEffectivePoints();
             String ly = e.getReason() == null ? "" : e.getReason();
-            int[] t = theoNguoi.computeIfAbsent(e.getUserId(), k -> new int[6]);
+            int[] t = theoNguoi.computeIfAbsent(e.getUserId(), k -> new int[8]);
             if (ly.startsWith(DAU_HOAN + d)) {
                 t[2] += Math.max(0, thuc);
             } else if (ly.startsWith(DAU_THU + d)) {
                 t[5] += Math.max(0, -thuc);
+            } else if (ly.startsWith(DAU_HOAN_VANG + d)) {
+                t[7] += Math.max(0, thuc);
             } else if (ly.startsWith(DAU_THU_HOI)) {
                 if (thuc > 0) t[1] += thuc; else t[4] += -thuc;
+            } else if (ly.startsWith("Vắng không phép ngày") || ly.startsWith("Nghỉ có phép ngày")) {
+                t[6] += Math.max(0, -thuc);
+                moc.putIfAbsent(e.getUserId(), e.getOccurredAt());
+            } else if (ly.startsWith("Hoàn lại điểm đơn nghỉ ngày") || ly.startsWith("Đã gửi đơn xin vắng ngày")
+                    || ly.startsWith("Hoàn điểm đơn nghỉ thứ Bảy")) {
+                t[7] += Math.max(0, thuc);
             } else if (thuc < 0 && ly.contains("Đi muộn")) {
                 t[0] += -thuc;
                 moc.putIfAbsent(e.getUserId(), e.getOccurredAt());
@@ -91,16 +106,60 @@ public class HoanDiemThuBayService {
             int[] t = m.getValue();
             int hoan = t[0] - t[1] - t[2];
             int thu = t[3] - t[4] - t[5];
-            // Ghi cùng mốc với lần chấm công để vào đúng tuần, đúng tháng KPI đó
+            int hoanVang = t[6] - t[7];
+            ZonedDateTime luc = moc.get(m.getKey());
+            // Ghi cùng mốc với khoản gốc để vào đúng tuần, đúng tháng KPI đó
             if (hoan > 0) {
-                kpiCalculationService.updateKpiPoints(m.getKey(), "attendance", hoan, moc.get(m.getKey()), DAU_HOAN + d + duoi);
+                kpiCalculationService.updateKpiPoints(m.getKey(), "attendance", hoan, luc,
+                        DAU_HOAN + d + " — thứ Bảy không tính điểm chuyên cần");
             }
             if (thu > 0) {
-                kpiCalculationService.updateKpiPoints(m.getKey(), "attendance", -thu, moc.get(m.getKey()), DAU_THU + d + duoi);
+                kpiCalculationService.updateKpiPoints(m.getKey(), "attendance", -thu, luc,
+                        DAU_THU + d + " — thứ Bảy không tính điểm chuyên cần");
             }
-            if (hoan > 0 || thu > 0) ra.add(new KetQua(m.getKey(), Math.max(0, hoan), Math.max(0, thu)));
+            if (hoanVang > 0) {
+                kpiCalculationService.updateKpiPoints(m.getKey(), "attendance", hoanVang, luc,
+                        DAU_HOAN_VANG + d + " — thứ Bảy nghỉ không bị trừ điểm");
+            }
+            if (hoan > 0 || thu > 0 || hoanVang > 0) {
+                ra.add(new KetQua(m.getKey(), Math.max(0, hoan), Math.max(0, thu), Math.max(0, hoanVang)));
+            }
         }
-        log.info("[Chuẩn hóa điểm thứ Bảy {}] {} người: {}", d, ra.size(), ra);
+
+        int goDau = goDauVang(ngay);
+        log.info("[Chuẩn hóa điểm thứ Bảy {}] {} người: {} — gỡ {} dấu vắng", d, ra.size(), ra, goDau);
         return ra;
+    }
+
+    /**
+     * Bảng công thứ Bảy từ nay để trống khi nghỉ, nên ngày cũ cũng vậy. Bản ghi
+     * vắng không phép:
+     * <ul>
+     *   <li>máy tự tạo (lý do "Hệ thống tự ghi nhận…") → xóa;</li>
+     *   <li>vốn là đơn người gửi bị Admin từ chối → trả về "từ chối";</li>
+     *   <li>vốn là đơn còn chờ duyệt bị máy chốt đè → trả về "chờ duyệt"
+     *       (Admin duyệt thứ Bảy giờ không trừ điểm).</li>
+     * </ul>
+     * Đơn có phép giữ nguyên (P), chỉ bỏ cờ đã trừ. Mọi trường hợp cờ
+     * {@code kpiApplied} về false để không chỗ nào hoàn lại lần nữa.
+     */
+    private int goDauVang(LocalDate ngay) {
+        int dem = 0;
+        for (LeaveRequest r : leaveRequestRepository.findByLeaveDate(ngay)) {
+            if ("UNEXCUSED".equals(r.getStatus())) {
+                if (r.getReason() == null || r.getReason().startsWith("Hệ thống tự ghi nhận")) {
+                    leaveRequestRepository.delete(r);
+                } else {
+                    r.setStatus(r.getReviewedBy() != null ? "REJECTED" : "PENDING");
+                    r.setKpiApplied(false);
+                    leaveRequestRepository.save(r);
+                }
+                dem++;
+            } else if (Boolean.TRUE.equals(r.getKpiApplied())) {
+                r.setKpiApplied(false);
+                leaveRequestRepository.save(r);
+            }
+        }
+        return dem;
     }
 }

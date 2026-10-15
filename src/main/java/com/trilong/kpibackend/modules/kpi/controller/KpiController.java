@@ -336,19 +336,20 @@ public class KpiController {
     }
 
     @Operation(
-            summary = "Hoàn điểm đi muộn đã trừ vào một ngày thứ Bảy",
-            description = "Thứ Bảy không tính điểm chuyên cần. Hoàn đúng số đã thực trừ cho từng người; "
-                    + "gọi lại nhiều lần không hoàn trùng. ngay=yyyy-MM-dd, phải là thứ Bảy.",
+            summary = "Chuẩn hóa điểm chuyên cần của một ngày thứ Bảy đã qua",
+            description = "Thứ Bảy không tính điểm chuyên cần: hoàn điểm đi muộn đã trừ và thu lại điểm "
+                    + "đúng giờ đã cộng, đúng số đã thực vào sổ; gọi lại nhiều lần không trùng. "
+                    + "ngay=yyyy-MM-dd, phải là thứ Bảy.",
             security = @SecurityRequirement(name = "Bearer Authentication")
     )
-    @PostMapping("/hoan-diem-thu-bay")
+    @PostMapping("/chuan-hoa-thu-bay")
     @PreAuthorize("hasRole('ADMIN')")
     @Transactional
-    public ResponseEntity<?> hoanDiemThuBay(@RequestParam String ngay) {
-        var ketQua = hoanDiemThuBayService.hoanDiemDiMuon(java.time.LocalDate.parse(ngay.trim()));
+    public ResponseEntity<?> chuanHoaThuBay(@RequestParam String ngay) {
+        var ketQua = hoanDiemThuBayService.chuanHoa(java.time.LocalDate.parse(ngay.trim()));
         return ResponseEntity.ok(Map.of(
                 "status", "SUCCESS",
-                "message", "Đã hoàn điểm cho " + ketQua.size() + " người.",
+                "message", "Đã chuẩn hóa điểm cho " + ketQua.size() + " người.",
                 "data", ketQua
         ));
     }

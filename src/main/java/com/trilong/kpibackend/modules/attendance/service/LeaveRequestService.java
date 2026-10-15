@@ -34,6 +34,9 @@ import java.util.Set;
  * </ul>
  * Điểm trừ nằm trong nhóm "Phát triển cá nhân" (trần 30đ/tuần) và không kéo
  * điểm tuần xuống dưới 0 — cơ chế sàn nằm trong {@link KpiCalculationService}.
+ *
+ * <p>Thứ Bảy và Chủ nhật nghỉ không bị trừ (thứ Bảy từ 15/10/2026) nên cũng
+ * không nhận đơn xin vắng cho hai ngày này.
  */
 @Slf4j
 @Service
@@ -72,6 +75,9 @@ public class LeaveRequestService {
         }
         if (date.getDayOfWeek() == DayOfWeek.SUNDAY) {
             throw new IllegalArgumentException("Chủ nhật không phải ngày làm việc, không cần xin vắng.");
+        }
+        if (date.getDayOfWeek() == DayOfWeek.SATURDAY) {
+            throw new IllegalArgumentException("Thứ Bảy nghỉ không bị trừ điểm KPI, không cần xin vắng.");
         }
 
         LeaveRequest existing = leaveRequestRepository.findByUserIdAndLeaveDate(userId, date).orElse(null);
@@ -264,7 +270,8 @@ public class LeaveRequestService {
         req.setReviewedAt(ZonedDateTime.now());
         req.setReviewNote(note);
 
-        if (!Boolean.TRUE.equals(req.getKpiApplied())) {
+        // Đơn thứ Bảy gửi từ trước khi có luật 15/10/2026: duyệt nhưng không trừ
+        if (!Boolean.TRUE.equals(req.getKpiApplied()) && !laThuBay(req.getLeaveDate())) {
             kpiCalculationService.updateKpiPoints(req.getUserId(), "attendance",
                     KPI_LEAVE_APPROVED, atNoon(req.getLeaveDate()),
                     "Nghỉ có phép ngày " + ngay(req.getLeaveDate()) + " — Admin đã duyệt đơn");
@@ -307,7 +314,7 @@ public class LeaveRequestService {
 
         LocalDate ngayNghi = req.getLeaveDate();
         if (ngayNghi.isBefore(LocalDate.now(VN_ZONE)) && ngayNghi.getDayOfWeek() != DayOfWeek.SUNDAY
-                && !coChamCongTrongNgay(req.getUserId(), ngayNghi)) {
+                && !laThuBay(ngayNghi) && !coChamCongTrongNgay(req.getUserId(), ngayNghi)) {
             req.setStatus("UNEXCUSED");
             req.setKpiApplied(true);
             kpiCalculationService.updateKpiPoints(req.getUserId(), "attendance",
@@ -340,6 +347,10 @@ public class LeaveRequestService {
     public int closeDay(LocalDate date) {
         if (date.getDayOfWeek() == DayOfWeek.SUNDAY) {
             log.info("[Leave] {} là Chủ nhật — bỏ qua chốt vắng mặt.", date);
+            return 0;
+        }
+        if (laThuBay(date)) {
+            log.info("[Leave] {} là thứ Bảy — nghỉ không bị trừ điểm, bỏ qua chốt vắng mặt.", date);
             return 0;
         }
 
@@ -393,6 +404,35 @@ public class LeaveRequestService {
         log.info("[Leave] Chốt ngày {}: {} nhân sự vắng không phép ({} KPI mỗi người).",
                 date, count, KPI_LEAVE_UNEXCUSED);
         return count;
+    }
+
+    /**
+     * Đơn nghỉ thứ Bảy đã duyệt (đã trừ −10đ) cho các ngày từ {@code tuNgay} trở
+     * đi: hoàn lại điểm, vì từ 15/10/2026 thứ Bảy nghỉ không bị trừ. Cờ
+     * {@code kpiApplied} về false nên chạy lại không hoàn trùng.
+     *
+     * @return số đơn được hoàn
+     */
+    @Transactional
+    public int hoanDonNghiThuBay(LocalDate tuNgay) {
+        int dem = 0;
+        // Đơn chỉ gửi được trong 3 tháng tới, lấy rộng 4 tháng cho chắc
+        for (LeaveRequest r : leaveRequestRepository.findByLeaveDateBetweenAndStatusIn(
+                tuNgay, tuNgay.plusMonths(4), List.of("APPROVED"))) {
+            if (!laThuBay(r.getLeaveDate()) || !Boolean.TRUE.equals(r.getKpiApplied())) continue;
+            kpiCalculationService.updateKpiPoints(r.getUserId(), "attendance",
+                    -KPI_LEAVE_APPROVED, atNoon(r.getLeaveDate()),
+                    "Hoàn điểm đơn nghỉ thứ Bảy " + ngay(r.getLeaveDate()) + " — thứ Bảy nghỉ không bị trừ điểm");
+            r.setKpiApplied(false);
+            leaveRequestRepository.save(r);
+            dem++;
+        }
+        log.info("[Leave] Hoàn điểm {} đơn nghỉ thứ Bảy từ {}.", dem, tuNgay);
+        return dem;
+    }
+
+    private static boolean laThuBay(LocalDate d) {
+        return d != null && d.getDayOfWeek() == DayOfWeek.SATURDAY;
     }
 
     /** Ngày dạng dd/MM để ghép vào câu diễn giải điểm. */

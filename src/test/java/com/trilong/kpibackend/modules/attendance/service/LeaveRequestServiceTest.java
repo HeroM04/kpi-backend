@@ -33,8 +33,8 @@ import static org.mockito.Mockito.*;
 /**
  * Đơn xin vắng và chốt vắng không phép cuối ngày.
  *
- * <p>Luật: nghỉ có đơn được duyệt −10đ, vắng không đơn −15đ, Chủ nhật không
- * tính. Mọi tình huống duyệt / thu hồi duyệt / gửi lại phải cho ra đúng một
+ * <p>Luật: nghỉ có đơn được duyệt −10đ, vắng không đơn −15đ, thứ Bảy và Chủ
+ * nhật không tính. Mọi tình huống duyệt / thu hồi duyệt / gửi lại phải cho ra đúng một
  * trong ba kết quả đó, không trừ trùng, không bỏ sót.
  */
 @ExtendWith(MockitoExtension.class)
@@ -65,9 +65,36 @@ class LeaveRequestServiceTest {
         return r;
     }
 
+    private static boolean cuoiTuan(LocalDate d) {
+        return d.getDayOfWeek() == java.time.DayOfWeek.SATURDAY || d.getDayOfWeek() == java.time.DayOfWeek.SUNDAY;
+    }
+
+    /** Ngày thường (thứ Hai–Sáu) gần nhất trước hôm nay. */
     private LocalDate homQuaKhongPhaiCN() {
         LocalDate d = LocalDate.now(VN).minusDays(1);
-        return d.getDayOfWeek() == java.time.DayOfWeek.SUNDAY ? d.minusDays(1) : d;
+        while (cuoiTuan(d)) d = d.minusDays(1);
+        return d;
+    }
+
+    /** Ngày thường đầu tiên từ hôm nay + {@code n} ngày trở đi. */
+    private LocalDate ngayThuongSau(int n) {
+        LocalDate d = LocalDate.now(VN).plusDays(n);
+        while (cuoiTuan(d)) d = d.plusDays(1);
+        return d;
+    }
+
+    /** Thứ Bảy gần nhất trước hôm nay. */
+    private LocalDate thuBayTruoc() {
+        LocalDate d = LocalDate.now(VN).minusDays(1);
+        while (d.getDayOfWeek() != java.time.DayOfWeek.SATURDAY) d = d.minusDays(1);
+        return d;
+    }
+
+    /** Thứ Bảy đầu tiên sau hôm nay. */
+    private LocalDate thuBaySau() {
+        LocalDate d = LocalDate.now(VN).plusDays(1);
+        while (d.getDayOfWeek() != java.time.DayOfWeek.SATURDAY) d = d.plusDays(1);
+        return d;
     }
 
     // ── Duyệt / từ chối ──────────────────────────────────────────────────────
@@ -79,7 +106,7 @@ class LeaveRequestServiceTest {
         @Test
         @DisplayName("Duyệt đơn → −10đ một lần; duyệt lại không trừ thêm")
         void duyet() {
-            LeaveRequest r = don(1, LocalDate.now(VN).plusDays(2), "PENDING", false);
+            LeaveRequest r = don(1, ngayThuongSau(2), "PENDING", false);
             service.approve(1L, 99L, null);
             service.approve(1L, 99L, null);
 
@@ -135,6 +162,61 @@ class LeaveRequestServiceTest {
         }
 
         @Test
+        @DisplayName("Thứ Bảy nghỉ không bị trừ → không nhận đơn xin vắng thứ Bảy")
+        void khongNhanDonThuBay() {
+            com.trilong.kpibackend.modules.attendance.dto.LeaveRequestDTO dto =
+                    new com.trilong.kpibackend.modules.attendance.dto.LeaveRequestDTO();
+            dto.setLeaveDate(thuBaySau());
+            dto.setReason("việc gia đình");
+
+            assertThatThrownBy(() -> service.submit(7L, dto)).hasMessageContaining("Thứ Bảy");
+            verify(leaveRepo, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("Đơn thứ Bảy gửi từ trước luật mới: duyệt được nhưng không trừ 10đ")
+        void duyetDonThuBayKhongTru() {
+            LeaveRequest r = don(8, thuBaySau(), "PENDING", false);
+            service.approve(8L, 99L, null);
+
+            assertThat(r.getStatus()).isEqualTo("APPROVED");
+            assertThat(r.getKpiApplied()).isFalse();
+            verifyNoInteractions(kpi);
+        }
+
+        @Test
+        @DisplayName("Từ chối đơn thứ Bảy đã qua, hôm đó không chấm công → không phạt vắng không phép")
+        void tuChoiDonThuBayDaQua() {
+            LeaveRequest r = don(9, thuBayTruoc(), "PENDING", false);
+            when(checkinRepo.findByUserIdAndCheckinTimeBetween(eq(7L), any(), any())).thenReturn(List.of());
+
+            service.reject(9L, 99L, null);
+
+            assertThat(r.getStatus()).isEqualTo("REJECTED");
+            verifyNoInteractions(kpi);
+        }
+
+        @Test
+        @DisplayName("Hoàn −10đ cho đơn nghỉ thứ Bảy đã duyệt; đơn ngày thường giữ nguyên; chạy lại không hoàn trùng")
+        void hoanDonNghiThuBay() {
+            LocalDate tu = LocalDate.of(2026, 10, 11);
+            LeaveRequest thuBay = don(10, LocalDate.of(2026, 10, 17), "APPROVED", true);
+            LeaveRequest thuBayChuaTru = don(11, LocalDate.of(2026, 10, 24), "APPROVED", false);
+            LeaveRequest thuSau = don(12, LocalDate.of(2026, 10, 16), "APPROVED", true);
+            when(leaveRepo.findByLeaveDateBetweenAndStatusIn(eq(tu), any(), eq(List.of("APPROVED"))))
+                    .thenReturn(List.of(thuBay, thuBayChuaTru, thuSau));
+
+            assertThat(service.hoanDonNghiThuBay(tu)).isEqualTo(1);
+            assertThat(service.hoanDonNghiThuBay(tu)).isZero();
+
+            assertThat(thuBay.getKpiApplied()).isFalse();
+            assertThat(thuSau.getKpiApplied()).isTrue();
+            verify(kpi, times(1)).updateKpiPoints(eq(7L), eq("attendance"), eq(10), any(),
+                    startsWith("Hoàn điểm đơn nghỉ thứ Bảy 17/10"));
+            verifyNoMoreInteractions(kpi);
+        }
+
+        @Test
         @DisplayName("Chỉ người gửi mới hủy được đơn, và chỉ khi còn chờ duyệt")
         void huyDon() {
             don(6, LocalDate.now(VN).plusDays(1), "PENDING", false);
@@ -164,6 +246,17 @@ class LeaveRequestServiceTest {
         void chuNhat() {
             assertThat(service.closeDay(LocalDate.of(2026, 9, 27))).isZero();
             verifyNoInteractions(kpi);
+        }
+
+        @Test
+        @DisplayName("Thứ Bảy → không chốt ai (nghỉ thứ Bảy không bị trừ)")
+        void thuBay() {
+            when(userRepository.findAll()).thenReturn(List.of(nguoi(1, "SALE", "ACTIVE")));
+            when(checkinRepo.findByCheckinTimeBetween(any(), any())).thenReturn(List.of());
+
+            assertThat(service.closeDay(LocalDate.of(2026, 10, 17))).isZero();
+            verifyNoInteractions(kpi);
+            verify(leaveRepo, never()).save(any());
         }
 
         @Test

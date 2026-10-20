@@ -8,12 +8,15 @@ import com.trilong.kpibackend.modules.kpi.service.KpiCalculationService;
 import com.trilong.kpibackend.modules.user.entity.User;
 import com.trilong.kpibackend.modules.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class FieldBattleService {
@@ -47,10 +50,23 @@ public class FieldBattleService {
                 ? "hỗ trợ khách" : "gặp khách";
     }
 
+    /** Cùng người, cùng loại, cùng nội dung trong khoảng này thì coi là bấm Gửi lặp. */
+    static final Duration CUA_SO_NOP_TRUNG = Duration.ofMinutes(2);
+
     @Transactional
     public FieldBattle submitBattle(Long userId, SubmitFieldBattleDTO dto) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("KhÃ´ng tÃ¬m tháº¥y ngÆ°á»i dÃ¹ng"));
+        // Khóa người gửi tới hết giao dịch. App chờ lấy GPS vài giây sau khi bấm
+        // Gửi, người dùng tưởng chưa ăn nên bấm thêm 3–4 lần → các lượt tới cùng
+        // một giây. Có khóa thì chúng xếp hàng, lượt sau thấy lượt trước đã lưu.
+        User user = userRepository.khoaTheoId(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy người dùng"));
+
+        FieldBattle daGui = timBanVuaGui(userId, chuanHoaLoai(dto.getBattleType()), dto.getContent());
+        if (daGui != null) {
+            // Trả lại đúng bản đã có (app cũ vẫn báo "thành công"), không tạo bản trùng
+            log.info("[ThucChien] Bỏ lượt gửi lặp của userId={} — trùng báo cáo #{}", userId, daGui.getId());
+            return daGui;
+        }
 
         FieldBattle battle = FieldBattle.builder()
                 .user(user)
@@ -73,6 +89,20 @@ public class FieldBattleService {
             e.printStackTrace();
         }
         return savedData;
+    }
+
+    /** Báo cáo cùng loại, cùng nội dung (bỏ khác biệt hoa thường, dấu cách thừa) vừa gửi gần đây. */
+    private FieldBattle timBanVuaGui(Long userId, String loai, String noiDung) {
+        String k = chuanNoiDung(noiDung);
+        return fieldBattleRepository
+                .findByUserIdAndSubmittedAtAfter(userId, ZonedDateTime.now().minus(CUA_SO_NOP_TRUNG))
+                .stream()
+                .filter(b -> loai.equals(chuanHoaLoai(b.getBattleType())) && k.equals(chuanNoiDung(b.getContent())))
+                .findFirst().orElse(null);
+    }
+
+    private static String chuanNoiDung(String s) {
+        return s == null ? "" : s.trim().toLowerCase().replaceAll("\\s+", " ");
     }
 
     public List<FieldBattle> getMyBattles(Long userId) {

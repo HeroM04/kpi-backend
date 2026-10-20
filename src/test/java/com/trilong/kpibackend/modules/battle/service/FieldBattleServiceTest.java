@@ -112,6 +112,61 @@ class FieldBattleServiceTest {
         verify(kpi, never()).updateKpiPoints(any(), any(), anyInt(), any(), any());
     }
 
+    // ── Gửi báo cáo: chặn bấm Gửi lặp ──────────────────────────────────────
+
+    private com.trilong.kpibackend.modules.battle.dto.SubmitFieldBattleDTO guiBaoCao(String loai, String noiDung) {
+        var dto = new com.trilong.kpibackend.modules.battle.dto.SubmitFieldBattleDTO();
+        dto.setBattleType(loai);
+        dto.setContent(noiDung);
+        dto.setPhotoUrl("https://anh/" + System.nanoTime() + ".jpg");   // mỗi lần bấm tải ảnh riêng
+        return dto;
+    }
+
+    private FieldBattle daCo(String loai, String noiDung) {
+        FieldBattle b = FieldBattle.builder().id(60L).user(nhanSu).content(noiDung).battleType(loai).status("PENDING").build();
+        b.setSubmittedAt(ZonedDateTime.now());
+        return b;
+    }
+
+    @Test
+    @DisplayName("Gửi lần đầu → khóa người gửi rồi lưu báo cáo mới")
+    void guiLanDau() {
+        when(userRepository.khoaTheoId(7L)).thenReturn(Optional.of(nhanSu));
+        when(fieldBattleRepository.findByUserIdAndSubmittedAtAfter(eq(7L), any())).thenReturn(java.util.List.of());
+
+        FieldBattle b = service.submitBattle(7L, guiBaoCao("MEETING", "hẹn gặp kh trao đổi dự án starlake"));
+
+        assertThat(b.getStatus()).isEqualTo("PENDING");
+        verify(userRepository).khoaTheoId(7L);
+        verify(fieldBattleRepository).save(any());
+    }
+
+    @Test
+    @DisplayName("Bấm Gửi lặp: cùng loại, cùng nội dung (khác hoa thường / dấu cách) trong 2 phút → trả lại bản đã có, không lưu thêm")
+    void guiLap() {
+        FieldBattle cu = daCo("MEETING", "hẹn gặp kh trao đổi dự án starlake");
+        when(userRepository.khoaTheoId(7L)).thenReturn(Optional.of(nhanSu));
+        when(fieldBattleRepository.findByUserIdAndSubmittedAtAfter(eq(7L), any())).thenReturn(java.util.List.of(cu));
+
+        FieldBattle b = service.submitBattle(7L, guiBaoCao("MEETING", "  Hẹn gặp KH   trao đổi dự án starlake "));
+
+        assertThat(b).isSameAs(cu);
+        verify(fieldBattleRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Khác loại hoặc khác nội dung → vẫn là báo cáo mới")
+    void khacLoaiKhacNoiDung() {
+        when(userRepository.khoaTheoId(7L)).thenReturn(Optional.of(nhanSu));
+        when(fieldBattleRepository.findByUserIdAndSubmittedAtAfter(eq(7L), any()))
+                .thenReturn(java.util.List.of(daCo("MEETING", "tiếp khách")));
+
+        service.submitBattle(7L, guiBaoCao("SUPPORT", "tiếp khách"));
+        service.submitBattle(7L, guiBaoCao("MEETING", "tiếp khách dự án Vista"));
+
+        verify(fieldBattleRepository, times(2)).save(any());
+    }
+
     @Test
     @DisplayName("Xóa báo cáo đã duyệt vào được một phần (5/10đ) → gỡ đúng 5đ rồi xóa")
     void xoaDaDuyet() {

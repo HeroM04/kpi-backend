@@ -23,5 +23,8 @@ public interface FieldBattleRepository extends JpaRepository<FieldBattle, Long> 
     List<FieldBattle> findAllByOrderBySubmittedAtDesc();
 
     long countByStatus(String status);
+
+    /** Báo cáo một người gửi từ mốc này trở đi — để nhận ra lượt bấm Gửi lặp. */
+    List<FieldBattle> findByUserIdAndSubmittedAtAfter(Long userId, java.time.ZonedDateTime moc);
 }
 

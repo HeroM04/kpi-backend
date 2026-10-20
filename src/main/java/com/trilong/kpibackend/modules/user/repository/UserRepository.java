@@ -1,7 +1,9 @@
 package com.trilong.kpibackend.modules.user.repository;
 
 import com.trilong.kpibackend.modules.user.entity.User;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -40,5 +42,14 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     /** Những người mà một nhân sự đã giới thiệu vào công ty. */
     List<User> findByReferrerId(Long referrerId);
+
+    /**
+     * Đọc người dùng và KHÓA dòng đó tới hết giao dịch (SELECT … FOR UPDATE).
+     * Dùng để xếp hàng các lượt gửi dồn dập của cùng một người — lượt sau chỉ
+     * chạy khi lượt trước đã lưu xong, nên kiểm tra nộp trùng mới thấy nhau.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT u FROM User u WHERE u.id = :id")
+    Optional<User> khoaTheoId(@Param("id") Long id);
 }
 

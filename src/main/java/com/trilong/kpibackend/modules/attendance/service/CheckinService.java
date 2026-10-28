@@ -518,10 +518,11 @@ public class CheckinService {
             // Thứ Bảy: vẫn ghi nhận chấm công nhưng không tính điểm chuyên cần
             if (com.trilong.kpibackend.core.utils.GioVN.laThuBay(checkinLog.getCheckinTime())) kpiPoints = 0;
             if (kpiPoints != 0) {
+                String dauCau = ChamCongTayService.LOAI.equals(checkinLog.getCheckinType())
+                        ? "Admin thêm chấm công tay — " : "Admin duyệt chấm công ngoại tuyến — ";
                 kpiCalculationService.updateKpiPoints(
                         checkinLog.getUserId(), "attendance", kpiPoints, checkinLog.getCheckinTime(),
-                        "Admin duyệt chấm công ngoại tuyến — "
-                                + dienGiaiChuyenCan(checkinLog.getActionType(),
+                        dauCau + dienGiaiChuyenCan(checkinLog.getActionType(),
                                         checkinLog.getCheckinTime(), mocDungGio)
                 );
             }

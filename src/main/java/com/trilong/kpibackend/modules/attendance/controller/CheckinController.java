@@ -58,6 +58,9 @@ public class CheckinController {
     @Autowired
     private com.trilong.kpibackend.modules.attendance.service.BangCongService bangCongService;
 
+    @Autowired
+    private com.trilong.kpibackend.modules.attendance.service.ChamCongTayService chamCongTayService;
+
     // ═══════════════════════════════════════════════════════════════════════
     // MOBILE APP — Check-in
     // ═══════════════════════════════════════════════════════════════════════
@@ -193,6 +196,30 @@ public class CheckinController {
                     "data", updated
             ));
         } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("status", "ERROR", "message", e.getMessage()));
+        }
+    }
+
+    /** Thân yêu cầu thêm chấm công tay. Giờ dạng HH:mm, ngày dạng yyyy-MM-dd. */
+    public record ThemTayDTO(Long userId, LocalDate ngay, java.time.LocalTime gioVao,
+                             java.time.LocalTime gioRa, String ghiChu) {}
+
+    @Operation(summary = "Admin thêm chấm công tay cho nhân sự",
+            description = "Chọn người, ngày, giờ vào và / hoặc giờ ra, kèm lý do. Lượt thêm được duyệt ngay "
+                    + "và tính điểm như Admin duyệt chấm công ngoại tuyến. Ngày đó đã bị chốt vắng không phép "
+                    + "thì hoàn đúng số điểm đã trừ và bỏ dấu vắng.")
+    @PostMapping("/them-tay")
+    @PreAuthorize("hasAuthority('attendance:approve') or hasRole('ADMIN')")
+    public ResponseEntity<?> themChamCongTay(@RequestBody ThemTayDTO dto) {
+        try {
+            List<CheckinLog> daTao = chamCongTayService.themTay(
+                    dto.userId(), dto.ngay(), dto.gioVao(), dto.gioRa(), dto.ghiChu());
+            return ResponseEntity.ok(Map.of(
+                    "status", "SUCCESS",
+                    "message", "Đã thêm " + daTao.size() + " lượt chấm công.",
+                    "data", daTao
+            ));
+        } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("status", "ERROR", "message", e.getMessage()));
         }
     }

@@ -252,6 +252,26 @@ public class KpiCalculationService {
     }
 
     /**
+     * Ngược với {@link #diemThucDaCong}: số điểm một khoản TRỪ đã thực sự trừ
+     * (nhóm đang 0đ thì trừ −15 có khi chỉ vào −6). Dùng để hoàn đúng số, không
+     * hoàn quá phần đã mất.
+     */
+    public int diemThucDaTru(Long userId, String nhom, String dauCau, ZonedDateTime moc, int macDinh) {
+        if (userId == null || moc == null) return macDinh;
+        long m = moc.toInstant().toEpochMilli();
+        KpiLedgerEntry khop = null;
+        long lechNhoNhat = 120_000;
+        for (KpiLedgerEntry e : kpiLedgerEntryRepository
+                .findByUserIdAndCategoryAndReasonStartingWithOrderByIdAsc(userId, nhom, dauCau)) {
+            if (e.getOccurredAt() == null) continue;
+            long lech = Math.abs(e.getOccurredAt().toInstant().toEpochMilli() - m);
+            if (lech <= lechNhoNhat) { lechNhoNhat = lech; khop = e; }
+        }
+        if (khop == null || khop.getEffectivePoints() == null) return macDinh;
+        return Math.max(0, -khop.getEffectivePoints());
+    }
+
+    /**
      * Những ai có chốt căn ĐÃ DUYỆT trong tháng KPI — tháng tính theo ngày nộp,
      * cùng quy tắc tuần thuộc tháng của thứ Hai. Đây là cách báo cáo Excel xếp
      * loại "đạt 100% nhờ chốt căn"; màn hình web/app phải dùng đúng cách này, không

@@ -38,6 +38,15 @@ public class ReferralSubmissionResponseDTO {
     /** Đã thực sự cộng 15đ cho người giới thiệu hay chưa */
     private Boolean rewardGranted;
 
+    /**
+     * Đơn đang chờ mà số điện thoại đã có tài khoản (nhân sự mở trước): duyệt sẽ
+     * gắn người giới thiệu vào tài khoản này, không tạo mới. Null nếu chưa có.
+     */
+    private Long existingAccountId;
+    private String existingAccountName;
+    private LocalDate existingAccountJoinedDate;
+    private String existingAccountStatus;
+
     public static ReferralSubmissionResponseDTO from(ReferralSubmission r,
                                                      String referrerFullName,
                                                      String referrerDepartmentName,

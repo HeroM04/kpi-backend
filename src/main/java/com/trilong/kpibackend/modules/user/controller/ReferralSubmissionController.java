@@ -81,7 +81,8 @@ public class ReferralSubmissionController {
     }
 
     @Operation(summary = "Admin duyệt đơn và mở tài khoản cho nhân sự mới",
-            description = "Tạo tài khoản với người giới thiệu gắn sẵn. Một tháng sau, nếu nhân sự mới "
+            description = "Tạo tài khoản với người giới thiệu gắn sẵn; số điện thoại đã có tài khoản thì "
+                    + "gắn người giới thiệu vào tài khoản đó. Một tháng sau ngày vào làm, nếu nhân sự mới "
                     + "vẫn còn làm thì người giới thiệu được +15đ nhóm Lan tỏa.")
     @PutMapping("/{id}/approve")
     @PreAuthorize("hasAuthority('user:manage') or hasRole('ADMIN')")
@@ -92,7 +93,7 @@ public class ReferralSubmissionController {
             UserDTO created = service.approve(id, currentUser.getUserId(), dto);
             return ResponseEntity.ok(Map.of(
                     "status", "SUCCESS",
-                    "message", "Đã duyệt và tạo tài khoản cho " + created.getFullName() + ".",
+                    "message", "Đã duyệt đơn giới thiệu " + created.getFullName() + ".",
                     "data", created));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("status", "ERROR", "message", e.getMessage()));

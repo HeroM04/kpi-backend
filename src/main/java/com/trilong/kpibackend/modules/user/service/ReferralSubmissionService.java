@@ -29,6 +29,11 @@ import java.util.Map;
  * <p>Duyệt đơn là lúc tài khoản nhân sự mới được mở, với người giới thiệu gắn
  * sẵn. Từ đó điểm "gieo hạt" chạy theo quy định chung: một tháng sau, nếu người
  * mới vẫn còn làm thì người giới thiệu được +15đ.
+ *
+ * <p>Hay gặp: phòng nhân sự mở tài khoản cho người mới trước, người giới thiệu
+ * gửi đơn sau. Khi đó số điện thoại đã có tài khoản là chuyện bình thường — đơn
+ * vẫn nhận, và duyệt thì gắn người giới thiệu vào tài khoản sẵn có thay vì tạo
+ * tài khoản mới. Chỉ chặn khi tài khoản đó đã ghi nhận người giới thiệu rồi.
  */
 @Slf4j
 @Service
@@ -58,9 +63,8 @@ public class ReferralSubmissionService {
         if (phone.equals(referrer.getPhoneNumber())) {
             throw new IllegalArgumentException("Không thể tự giới thiệu chính mình.");
         }
-        if (userRepository.existsByPhoneNumber(phone)) {
-            throw new IllegalArgumentException("Số điện thoại này đã có tài khoản trong hệ thống.");
-        }
+        // Đã có tài khoản (nhân sự mở trước) thì vẫn nhận đơn — chỉ chặn khi đã có người giới thiệu
+        userRepository.findByPhoneNumber(phone).ifPresent(account -> chanNeuDaCoNguoiGioiThieu(account, referrerId));
         referralSubmissionRepository.findByCandidatePhoneAndStatus(phone, "PENDING")
                 .ifPresent(existing -> {
                     if (existing.getReferrerId().equals(referrerId)) {
@@ -111,8 +115,10 @@ public class ReferralSubmissionService {
 
     /**
      * Admin duyệt đơn: mở tài khoản cho ứng viên với người giới thiệu gắn sẵn.
+     * Số điện thoại đã có tài khoản thì không tạo mới mà gắn người giới thiệu
+     * vào tài khoản đó.
      *
-     * @return tài khoản nhân sự vừa tạo
+     * @return tài khoản nhân sự vừa tạo, hoặc tài khoản sẵn có vừa được gắn người giới thiệu
      */
     @Transactional
     public UserDTO approve(Long id, Long adminId, ApproveReferralDTO dto) {
@@ -120,13 +126,16 @@ public class ReferralSubmissionService {
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn giới thiệu."));
 
         if ("APPROVED".equals(req.getStatus())) {
-            throw new IllegalArgumentException("Đơn này đã được duyệt và đã tạo tài khoản.");
+            throw new IllegalArgumentException("Đơn này đã được duyệt.");
         }
+
+        User account = userRepository.findByPhoneNumber(req.getCandidatePhone()).orElse(null);
+        if (account != null) {
+            return ganVaoTaiKhoanSanCo(req, account, adminId, dto);
+        }
+
         if (dto.getDepartmentId() == null) {
             throw new IllegalArgumentException("Vui lòng chọn phòng ban cho nhân sự mới.");
-        }
-        if (userRepository.existsByPhoneNumber(req.getCandidatePhone())) {
-            throw new IllegalArgumentException("Số điện thoại này đã có tài khoản, không tạo thêm được.");
         }
 
         LocalDate joined = dto.getJoinedDate() != null ? dto.getJoinedDate() : LocalDate.now(VN_ZONE);
@@ -162,6 +171,56 @@ public class ReferralSubmissionService {
         return created;
     }
 
+    /**
+     * Số điện thoại đã có tài khoản (nhân sự mở trước): không tạo mới, chỉ ghi
+     * người giới thiệu vào tài khoản đó. Không động vào phòng ban, vai trò, mật
+     * khẩu — những thứ nhân sự đã đặt. Ngày vào làm giữ theo tài khoản.
+     */
+    private UserDTO ganVaoTaiKhoanSanCo(ReferralSubmission req, User account, Long adminId, ApproveReferralDTO dto) {
+        if (account.getId().equals(req.getReferrerId())) {
+            throw new IllegalArgumentException("Không thể tự giới thiệu chính mình.");
+        }
+        Long daCo = account.getReferrerId();
+        if (daCo != null && !daCo.equals(req.getReferrerId())) {
+            String ten = userRepository.findById(daCo).map(User::getFullName).orElse("người khác");
+            throw new IllegalArgumentException(account.getFullName() + " đã được ghi nhận người giới thiệu là "
+                    + ten + ". Muốn đổi thì sửa ở trang Nhân sự, rồi từ chối đơn này.");
+        }
+
+        LocalDate joined = UserService.joinedDateOf(account);
+        if (joined == null) {
+            joined = dto.getJoinedDate() != null ? dto.getJoinedDate() : LocalDate.now(VN_ZONE);
+            account.setJoinedDate(joined);
+        }
+        account.setReferrerId(req.getReferrerId());
+        userRepository.save(account);
+
+        req.setStatus("APPROVED");
+        req.setReviewedBy(adminId);
+        req.setReviewedAt(ZonedDateTime.now());
+        req.setReviewNote(dto.getNote());
+        req.setCreatedUserId(account.getId()); // tài khoản được gắn — để tra đã cộng điểm hay chưa
+        req.setJoinedDate(joined);
+        referralSubmissionRepository.save(req);
+
+        log.info("[Gieo hạt] Duyệt đơn giới thiệu #{} — gắn người giới thiệu id={} vào tài khoản sẵn có {} (id={}), "
+                        + "sẽ cộng 15đ từ ngày {}",
+                req.getId(), req.getReferrerId(), account.getFullName(), account.getId(), joined.plusMonths(1));
+
+        return userService.convertToDTO(account);
+    }
+
+    /** Tài khoản đã ghi nhận người giới thiệu thì không nhận thêm đơn cho người đó. */
+    private void chanNeuDaCoNguoiGioiThieu(User account, Long referrerId) {
+        Long daCo = account.getReferrerId();
+        if (daCo == null) return;
+        if (daCo.equals(referrerId)) {
+            throw new IllegalArgumentException("Bạn đã được ghi nhận là người giới thiệu "
+                    + account.getFullName() + " rồi, không cần gửi đơn nữa.");
+        }
+        throw new IllegalArgumentException(account.getFullName() + " đã được ghi nhận người giới thiệu khác.");
+    }
+
     @Transactional
     public ReferralSubmission reject(Long id, Long adminId, String note) {
         ReferralSubmission req = referralSubmissionRepository.findById(id)
@@ -190,8 +249,19 @@ public class ReferralSubmissionService {
                 && kpiAutoGrantRepository.findByUserIdOrderByGrantedAtDesc(r.getReferrerId()).stream()
                         .anyMatch(g -> ("REFERRAL_" + r.getCreatedUserId()).equals(g.getGrantType()));
 
-        return ReferralSubmissionResponseDTO.from(r,
+        ReferralSubmissionResponseDTO out = ReferralSubmissionResponseDTO.from(r,
                 referrer != null ? referrer.getFullName() : null, dept, reviewer, granted);
+
+        // Đơn đang chờ mà số đã có tài khoản: cho Admin thấy để biết duyệt là gắn, không tạo mới
+        if ("PENDING".equals(r.getStatus())) {
+            userRepository.findByPhoneNumber(r.getCandidatePhone()).ifPresent(acc -> {
+                out.setExistingAccountId(acc.getId());
+                out.setExistingAccountName(acc.getFullName());
+                out.setExistingAccountJoinedDate(UserService.joinedDateOf(acc));
+                out.setExistingAccountStatus(acc.getStatus());
+            });
+        }
+        return out;
     }
 
     private void notifyAdmin() {

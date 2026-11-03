@@ -52,6 +52,9 @@ public class LeaveRequestService {
     /** Vắng không phép — không chấm công và không có đơn được duyệt */
     public static final int KPI_LEAVE_UNEXCUSED = -15;
 
+    /** Đầu lý do của bản ghi vắng không phép do máy tự ghi (không phải đơn người gửi). */
+    public static final String LY_DO_MAY_GHI = "Hệ thống tự ghi nhận";
+
     private final LeaveRequestRepository leaveRequestRepository;
     private final CheckinLogRepository checkinLogRepository;
     private final UserRepository userRepository;
@@ -161,7 +164,9 @@ public class LeaveRequestService {
     public record TrangDon(List<LeaveRequestResponseDTO> banGhi, long tong) {}
 
     /**
-     * @param loai      NGUOI_GUI = đơn người gửi (khác UNEXCUSED) · TU_DONG = máy tự ghi (UNEXCUSED) · null/ALL = tất cả
+     * @param loai      NGUOI_GUI = đơn người gửi (kể cả đơn đã thành vắng không phép: bị từ chối, hoặc
+     *                  máy chốt khi đơn còn chờ — trước bản 03/11/2026) · TU_DONG = máy tự ghi (UNEXCUSED
+     *                  không kèm lý do của người gửi) · null/ALL = tất cả
      * @param trangThai PENDING / APPROVED / REJECTED / UNEXCUSED, null = mọi trạng thái
      * @param search    tìm theo tên, không phân biệt dấu/hoa thường
      */
@@ -185,8 +190,13 @@ public class LeaveRequestService {
 
         org.springframework.data.jpa.domain.Specification<LeaveRequest> spec = (root, q, cb) -> {
             List<jakarta.persistence.criteria.Predicate> ds = new java.util.ArrayList<>();
-            if ("NGUOI_GUI".equals(loai)) ds.add(cb.notEqual(root.get("status"), "UNEXCUSED"));
-            else if ("TU_DONG".equals(loai)) ds.add(cb.equal(root.get("status"), "UNEXCUSED"));
+            // Bản ghi máy tự ghi = vắng không phép mà lý do không phải của người gửi.
+            // Đơn người gửi rồi thành vắng không phép vẫn giữ lý do của họ → vẫn là "đơn",
+            // để Admin còn thấy và "Duyệt lại" được.
+            var mayGhi = cb.and(cb.equal(root.get("status"), "UNEXCUSED"),
+                    cb.or(cb.isNull(root.get("reason")), cb.like(root.get("reason"), LY_DO_MAY_GHI + "%")));
+            if ("NGUOI_GUI".equals(loai)) ds.add(cb.not(mayGhi));
+            else if ("TU_DONG".equals(loai)) ds.add(mayGhi);
             if (trangThai != null && !trangThai.isBlank()) ds.add(cb.equal(root.get("status"), trangThai));
             if (tu != null) ds.add(cb.greaterThanOrEqualTo(root.get("leaveDate"), tu));
             if (den != null) ds.add(cb.lessThanOrEqualTo(root.get("leaveDate"), den));
@@ -263,6 +273,20 @@ public class LeaveRequestService {
             return req;
         }
 
+        // Ngày đã bị chốt vắng không phép (−15) rồi Admin mới duyệt: hoàn đúng số đã
+        // trừ trước, rồi trừ −10 như nghỉ có phép. Trước đây cờ "đã trừ" làm bỏ qua
+        // bước −10, nên người được duyệt vẫn gánh nguyên −15.
+        if ("UNEXCUSED".equals(req.getStatus()) && Boolean.TRUE.equals(req.getKpiApplied())) {
+            LocalDate d = req.getLeaveDate();
+            int daTru = kpiCalculationService.diemThucDaTru(req.getUserId(), "attendance",
+                    "Vắng không phép ngày " + ngay(d), atNoon(d), -KPI_LEAVE_UNEXCUSED);
+            if (daTru > 0) {
+                kpiCalculationService.updateKpiPoints(req.getUserId(), "attendance", daTru, atNoon(d),
+                        "Hoàn điểm vắng không phép ngày " + ngay(d) + " — Admin duyệt thành nghỉ có phép");
+            }
+            req.setKpiApplied(false);
+        }
+
         req.setStatus("APPROVED");
         req.setReviewedBy(adminId);
         req.setReviewedAt(ZonedDateTime.now());
@@ -337,7 +361,8 @@ public class LeaveRequestService {
 
     /**
      * Chốt vắng mặt của một ngày làm việc: ai không có bản ghi chấm công và
-     * cũng không có đơn xin vắng được duyệt thì bị trừ 15đ (vắng không phép).
+     * cũng không có đơn xin vắng (được duyệt hoặc đang chờ duyệt) thì bị trừ 15đ
+     * (vắng không phép). Đơn đang chờ để Admin quyết khi duyệt / từ chối.
      *
      * <p>Chạy được nhiều lần cho cùng một ngày mà không trừ trùng — mỗi lần trừ
      * đều ghi lại thành một bản ghi {@code LeaveRequest} trạng thái
@@ -365,10 +390,17 @@ public class LeaveRequestService {
         }
 
         Set<Long> hasRecord = new HashSet<>();
+        int choDuyet = 0;
         for (LeaveRequest r : leaveRequestRepository.findByLeaveDate(date)) {
-            // Đơn được duyệt hoặc đã chấm vắng không phép rồi → không xử lý lại
+            // Đơn được duyệt hoặc đã chấm vắng không phép rồi → không xử lý lại.
+            // Đơn còn CHỜ DUYỆT cũng bỏ qua: chưa duyệt không có nghĩa là không phép.
+            // Trước đây máy ghi đè đơn chờ thành vắng không phép (−15) và đơn biến
+            // khỏi hàng chờ. Giờ để Admin quyết: duyệt → −10, từ chối → −15 (xem reject).
             if ("APPROVED".equals(r.getStatus()) || "UNEXCUSED".equals(r.getStatus())) {
                 hasRecord.add(r.getUserId());
+            } else if ("PENDING".equals(r.getStatus())) {
+                hasRecord.add(r.getUserId());
+                choDuyet++;
             }
         }
 
@@ -389,7 +421,7 @@ public class LeaveRequestService {
             mark.setUserId(user.getId());
             mark.setLeaveDate(date);
             mark.setReason(mark.getReason() != null ? mark.getReason()
-                    : "Hệ thống tự ghi nhận: không chấm công và không có đơn xin vắng được duyệt");
+                    : LY_DO_MAY_GHI + ": không chấm công và không có đơn xin vắng được duyệt");
             mark.setStatus("UNEXCUSED");
             mark.setReviewedAt(ZonedDateTime.now());
             mark.setKpiApplied(truDiem);
@@ -403,8 +435,8 @@ public class LeaveRequestService {
             count++;
         }
 
-        log.info("[Leave] Chốt ngày {}: {} nhân sự vắng không phép ({} KPI mỗi người).",
-                date, count, truDiem ? KPI_LEAVE_UNEXCUSED : 0);
+        log.info("[Leave] Chốt ngày {}: {} nhân sự vắng không phép ({} KPI mỗi người), {} đơn còn chờ duyệt để Admin quyết.",
+                date, count, truDiem ? KPI_LEAVE_UNEXCUSED : 0, choDuyet);
         return count;
     }
 

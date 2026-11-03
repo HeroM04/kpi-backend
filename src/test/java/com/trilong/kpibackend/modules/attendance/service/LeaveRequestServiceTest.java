@@ -116,6 +116,34 @@ class LeaveRequestServiceTest {
         }
 
         @Test
+        @DisplayName("Duyệt ngày đã bị chốt vắng không phép (−15) → hoàn đúng số đã trừ rồi −10, kết quả là nghỉ có phép")
+        void duyetSauKhiDaChotVang() {
+            LocalDate ngay = homQuaKhongPhaiCN();
+            LeaveRequest r = don(9, ngay, "UNEXCUSED", true);
+            when(kpi.diemThucDaTru(eq(7L), eq("attendance"), startsWith("Vắng không phép ngày"), any(), eq(15))).thenReturn(15);
+
+            service.approve(9L, 99L, null);
+
+            assertThat(r.getStatus()).isEqualTo("APPROVED");
+            assertThat(r.getKpiApplied()).isTrue();
+            verify(kpi).updateKpiPoints(eq(7L), eq("attendance"), eq(15), any(), startsWith("Hoàn điểm vắng không phép"));
+            verify(kpi).updateKpiPoints(eq(7L), eq("attendance"), eq(-10), any(), anyString());
+        }
+
+        @Test
+        @DisplayName("Lúc chốt vắng nhóm điểm chỉ còn 6đ (thực trừ −6) → duyệt chỉ hoàn 6, không hoàn dư")
+        void duyetSauChotVangHoanDungSoThucTru() {
+            LeaveRequest r = don(10, homQuaKhongPhaiCN(), "UNEXCUSED", true);
+            when(kpi.diemThucDaTru(anyLong(), anyString(), anyString(), any(), anyInt())).thenReturn(6);
+
+            service.approve(10L, 99L, null);
+
+            verify(kpi).updateKpiPoints(eq(7L), eq("attendance"), eq(6), any(), anyString());
+            verify(kpi).updateKpiPoints(eq(7L), eq("attendance"), eq(-10), any(), anyString());
+            assertThat(r.getStatus()).isEqualTo("APPROVED");
+        }
+
+        @Test
         @DisplayName("Từ chối đơn của ngày CHƯA tới → chỉ đổi trạng thái, để tác vụ cuối ngày tự xét")
         void tuChoiNgayChuaToi() {
             LeaveRequest r = don(2, LocalDate.now(VN).plusDays(3), "PENDING", false);
@@ -310,6 +338,21 @@ class LeaveRequestServiceTest {
             when(leaveRepo.findByLeaveDate(thuTu)).thenReturn(List.of(daChot));
 
             assertThat(service.closeDay(thuTu)).isZero();
+            verifyNoInteractions(kpi);
+        }
+
+        @Test
+        @DisplayName("Đơn còn CHỜ DUYỆT → không chốt vắng không phép, không trừ, đơn giữ nguyên trong hàng chờ")
+        void donChoDuyetKhongBiChot() {
+            when(userRepository.findAll()).thenReturn(List.of(nguoi(1, "SALE", "ACTIVE")));
+            when(checkinRepo.findByCheckinTimeBetween(any(), any())).thenReturn(List.of());
+            LeaveRequest cho = new LeaveRequest(); cho.setUserId(1L); cho.setStatus("PENDING"); cho.setKpiApplied(false);
+            when(leaveRepo.findByLeaveDate(thuTu)).thenReturn(List.of(cho));
+            when(leaveRepo.findByUserIdAndLeaveDate(1L, thuTu)).thenReturn(Optional.of(cho));
+
+            assertThat(service.closeDay(thuTu)).isZero();
+            assertThat(cho.getStatus()).isEqualTo("PENDING");
+            verify(leaveRepo, never()).save(any());
             verifyNoInteractions(kpi);
         }
     }

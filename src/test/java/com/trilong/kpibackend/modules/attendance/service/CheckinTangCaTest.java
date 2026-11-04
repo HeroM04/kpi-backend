@@ -28,7 +28,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
-/** Chấm công ra: tăng ca mỗi ngày một lần, thu hồi lượt về thì thu lại, bấm gửi lặp không tạo lượt trùng. */
+/**
+ * Chấm công ra: tăng ca mỗi ngày một lần, thu hồi lượt về thì thu lại, bấm gửi
+ * lặp không tạo lượt trùng; Admin duyệt tất cả lượt chờ theo bộ lọc.
+ */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
 class CheckinTangCaTest {
@@ -139,5 +142,37 @@ class CheckinTangCaTest {
         assertThat(moi.getId()).isEqualTo(99L);
         assertThat(moi.getActionType()).isEqualTo("CHECK_OUT");
         verify(checkinRepo).save(any());
+    }
+
+    @Test
+    @DisplayName("Duyệt tất cả: chỉ lượt CHỜ khớp phòng ban + khoảng ngày, duyệt từ cũ tới mới")
+    void duyetTatCa() {
+        com.trilong.kpibackend.modules.user.entity.Department kd8 = new com.trilong.kpibackend.modules.user.entity.Department();
+        kd8.setId(8L);
+        User huong = User.builder().id(NGUOI).fullName("Trần Thị Hương").department(kd8).build();
+        User khac = User.builder().id(9L).fullName("Lê Văn Minh").build();
+        when(userRepository.findAll()).thenReturn(List.of(huong, khac));
+
+        CheckinLog chieu = luot(3, "CHECK_IN", "PENDING", THU_HAI.atTime(13, 10).atZone(VN));
+        CheckinLog sang = luot(2, "CHECK_IN", "PENDING", THU_HAI.atTime(8, 30).atZone(VN));
+        CheckinLog phongKhac = luot(4, "CHECK_IN", "PENDING", THU_HAI.atTime(8, 40).atZone(VN));
+        phongKhac.setUserId(9L);
+        CheckinLog ngayKhac = luot(1, "CHECK_IN", "PENDING", THU_HAI.minusDays(3).atTime(8, 30).atZone(VN));
+        // Kho trả mới → cũ như truy vấn thật
+        when(checkinRepo.findByStatusOrderByCheckinTimeDesc("PENDING")).thenReturn(List.of(chieu, phongKhac, sang, ngayKhac));
+        for (CheckinLog c : List.of(chieu, sang, phongKhac, ngayKhac)) {
+            when(checkinRepo.findById(c.getId())).thenReturn(Optional.of(c));
+        }
+
+        int so = service.duyetTatCaDangCho(8L, null, THU_HAI.toString(), THU_HAI.toString());
+
+        assertThat(so).isEqualTo(2);
+        var thuTu = inOrder(checkinRepo);
+        thuTu.verify(checkinRepo).findById(2L);
+        thuTu.verify(checkinRepo).findById(3L);
+        verify(checkinRepo, never()).findById(4L);
+        verify(checkinRepo, never()).findById(1L);
+        assertThat(sang.getStatus()).isEqualTo("APPROVED");
+        assertThat(phongKhac.getStatus()).isEqualTo("PENDING");
     }
 }

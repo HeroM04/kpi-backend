@@ -460,6 +460,40 @@ public class CheckinService {
         return new TrangNgayCong(banGhi, tongNgayCong, soCho, soDuyet, soTuChoi);
     }
 
+    /**
+     * Duyệt một lượt MỌI bản ghi đang chờ khớp bộ lọc Admin đang xem trên web
+     * (phòng ban, tên, khoảng ngày) — không chỉ trang đang hiện.
+     *
+     * <p>Duyệt từ cũ tới mới, mỗi bản ghi qua đúng {@link #updateStatus} như bấm
+     * duyệt từng lượt, nên điểm tính y hệt: mỗi ngày chỉ lượt chấm công vào đầu
+     * tiên được tính chuyên cần, tăng ca một lần. Cùng một giao dịch: một lượt
+     * lỗi thì không lượt nào bị duyệt, Admin bấm lại sau.
+     *
+     * @return số bản ghi đã duyệt
+     */
+    @Transactional
+    public int duyetTatCaDangCho(Long departmentId, String search, String from, String to) {
+        ZonedDateTime tuNgay = (from != null && !from.isBlank()) ? LocalDate.parse(from).atStartOfDay(VN_ZONE) : null;
+        ZonedDateTime denNgay = (to != null && !to.isBlank()) ? LocalDate.parse(to).plusDays(1).atStartOfDay(VN_ZONE) : null;
+        List<Long> nhanSu = quyVeDanhSachNhanSu(null, departmentId, search);
+        if (nhanSu != null && nhanSu.isEmpty()) return 0;
+        java.util.Set<Long> trongLoc = nhanSu == null ? null : new java.util.HashSet<>(nhanSu);
+
+        List<CheckinLog> cho = checkinLogRepository.findByStatusOrderByCheckinTimeDesc("PENDING").stream()
+                .filter(c -> c.getCheckinTime() != null)
+                .filter(c -> trongLoc == null || trongLoc.contains(c.getUserId()))
+                .filter(c -> tuNgay == null || !c.getCheckinTime().isBefore(tuNgay))
+                .filter(c -> denNgay == null || c.getCheckinTime().isBefore(denNgay))
+                .sorted(java.util.Comparator.comparing(CheckinLog::getCheckinTime))
+                .toList();
+        for (CheckinLog c : cho) {
+            updateStatus(c.getId(), "APPROVED", null);
+        }
+        log.info("[Checkin] Admin duyệt tất cả: {} lượt chờ (phòng {}, tìm '{}', {} – {})",
+                cho.size(), departmentId, search, from, to);
+        return cho.size();
+    }
+
     /** Chỉ gán những tham số thực sự có mặt trong câu lệnh. */
     private void ganThamSo(jakarta.persistence.Query q, Map<String, Object> thamSo, String cauLenh) {
         thamSo.forEach((ten, gt) -> {

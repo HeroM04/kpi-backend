@@ -200,6 +200,30 @@ public class CheckinController {
         }
     }
 
+    @Operation(
+            summary = "✅ Duyệt tất cả chấm công đang chờ",
+            description = "Duyệt mọi bản ghi CHỜ DUYỆT khớp bộ lọc (departmentId, search, from/to yyyy-MM-dd) — "
+                    + "không chỉ trang đang xem. Duyệt từ cũ tới mới, điểm tính như duyệt từng lượt."
+    )
+    @PostMapping("/duyet-tat-ca")
+    @PreAuthorize("hasAuthority('attendance:approve') or hasRole('ADMIN')")
+    public ResponseEntity<?> duyetTatCa(
+            @RequestParam(required = false) Long departmentId,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String from,
+            @RequestParam(required = false) String to) {
+        try {
+            int so = checkinService.duyetTatCaDangCho(departmentId, search, from, to);
+            return ResponseEntity.ok(Map.of(
+                    "status", "SUCCESS",
+                    "message", so == 0 ? "Không có lượt nào đang chờ duyệt." : "Đã duyệt " + so + " lượt chấm công.",
+                    "data", Map.of("soLuot", so)
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("status", "ERROR", "message", e.getMessage()));
+        }
+    }
+
     /** Thân yêu cầu thêm chấm công tay. Giờ dạng HH:mm, ngày dạng yyyy-MM-dd. */
     public record ThemTayDTO(Long userId, LocalDate ngay, java.time.LocalTime gioVao,
                              java.time.LocalTime gioRa, String ghiChu) {}

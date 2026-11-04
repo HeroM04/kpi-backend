@@ -12,6 +12,7 @@ import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.usermodel.DataFormatter;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.util.CellRangeAddress;
+import org.apache.poi.xssf.usermodel.XSSFFormulaEvaluator;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -66,8 +67,11 @@ class AttendanceReportServiceTest {
         return l;
     }
 
+    /** Máy chủ không tính sẵn công thức (Excel tự tính khi mở) — ở đây tính hộ như Excel. */
     private XSSFWorkbook xuat(int thang) throws Exception {
-        return new XSSFWorkbook(new ByteArrayInputStream(service.generateMonthlyReport(2026, thang)));
+        XSSFWorkbook wb = new XSSFWorkbook(new ByteArrayInputStream(service.generateMonthlyReport(2026, thang)));
+        XSSFFormulaEvaluator.evaluateAllFormulaCells(wb);
+        return wb;
     }
 
     private String chu(Sheet sh, int dong, int cot) {

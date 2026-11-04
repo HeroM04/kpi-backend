@@ -11,8 +11,7 @@ import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.xssf.usermodel.XSSFCellStyle;
 import org.apache.poi.xssf.usermodel.XSSFColor;
-import org.apache.poi.xssf.usermodel.XSSFFormulaEvaluator;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.apache.poi.xssf.streaming.SXSSFWorkbook;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
@@ -104,7 +103,11 @@ public class AttendanceReportService {
             vang.computeIfAbsent(r.getUserId(), k -> new HashMap<>()).merge(r.getStatus(), 1L, Long::sum);
         }
 
-        try (XSSFWorkbook wb = new XSSFWorkbook()) {
+        // Ghi kiểu truyền dòng: chỉ giữ 200 dòng gần nhất trong bộ nhớ. Bản dựng cả
+        // file trong bộ nhớ (XSSFWorkbook) với 150 người tốn thêm ~155 MB và ~8 giây
+        // CPU — máy chủ Render gói miễn phí (512 MB, 0,1 CPU) không gánh nổi.
+        SXSSFWorkbook wb = new SXSSFWorkbook(200);
+        try {
             BoKieu kieu = new BoKieu(wb);
             Sheet sheet = wb.createSheet("Chi Tiet");
             dungTrang(sheet);
@@ -115,11 +118,15 @@ public class AttendanceReportService {
                         theoNguoiNgay.getOrDefault(u.getId(), Map.of()), vang.getOrDefault(u.getId(), Map.of()));
             }
 
-            // Lưu sẵn kết quả công thức để trình xem trước / Google Sheets đọc ra số ngay
-            XSSFFormulaEvaluator.evaluateAllFormulaCells(wb);
+            // Không tính sẵn công thức trên máy chủ (tốn CPU); Excel / WPS / Google
+            // Sheets tự tính khi mở file.
+            wb.setForceFormulaRecalculation(true);
             ByteArrayOutputStream out = new ByteArrayOutputStream();
             wb.write(out);
             return out.toByteArray();
+        } finally {
+            wb.close();
+            wb.dispose();   // xóa file tạm của chế độ truyền dòng
         }
     }
 
@@ -254,7 +261,8 @@ public class AttendanceReportService {
                 cell.setCellStyle(k.lay(kc));
             }
         }
-        if (r1 != r2 || c1 != c2) sh.addMergedRegion(new CellRangeAddress(r1, r2, c1, c2));
+        // Bỏ bước kiểm tra chồng lấn (chậm dần theo số ô gộp): vùng gộp do code dựng, không chồng nhau
+        if (r1 != r2 || c1 != c2) sh.addMergedRegionUnsafe(new CellRangeAddress(r1, r2, c1, c2));
         Cell dau = sh.getRow(r1).getCell(c1);
         if (giaTri instanceof String s && s.startsWith("=")) dau.setCellFormula(s.substring(1));
         else if (giaTri instanceof String s) dau.setCellValue(s);
@@ -442,11 +450,11 @@ public class AttendanceReportService {
 
     /** Dựng mỗi kiểu một lần rồi dùng lại — Excel giới hạn số kiểu trong một file. */
     private static final class BoKieu {
-        private final XSSFWorkbook wb;
+        private final Workbook wb;
         private final Map<Kieu, CellStyle> daCo = new HashMap<>();
         private final Map<String, Font> phong = new HashMap<>();
 
-        BoKieu(XSSFWorkbook wb) {
+        BoKieu(Workbook wb) {
             this.wb = wb;
             // Phông mặc định của file là Arial 10 như file máy chấm công
             Font macDinh = wb.getFontAt(0);
@@ -459,7 +467,7 @@ public class AttendanceReportService {
         }
 
         private CellStyle dung(Kieu k) {
-            XSSFCellStyle s = wb.createCellStyle();
+            XSSFCellStyle s = (XSSFCellStyle) wb.createCellStyle();
             s.setFont(phong.computeIfAbsent(k.co() + "|" + k.dam() + "|" + k.nghieng(), x -> {
                 Font f = wb.createFont();
                 f.setFontName("Arial");

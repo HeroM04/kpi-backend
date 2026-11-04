@@ -143,6 +143,16 @@ public class CheckinService {
     @Autowired
     private FaceRecognitionService faceRecognitionService;
 
+    @Autowired
+    private TangCaService tangCaService;
+
+    /**
+     * Cùng người, cùng loại (vào / ra) gửi lại trong khoảng này thì coi là gửi
+     * lặp: bấm Xác nhận nhiều lần, hoặc app hết thời gian chờ khi mạng yếu nên
+     * người dùng bấm lại trong khi lượt trước đã lưu.
+     */
+    private static final java.time.Duration CUA_SO_GUI_LAP = java.time.Duration.ofMinutes(2);
+
     @Value("${app.rekognition.enabled:false}")
     private boolean isRekognitionEnabled;
 
@@ -164,10 +174,19 @@ public class CheckinService {
      */
     @Transactional
     public CheckinLog submitCheckin(Long userId, CheckinRequestDTO request) {
-        User user = userRepository.findById(userId)
+        // Khóa người gửi tới hết giao dịch: các lượt gửi dồn dập xếp hàng, lượt
+        // sau thấy lượt trước đã lưu. Không khóa thì hai lượt tới cùng giây đều
+        // không thấy nhau và cùng được lưu.
+        User user = userRepository.khoaTheoId(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy nhân viên"));
 
         String actionType = resolveActionType(request.getActionType());
+        CheckinLog vuaGui = timLuotVuaGui(userId, actionType);
+        if (vuaGui != null) {
+            // Trả lại đúng lượt đã có (app vẫn báo thành công), không tạo lượt trùng
+            log.info("[Checkin] Bỏ lượt gửi lặp {} của userId={} — trùng lượt #{}", actionType, userId, vuaGui.getId());
+            return vuaGui;
+        }
         // Xác thực khuôn mặt bằng AWS Rekognition (nếu được bật trong properties và không phải CHECK_OUT)
         if (isRekognitionEnabled && !"CHECK_OUT".equals(actionType)) {
             if (user.getAvatarUrl() == null || user.getAvatarUrl().isEmpty()) {
@@ -528,7 +547,7 @@ public class CheckinService {
             }
             // Duyệt bản ghi check-out muộn cũng được tính tăng ca như chấm công tại chỗ
             awardOvertimeIfEligible(checkinLog.getUserId(), checkinLog.getActionType(),
-                    checkinLog.getCheckinTime().withZoneSameInstant(VN_ZONE));
+                    checkinLog.getCheckinTime().withZoneSameInstant(VN_ZONE), checkinLog.getId());
             log.info("[Checkin]  Duyệt {} #{} → {} KPI cho userId={}", checkinLog.getActionType(), id, (kpiPoints > 0 ? "+" + kpiPoints : kpiPoints), checkinLog.getUserId());
         } else if ("APPROVED".equals(oldStatus) && !"APPROVED".equals(newStatus.toUpperCase())) {
             // Phải quy về giờ Việt Nam: giá trị đọc từ DB đang ở múi giờ UTC,
@@ -547,6 +566,12 @@ public class CheckinService {
                 );
             }
             log.info("[Checkin]  Thu hồi {} #{} → {} KPI cho userId={}", checkinLog.getActionType(), id, (-kpiPoints > 0 ? "+" + (-kpiPoints) : (-kpiPoints)), checkinLog.getUserId());
+            // Lượt về đủ giờ tăng ca bị thu hồi: ngày đó hết lượt về nào khác thì
+            // thu lại luôn điểm tăng ca — trước đây điểm này cứ thế ở lại.
+            if (duDieuKienTangCa(checkinLog.getActionType(), checkinLog.getCheckinTime())) {
+                tangCaService.thuLaiNeuHetLuot(checkinLog.getUserId(),
+                        com.trilong.kpibackend.core.utils.GioVN.ngayCua(checkinLog.getCheckinTime()));
+            }
         }
 
         return saved;
@@ -613,7 +638,7 @@ public class CheckinService {
         }
 
         // Điểm tăng ca theo giờ check-out (tính vào nhóm Thực chiến)
-        awardOvertimeIfEligible(userId, finalActionType, now);
+        awardOvertimeIfEligible(userId, finalActionType, now, saved.getId());
 
         log.info("[Checkin]  OFFICE {} userId={} lúc {} → {} KPI | distance={}m",
                 finalActionType, userId, now.toLocalTime(), (kpiPoints > 0 ? "+" + kpiPoints : kpiPoints), String.format("%.1f", distance));
@@ -662,6 +687,22 @@ public class CheckinService {
     }
 
     /** Chuẩn hóa actionType — mặc định CHECK_IN */
+    /**
+     * Lượt cùng loại (vào / ra) của người này vừa gửi trong {@link #CUA_SO_GUI_LAP},
+     * chưa bị từ chối. Bỏ qua lượt Admin thêm tay — giờ của nó do Admin chọn.
+     */
+    private CheckinLog timLuotVuaGui(Long userId, String actionType) {
+        ZonedDateTime bayGio = ZonedDateTime.now(VN_ZONE);
+        return checkinLogRepository
+                .findByUserIdAndCheckinTimeBetween(userId, bayGio.minus(CUA_SO_GUI_LAP), bayGio.plusSeconds(1))
+                .stream()
+                .filter(c -> actionType.equals(c.getActionType())
+                        && !"REJECTED".equals(c.getStatus())
+                        && !ChamCongTayService.LOAI.equals(c.getCheckinType()))
+                .findFirst()
+                .orElse(null);
+    }
+
     private String resolveActionType(String raw) {
         if (raw == null || raw.trim().isEmpty()) return "CHECK_IN";
         return raw.trim().toUpperCase();
@@ -685,13 +726,21 @@ public class CheckinService {
      * ngày đó đạt là đủ, nên về mặt điểm số vẫn tính từ mốc 20:00.
      *
      * <p>Điểm tăng ca thuộc nhóm <b>Thực chiến</b> (trần 40đ/tuần).
-     * Chỉ tính khi CHECK_OUT, và không tính vào cuối tuần.
+     * Chỉ tính khi CHECK_OUT, không tính vào cuối tuần, và <b>mỗi ngày một
+     * lần</b>: ngày đó đã có lượt về khác (đã duyệt, đủ giờ) thì thôi.
+     *
+     * @param logId lượt về đang xét — bỏ qua chính nó khi tìm lượt về khác
      */
-    private void awardOvertimeIfEligible(Long userId, String actionType, ZonedDateTime time) {
+    private void awardOvertimeIfEligible(Long userId, String actionType, ZonedDateTime time, Long logId) {
         if (!duDieuKienTangCa(actionType, time)) return;
+        if (tangCaService.conLuotVeTangCa(userId, com.trilong.kpibackend.core.utils.GioVN.ngayCua(time), logId)) {
+            log.info("[Checkin]  Tăng ca userId={} ngày {} đã tính rồi — lượt về {} không cộng thêm",
+                    userId, time.toLocalDate(), gio(time));
+            return;
+        }
 
         kpiCalculationService.updateKpiPoints(userId, "meeting", KPI_OVERTIME, time,
-                "Tăng ca — về lúc " + gio(time));
+                TangCaService.DAU_CONG + gio(time));
         log.info("[Checkin]  Tăng ca userId={} về lúc {} → +{} KPI (nhóm Thực chiến)",
                 userId, time.toLocalTime(), KPI_OVERTIME);
     }

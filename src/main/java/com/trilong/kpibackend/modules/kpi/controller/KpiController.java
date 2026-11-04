@@ -36,6 +36,7 @@ public class KpiController {
     private final KpiCalculationService kpiCalculationService;
     private final com.trilong.kpibackend.modules.kpi.service.KpiReportService kpiReportService;
     private final com.trilong.kpibackend.modules.attendance.service.HoanDiemThuBayService hoanDiemThuBayService;
+    private final com.trilong.kpibackend.modules.attendance.service.TangCaService tangCaService;
 
     // ══════════════════════════════════════════════════════════════════
     //  XUẤT BÁO CÁO EXCEL
@@ -354,5 +355,61 @@ public class KpiController {
                 "data", ketQua
         ));
     }
-}
 
+    @Operation(
+            summary = "Tăng ca tính trùng — xem trước",
+            description = "Mỗi ngày chỉ tính tăng ca một lần. Liệt kê từ ngày tu tới ngày den (yyyy-MM-dd) "
+                    + "ai được cộng tăng ca quá một lần trong một ngày, hoặc vẫn còn điểm tăng ca dù lượt về "
+                    + "đã bị thu hồi. Không ghi gì.",
+            security = @SecurityRequirement(name = "Bearer Authentication")
+    )
+    @GetMapping("/tang-ca-trung")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> xemTangCaTrung(@RequestParam String tu, @RequestParam String den) {
+        return tangCaTrung(tu, den, false);
+    }
+
+    @Operation(
+            summary = "Tăng ca tính trùng — thu lại",
+            description = "Thu lại đúng phần điểm tăng ca thừa đã thực vào (xem GET cùng đường dẫn). "
+                    + "Ghi thêm khoản trừ vào nhật ký, không sửa dòng cũ; chạy lại không thu trùng.",
+            security = @SecurityRequirement(name = "Bearer Authentication")
+    )
+    @PostMapping("/tang-ca-trung/thu-lai")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> thuLaiTangCaTrung(@RequestParam String tu, @RequestParam String den) {
+        return tangCaTrung(tu, den, true);
+    }
+
+    private ResponseEntity<?> tangCaTrung(String tu, String den, boolean apDung) {
+        java.time.LocalDate a = java.time.LocalDate.parse(tu.trim());
+        java.time.LocalDate b = java.time.LocalDate.parse(den.trim());
+        if (b.isBefore(a)) throw new IllegalArgumentException("Ngày kết thúc phải từ ngày bắt đầu trở đi.");
+
+        var ds = tangCaService.chuanHoa(a, b, apDung);
+        Map<Long, User> nguoi = new java.util.HashMap<>();
+        userRepository.findAllById(ds.stream().map(t -> t.userId()).distinct().toList())
+                .forEach(u -> nguoi.put(u.getId(), u));
+        List<Map<String, Object>> data = ds.stream().map(t -> {
+            User u = nguoi.get(t.userId());
+            Map<String, Object> m = new java.util.LinkedHashMap<>();
+            m.put("userId", t.userId());
+            m.put("fullName", u != null ? u.getFullName() : "#" + t.userId());
+            m.put("phong", u != null && u.getDepartment() != null ? u.getDepartment().getName() : null);
+            m.put("ngay", t.ngay().toString());
+            m.put("dangCo", t.dangCo());
+            m.put("dungRa", t.dungRa());
+            m.put("thua", t.thua());
+            m.put("lyDo", t.lyDo());
+            return m;
+        }).toList();
+        int tong = ds.stream().mapToInt(t -> t.thua()).sum();
+        return ResponseEntity.ok(Map.of(
+                "status", "SUCCESS",
+                "message", apDung
+                        ? "Đã thu lại " + tong + "đ tăng ca tính thừa (" + data.size() + " lượt ngày)."
+                        : "Có " + data.size() + " lượt ngày thừa tổng " + tong + "đ tăng ca.",
+                "data", data
+        ));
+    }
+}

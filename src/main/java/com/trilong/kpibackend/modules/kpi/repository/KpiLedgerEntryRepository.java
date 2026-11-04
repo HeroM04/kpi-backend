@@ -46,6 +46,9 @@ public interface KpiLedgerEntryRepository extends JpaRepository<KpiLedgerEntry, 
      */
     List<KpiLedgerEntry> findByCategoryAndWeekOrderByIdAsc(String category, String week);
 
+    /** Như trên nhưng của riêng một người. */
+    List<KpiLedgerEntry> findByUserIdAndCategoryAndWeekOrderByIdAsc(Long userId, String category, String week);
+
     /** Mọi khoản điểm cùng một diễn giải của một người — để tìm lại khoản đã cộng mà hoàn đúng số. */
     List<KpiLedgerEntry> findByUserIdAndCategoryAndReason(Long userId, String category, String reason);
 

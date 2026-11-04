@@ -157,6 +157,28 @@ class AttendanceReportServiceTest {
     }
 
     @Test
+    @DisplayName("Thứ Bảy tối đa 0,5 công dù ở lại cả ngày; dưới 2 giờ vẫn 0 như ngày thường")
+    void thuBayToiDaNuaCong() {
+        LocalDate thuBay = LocalDate.of(2026, 10, 3);
+        LocalTime moc = LocalTime.of(8, 45);
+        assertThat(AttendanceReportService.tinhNgay(thuBay, List.of(
+                luot(1, "APPROVED", 10, 3, 8, 30, "CHECK_IN"), luot(1, "APPROVED", 10, 3, 17, 30, "CHECK_OUT")), moc).cong())
+                .isEqualTo(0.5);
+        assertThat(AttendanceReportService.tinhNgay(thuBay, List.of(
+                luot(1, "APPROVED", 10, 3, 8, 30, "CHECK_IN"), luot(1, "APPROVED", 10, 3, 11, 50, "CHECK_OUT")), moc).cong())
+                .isEqualTo(0.5);
+        assertThat(AttendanceReportService.tinhNgay(thuBay, List.of(luot(1, "APPROVED", 10, 3, 8, 30, "CHECK_IN")), moc).cong())
+                .isEqualTo(0.5);
+        assertThat(AttendanceReportService.tinhNgay(thuBay, List.of(
+                luot(1, "APPROVED", 10, 3, 8, 30, "CHECK_IN"), luot(1, "APPROVED", 10, 3, 9, 30, "CHECK_OUT")), moc).cong())
+                .isZero();
+        // Ngày thường cả ngày vẫn 1 công
+        assertThat(AttendanceReportService.tinhNgay(thuBay.plusDays(2), List.of(
+                luot(1, "APPROVED", 10, 5, 8, 30, "CHECK_IN"), luot(1, "APPROVED", 10, 5, 17, 30, "CHECK_OUT")), moc).cong())
+                .isEqualTo(1.0);
+    }
+
+    @Test
     @DisplayName("Công một ngày: chỉ vào hoặc chỉ ra 0,5; đủ vào–ra theo số giờ; lượt bị từ chối bỏ qua; chờ duyệt ghi rõ")
     void congMotNgay() {
         LocalDate thuHai = LocalDate.of(2026, 10, 5);

@@ -81,7 +81,7 @@ public class KpiLedgerService {
             maKy = maTuan(thuHai);
             nhan = "Tuần " + thuHai.get(WeekFields.ISO.weekOfWeekBasedYear())
                     + " · " + thuHai.format(NGAY) + " – " + thuHai.plusDays(6).format(NGAY);
-            banGhi = ledgerRepository.findByUserIdAndWeekOrderByOccurredAtDesc(userId, maKy);
+            banGhi = ledgerRepository.findByUserIdAndWeekOrderByCreatedAtDescIdDesc(userId, maKy);
             diemKy = weeklyScoreRepository.findByUserIdAndWeek(userId, maKy)
                     .map(w -> w.getTotal()).orElse(0);
             tranKy = KpiCalculationService.CAP_WEEK;
@@ -94,7 +94,7 @@ public class KpiLedgerService {
             YearMonth ym = thangHienTai.minusMonths(buoc);
             maKy = String.format("%d-%02d", ym.getYear(), ym.getMonthValue());
             nhan = "Tháng " + ym.getMonthValue() + "/" + ym.getYear();
-            banGhi = ledgerRepository.findByUserIdAndMonthOrderByOccurredAtDesc(userId, maKy);
+            banGhi = ledgerRepository.findByUserIdAndMonthOrderByCreatedAtDescIdDesc(userId, maKy);
             diemKy = kpiScoreRepository.findByUserIdAndMonth(userId, maKy)
                     .map(s -> s.getTotal()).orElse(0);
             tranKy = kpiCalculationService.getMaxKpiForMonth(maKy);

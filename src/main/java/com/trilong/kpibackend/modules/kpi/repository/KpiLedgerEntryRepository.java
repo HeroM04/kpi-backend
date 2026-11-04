@@ -12,9 +12,18 @@ import java.util.List;
 @Repository
 public interface KpiLedgerEntryRepository extends JpaRepository<KpiLedgerEntry, Long> {
 
-    List<KpiLedgerEntry> findByUserIdAndWeekOrderByOccurredAtDesc(Long userId, String week);
+    /**
+     * Nhật ký một kỳ, khoản ghi sau đứng trên — đúng thứ tự thông báo đến tay
+     * nhân sự.
+     *
+     * <p>Xếp theo lúc GHI, không theo lúc phát sinh: Admin thu hồi hay thêm chấm
+     * công tay mang mốc phát sinh của lượt chấm công cũ, xếp theo mốc ấy thì
+     * khoản sửa sai nằm dưới khoản bị sửa, còn cùng phút thì thứ tự tùy CSDL.
+     * Ghi cùng một lúc thì id lớn (ghi sau) đứng trên.
+     */
+    List<KpiLedgerEntry> findByUserIdAndWeekOrderByCreatedAtDescIdDesc(Long userId, String week);
 
-    List<KpiLedgerEntry> findByUserIdAndMonthOrderByOccurredAtDesc(Long userId, String month);
+    List<KpiLedgerEntry> findByUserIdAndMonthOrderByCreatedAtDescIdDesc(Long userId, String month);
 
     /** Đếm khoản điểm phát sinh sau lần nhân sự mở màn hình Thông báo gần nhất. */
     long countByUserIdAndCreatedAtAfter(Long userId, ZonedDateTime moc);

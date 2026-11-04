@@ -13,6 +13,9 @@ public interface OneOnOneTrainingRepository extends JpaRepository<OneOnOneTraini
     @Query("SELECT o FROM OneOnOneTraining o JOIN FETCH o.user ORDER BY o.submittedAt DESC")
     List<OneOnOneTraining> findAllWithUser();
 
+    /** Báo cáo của riêng một người, mới nộp đứng trên — cho tab Lịch sử trên app. */
+    List<OneOnOneTraining> findByUserIdOrderBySubmittedAtDesc(Long userId);
+
     /**
      * Báo cáo được máy chủ TỰ DUYỆT theo cách cũ: trạng thái APPROVED mà không
      * có người duyệt. Báo cáo Admin duyệt tay luôn có reviewed_by nên không lẫn vào.

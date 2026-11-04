@@ -1,5 +1,6 @@
 package com.trilong.kpibackend.modules.training.service;
 
+import com.trilong.kpibackend.core.utils.GioVN;
 import com.trilong.kpibackend.modules.kpi.entity.KpiLedgerEntry;
 import com.trilong.kpibackend.modules.kpi.repository.KpiLedgerEntryRepository;
 import com.trilong.kpibackend.modules.kpi.service.KpiCalculationService;
@@ -61,6 +62,25 @@ public class OneOnOneTrainingService {
 
     public List<OneOnOneTrainingDto> getAllOneOnOneTrainings() {
         return oneOnOneTrainingRepository.findAllWithUser().stream()
+                .map(this::mapToDto)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Báo cáo 1-1 của chính người đang đăng nhập — tab Lịch sử trên app.
+     *
+     * <p>Trước đây app chỉ có lịch sử buổi đào tạo chung (điểm danh QR): nộp
+     * báo cáo 1-1 xong là mất dấu, không biết đang chờ duyệt, đã duyệt hay bị
+     * từ chối. Chỉ Admin xem được danh sách trên web.
+     *
+     * @param date  yyyy-MM-dd — một ngày; bỏ trống và có month thì cả tháng
+     * @param month yyyy-MM
+     */
+    @Transactional(readOnly = true)
+    public List<OneOnOneTrainingDto> cuaToi(Long userId, String date, String month) {
+        var loc = GioVN.locNgayHoacThang(date, month);
+        return oneOnOneTrainingRepository.findByUserIdOrderBySubmittedAtDesc(userId).stream()
+                .filter(t -> t.getSubmittedAt() != null && loc.test(GioVN.ngayCua(t.getSubmittedAt())))
                 .map(this::mapToDto)
                 .collect(Collectors.toList());
     }

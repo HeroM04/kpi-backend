@@ -123,4 +123,22 @@ class OneOnOneFlowTest {
         assertThat(kq.tongDiemHoan()).isEqualTo(5);
         verify(kpi).updateKpiPoints(eq(7L), eq("meeting"), eq(-5), eq(nop), contains("chuyển về chờ Admin duyệt"));
     }
+
+    @Test
+    @DisplayName("Lịch sử 1-1 của tôi: chỉ hỏi báo cáo của đúng người đó, lọc theo ngày / tháng giờ VN")
+    void cuaToi() {
+        ZoneId vn = ZoneId.of("Asia/Ho_Chi_Minh");
+        // 00:30 ngày 01/10 giờ VN là 17:30 ngày 30/09 giờ UTC — phải tính vào tháng 10
+        var dauThang = OneOnOneTraining.builder().id(1L).userId(7L).content("a").status("APPROVED")
+                .submittedAt(ZonedDateTime.of(2026, 10, 1, 0, 30, 0, 0, vn).withZoneSameInstant(ZoneId.of("UTC"))).build();
+        var giuaThang = OneOnOneTraining.builder().id(2L).userId(7L).content("b").status("PENDING")
+                .submittedAt(ZonedDateTime.of(2026, 10, 15, 9, 0, 0, 0, vn)).build();
+        var thangTruoc = OneOnOneTraining.builder().id(3L).userId(7L).content("c").status("REJECTED")
+                .submittedAt(ZonedDateTime.of(2026, 9, 30, 20, 0, 0, 0, vn)).build();
+        when(repo.findByUserIdOrderBySubmittedAtDesc(7L)).thenReturn(List.of(giuaThang, dauThang, thangTruoc));
+
+        assertThat(service.cuaToi(7L, null, "2026-10")).extracting(d -> d.getId()).containsExactly(2L, 1L);
+        assertThat(service.cuaToi(7L, "2026-10-01", null)).extracting(d -> d.getStatus()).containsExactly("APPROVED");
+        verify(repo, never()).findAllWithUser();
+    }
 }

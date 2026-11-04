@@ -33,6 +33,19 @@ public class OneOnOneTrainingController {
         return ResponseEntity.ok(service.getAllOneOnOneTrainings());
     }
 
+    @Operation(summary = "Báo cáo đào tạo 1-1 của tôi",
+               description = "Dành cho app, tab Lịch sử. Chỉ trả báo cáo của chính người đăng nhập, mới nộp "
+                           + "đứng trên. date=yyyy-MM-dd lọc một ngày; month=yyyy-MM lấy cả tháng.")
+    @GetMapping("/my")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<?> cuaToi(
+            @AuthenticationPrincipal UserPrincipal user,
+            @RequestParam(required = false) String date,
+            @RequestParam(required = false) String month) {
+        return ResponseEntity.ok(Map.of("status", "SUCCESS",
+                "data", service.cuaToi(user.getUserId(), date, month)));
+    }
+
     @Operation(summary = "Nộp báo cáo đào tạo 1-1",
                description = "Dành cho nhân sự dùng app. Báo cáo vào trạng thái chờ duyệt, "
                            + "Admin duyệt thì mới cộng điểm.")

@@ -157,7 +157,7 @@ class AttendanceReportServiceTest {
     }
 
     @Test
-    @DisplayName("Thứ Bảy tối đa 0,5 công dù ở lại cả ngày; dưới 2 giờ vẫn 0 như ngày thường")
+    @DisplayName("Thứ Bảy tối đa 0,5 công dù ở lại cả ngày; Chủ nhật không tính công; dưới 2 giờ vẫn 0")
     void thuBayToiDaNuaCong() {
         LocalDate thuBay = LocalDate.of(2026, 10, 3);
         LocalTime moc = LocalTime.of(8, 45);
@@ -172,6 +172,13 @@ class AttendanceReportServiceTest {
         assertThat(AttendanceReportService.tinhNgay(thuBay, List.of(
                 luot(1, "APPROVED", 10, 3, 8, 30, "CHECK_IN"), luot(1, "APPROVED", 10, 3, 9, 30, "CHECK_OUT")), moc).cong())
                 .isZero();
+        // Chủ nhật không tính công dù có chấm, giờ vào/ra vẫn ghi
+        var chuNhat = AttendanceReportService.tinhNgay(thuBay.plusDays(1), List.of(
+                luot(1, "APPROVED", 10, 4, 8, 30, "CHECK_IN"), luot(1, "APPROVED", 10, 4, 17, 30, "CHECK_OUT")), moc);
+        assertThat(chuNhat.cong()).isZero();
+        assertThat(chuNhat.cap().get(0)).containsExactly(LocalTime.of(8, 30), LocalTime.of(17, 30));
+        assertThat(AttendanceReportService.tinhNgay(thuBay.plusDays(1), List.of(
+                luot(1, "APPROVED", 10, 4, 9, 0, "CHECK_IN")), moc).cong()).isZero();
         // Ngày thường cả ngày vẫn 1 công
         assertThat(AttendanceReportService.tinhNgay(thuBay.plusDays(2), List.of(
                 luot(1, "APPROVED", 10, 5, 8, 30, "CHECK_IN"), luot(1, "APPROVED", 10, 5, 17, 30, "CHECK_OUT")), moc).cong())

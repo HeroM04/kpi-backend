@@ -44,7 +44,7 @@ import java.util.stream.Collectors;
  *       (dạng 00738) nên gộp chung không lẫn người.</li>
  *   <li>Công: đủ vào–ra thì theo số giờ (từ 5 giờ = 1, từ 2 giờ = 0,5, dưới 2
  *       giờ = 0, trừ 1,5 giờ nghỉ trưa nếu làm qua trưa); chỉ có giờ vào hoặc chỉ
- *       có giờ ra = 0,5. Thứ Bảy tối đa 0,5. Lượt bị từ chối không tính; lượt đang chờ duyệt vẫn
+ *       có giờ ra = 0,5. Thứ Bảy tối đa 0,5, Chủ nhật không tính công. Lượt bị từ chối không tính; lượt đang chờ duyệt vẫn
  *       tính và cột Nơi làm việc ghi "Chờ duyệt".</li>
  *   <li>Trễ: số phút vào sau mốc đúng giờ (08:45, người được châm chước 09:00;
  *       vào buổi chiều so với 13:45). Sớm: số phút ra trước 17:30, thứ Hai–Sáu.
@@ -354,8 +354,10 @@ public class AttendanceReportService {
         }
 
         DayOfWeek thu = ngay.getDayOfWeek();
-        // Thứ Bảy làm nửa ngày: tối đa 0,5 công dù ở lại cả ngày
+        // Thứ Bảy làm nửa ngày: tối đa 0,5 công dù ở lại cả ngày. Chủ nhật không
+        // tính công — vẫn ghi giờ vào/ra để đối chiếu.
         if (thu == DayOfWeek.SATURDAY) cong = Math.min(cong, CONG_TOI_DA_THU_BAY);
+        if (thu == DayOfWeek.SUNDAY) cong = 0;
         boolean ngayThuong = thu != DayOfWeek.SATURDAY && thu != DayOfWeek.SUNDAY;
         int tre = 0;
         if (vao != null && thu != DayOfWeek.SUNDAY) {

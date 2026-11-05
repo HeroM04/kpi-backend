@@ -224,6 +224,29 @@ public class CheckinController {
         }
     }
 
+    @Operation(
+            summary = "🕘 Admin sửa giờ một lượt chấm công",
+            description = "gio=HH:mm (giữ nguyên ngày), lyDo bắt buộc. Lượt vào đã duyệt thì tính lại điểm "
+                    + "đúng giờ / đi muộn ngay (gỡ đúng số đã thực có rồi tính theo giờ mới); lượt ra đã duyệt "
+                    + "thì cộng / thu lại tăng ca theo mốc 20:00. Giờ cũ và lý do ghi vào ghi chú."
+    )
+    @PutMapping("/{id}/gio")
+    @PreAuthorize("hasAuthority('attendance:approve') or hasRole('ADMIN')")
+    public ResponseEntity<?> suaGio(@PathVariable Long id,
+                                    @RequestParam String gio,
+                                    @RequestParam String lyDo) {
+        try {
+            var kq = checkinService.suaGio(id, java.time.LocalTime.parse(gio.trim()), lyDo);
+            return ResponseEntity.ok(Map.of("status", "SUCCESS", "message", kq.moTa(), "data", Map.of(
+                    "luot", kq.luot(), "gioCu", kq.gioCu(), "gioMoi", kq.gioMoi(),
+                    "diemGo", kq.diemGo(), "diemCong", kq.diemCong(), "moTa", kq.moTa())));
+        } catch (java.time.format.DateTimeParseException e) {
+            return ResponseEntity.badRequest().body(Map.of("status", "ERROR", "message", "Giờ không hợp lệ, dạng HH:mm."));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("status", "ERROR", "message", e.getMessage()));
+        }
+    }
+
     /** Thân yêu cầu thêm chấm công tay. Giờ dạng HH:mm, ngày dạng yyyy-MM-dd. */
     public record ThemTayDTO(Long userId, LocalDate ngay, java.time.LocalTime gioVao,
                              java.time.LocalTime gioRa, String ghiChu) {}

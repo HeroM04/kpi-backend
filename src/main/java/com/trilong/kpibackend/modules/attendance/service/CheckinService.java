@@ -4,6 +4,7 @@ import com.trilong.kpibackend.core.utils.HaversineUtils;
 import com.trilong.kpibackend.modules.attendance.dto.CheckinRequestDTO;
 import com.trilong.kpibackend.modules.attendance.entity.CheckinLog;
 import com.trilong.kpibackend.modules.attendance.repository.CheckinLogRepository;
+import com.trilong.kpibackend.modules.kpi.repository.KpiLedgerEntryRepository;
 import com.trilong.kpibackend.modules.kpi.service.KpiCalculationService;
 import com.trilong.kpibackend.modules.user.entity.Department;
 import com.trilong.kpibackend.modules.user.entity.User;
@@ -145,6 +146,9 @@ public class CheckinService {
 
     @Autowired
     private TangCaService tangCaService;
+
+    @Autowired
+    private KpiLedgerEntryRepository ledgerRepository;
 
     /**
      * Cùng người, cùng loại (vào / ra) gửi lại trong khoảng này thì coi là gửi
@@ -620,6 +624,102 @@ public class CheckinService {
         String status  = (String) request.get("status");
         String reason  = (String) request.get("reason");
         updateStatus(logId, status, reason);
+    }
+
+    /** Kết quả Admin sửa giờ một lượt chấm công. diemGo / diemCong là số điểm chuyên cần đã gỡ / đã cộng lại. */
+    public record KetQuaSuaGio(CheckinLog luot, String gioCu, String gioMoi, int diemGo, int diemCong, String moTa) {}
+
+    /**
+     * Admin sửa giờ một lượt chấm công (giữ nguyên ngày), bắt buộc ghi lý do —
+     * ví dụ nhân sự tới lúc 08:45 nhưng app chậm, 08:46 máy chủ mới nhận nên bị
+     * tính đi muộn −5.
+     *
+     * <p>Lượt VÀO đã duyệt thì tính lại điểm chuyên cần ngay:
+     * <ul>
+     *   <li>Gỡ đúng số điểm lượt này đang thực có (tra nhật ký điểm theo mốc giờ
+     *       cũ, gồm cả các lần thu hồi / sửa trước đó) — không gỡ đại 5đ.</li>
+     *   <li>Tính lại theo giờ mới như lúc chấm thật: đúng giờ +5, muộn −5, chỉ
+     *       khi đây là lượt vào đầu tiên trong ngày; thứ Bảy không tính điểm.</li>
+     * </ul>
+     * Lượt RA đã duyệt: dời qua / về dưới mốc 20:00 thì cộng / thu lại tăng ca
+     * (mỗi ngày một lần). Lượt chờ duyệt chỉ đổi giờ — duyệt sau sẽ tính theo
+     * giờ mới. Giờ cũ và lý do được ghi vào ghi chú của lượt để tra lại.
+     */
+    @Transactional
+    public KetQuaSuaGio suaGio(Long id, LocalTime gioMoi, String lyDo) {
+        if (gioMoi == null) throw new IllegalArgumentException("Chưa nhập giờ mới.");
+        if (lyDo == null || lyDo.isBlank()) throw new IllegalArgumentException("Nhập lý do sửa giờ.");
+        CheckinLog c = checkinLogRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy bản ghi chấm công."));
+        if (c.getCheckinTime() == null) throw new IllegalArgumentException("Bản ghi chưa có giờ để sửa.");
+
+        ZonedDateTime cu = c.getCheckinTime().withZoneSameInstant(VN_ZONE);
+        ZonedDateTime moi = cu.toLocalDate()
+                .atTime(gioMoi.truncatedTo(java.time.temporal.ChronoUnit.MINUTES)).atZone(VN_ZONE);
+        if (moi.isAfter(ZonedDateTime.now(VN_ZONE))) {
+            throw new IllegalArgumentException("Không đặt giờ ở thời điểm chưa tới.");
+        }
+        String gioCu = gio(cu), gioMoiChu = gio(moi);
+        boolean laRa = "CHECK_OUT".equals(c.getActionType());
+        if (gioCu.equals(gioMoiChu)) return new KetQuaSuaGio(c, gioCu, gioMoiChu, 0, 0, "Giờ không đổi.");
+
+        Long userId = c.getUserId();
+        boolean daDuyet = "APPROVED".equals(c.getStatus());
+        boolean tinhChuyenCan = daDuyet && !laRa && !com.trilong.kpibackend.core.utils.GioVN.laThuBay(cu);
+        int dangCo = tinhChuyenCan ? diemChuyenCanCuaLuot(userId, cu) : 0;
+
+        c.setCheckinTime(moi);
+        String ghi = "Admin sửa giờ " + gioCu + " → " + gioMoiChu + ": " + lyDo.trim();
+        c.setNote(c.getNote() == null || c.getNote().isBlank() ? ghi : c.getNote() + " · " + ghi);
+        CheckinLog saved = checkinLogRepository.save(c);
+
+        int diemGo = 0, diemCong = 0;
+        if (tinhChuyenCan) {
+            if (dangCo != 0) {
+                // Mang "lúc <giờ cũ>" để lần sửa sau tra theo mốc này thấy đã gỡ rồi
+                kpiCalculationService.updateKpiPoints(userId, "attendance", -dangCo, cu,
+                        "Admin sửa giờ chấm công: gỡ khoản lúc " + gioCu + " (giờ đúng " + gioMoiChu + ") — " + lyDo.trim());
+                diemGo = dangCo;
+            }
+            LocalTime moc = mocDungGioCua(userId);
+            int diemMoi = daTinhDiemTrongNgay(userId, moi, saved.getId())
+                    ? 0 : calculateAttendanceKpi("CHECK_IN", moi.toLocalTime(), moc);
+            if (diemMoi != 0) {
+                kpiCalculationService.updateKpiPoints(userId, "attendance", diemMoi, moi,
+                        "Admin sửa giờ chấm công — " + dienGiaiChuyenCan("CHECK_IN", moi, moc));
+                diemCong = diemMoi;
+            }
+        }
+        if (daDuyet && laRa) {
+            boolean cuDu = duDieuKienTangCa("CHECK_OUT", cu), moiDu = duDieuKienTangCa("CHECK_OUT", moi);
+            if (cuDu && !moiDu) tangCaService.thuLaiNeuHetLuot(userId, cu.toLocalDate());
+            if (!cuDu && moiDu) awardOvertimeIfEligible(userId, "CHECK_OUT", moi, saved.getId());
+        }
+
+        StringBuilder moTa = new StringBuilder("Đã sửa giờ " + (laRa ? "ra" : "vào") + " " + gioCu + " → " + gioMoiChu + ".");
+        if (!daDuyet) moTa.append(" Lượt này chưa duyệt — điểm sẽ tính theo giờ mới khi duyệt.");
+        if (diemGo != 0) moTa.append(" Gỡ khoản cũ ").append(diemGo > 0 ? "+" : "").append(diemGo).append("đ.");
+        if (diemCong != 0) moTa.append(" Tính lại: ").append(diemCong > 0 ? "+" : "").append(diemCong).append("đ.");
+        log.info("[Checkin] Admin sửa giờ #{} userId={}: {} → {} ({}) gỡ {} cộng {}",
+                id, userId, gioCu, gioMoiChu, lyDo, diemGo, diemCong);
+        return new KetQuaSuaGio(saved, gioCu, gioMoiChu, diemGo, diemCong, moTa.toString());
+    }
+
+    /**
+     * Điểm chuyên cần một lượt vào đang thực có: cộng các khoản nhóm chuyên cần
+     * ghi đúng mốc giờ đó và mang chữ "lúc HH:mm" — khoản chấm công / duyệt /
+     * thêm tay, khoản Admin thu hồi, khoản gỡ khi sửa giờ đều ghi như vậy.
+     */
+    private int diemChuyenCanCuaLuot(Long userId, ZonedDateTime luc) {
+        String tuan = kpiCalculationService.getWeekString(luc);
+        String chu = "lúc " + gio(luc);
+        long moc = luc.toInstant().toEpochMilli();
+        return ledgerRepository.findByUserIdAndCategoryAndWeekOrderByIdAsc(userId, "attendance", tuan).stream()
+                .filter(e -> e.getOccurredAt() != null
+                        && Math.abs(e.getOccurredAt().toInstant().toEpochMilli() - moc) <= 60_000)
+                .filter(e -> e.getReason() != null && e.getReason().contains(chu))
+                .mapToInt(e -> e.getEffectivePoints() == null ? 0 : e.getEffectivePoints())
+                .sum();
     }
 
     /** Xóa bản ghi checkin (Admin) */

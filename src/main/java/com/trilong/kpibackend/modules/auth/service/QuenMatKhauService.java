@@ -41,7 +41,7 @@ public class QuenMatKhauService {
     static final int GIU_TOI_DA = 10;
 
     static final String LOI_CHUNG = "Điện thoại này chưa từng đăng nhập tài khoản đó nên không tự đặt "
-            + "lại mật khẩu được. Nhờ Admin đặt lại trên web (Nhân sự → Đặt lại mật khẩu).";
+            + "lại mật khẩu được. Nhờ Admin đặt lại mật khẩu cho bạn trên Web Admin.";
 
     private static final SecureRandom NGAU_NHIEN = new SecureRandom();
 

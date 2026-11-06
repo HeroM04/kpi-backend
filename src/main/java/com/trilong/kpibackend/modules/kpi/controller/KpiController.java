@@ -321,6 +321,7 @@ public class KpiController {
     )
     @PutMapping("/{id}/flag")
     @PreAuthorize("hasAuthority('kpi:flag') or hasRole('ADMIN')")
+    @Transactional // lớp mặc định chỉ đọc — không có dòng này thì cờ không được lưu
     public ResponseEntity<?> flagKpiScore(
             @PathVariable Long id,
             @RequestParam boolean isFlagged) {
@@ -377,6 +378,9 @@ public class KpiController {
     )
     @PostMapping("/tang-ca-trung/thu-lai")
     @PreAuthorize("hasRole('ADMIN')")
+    // Lớp này mặc định chỉ đọc; thiếu dòng dưới thì lệnh ghi khoản thu lại bị
+    // Postgres từ chối ("cannot execute INSERT in a read-only transaction").
+    @Transactional
     public ResponseEntity<?> thuLaiTangCaTrung(@RequestParam String tu, @RequestParam String den) {
         return tangCaTrung(tu, den, true);
     }

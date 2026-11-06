@@ -2,6 +2,7 @@ package com.trilong.kpibackend.core.service;
 
 import com.cloudinary.Cloudinary;
 import com.cloudinary.utils.ObjectUtils;
+import com.trilong.kpibackend.core.utils.ThuNhoAnh;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -49,11 +50,20 @@ public class CloudinaryService {
             throw new IllegalArgumentException("Chỉ chấp nhận file ảnh (jpg, png, webp, ...).");
         }
 
+        // Cloudinary gói Free từ chối ảnh trên 10 MB ("File size too large") —
+        // hay gặp ở ảnh chụp màn hình PNG. Nén sang JPEG trước khi gửi.
+        byte[] duLieu = file.getBytes();
+        if (ThuNhoAnh.canNen(duLieu.length)) {
+            int truoc = duLieu.length;
+            duLieu = ThuNhoAnh.thuNho(duLieu);
+            log.info("[Cloudinary] Ảnh {} byte quá trần 10 MB, đã nén còn {} byte", truoc, duLieu.length);
+        }
+
         // Tạo public_id ngẫu nhiên để tránh trùng tên
         String publicId = "kpi-system/" + UUID.randomUUID();
 
         Map<String, Object> uploadResult = cloudinary.uploader().upload(
-                file.getBytes(),
+                duLieu,
                 ObjectUtils.asMap(
                         "public_id", publicId,
                         "overwrite", true,

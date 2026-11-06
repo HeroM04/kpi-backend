@@ -40,7 +40,7 @@ public class UploadController {
     /**
      * Upload một file ảnh lên Cloudinary.
      *
-     * @param file File ảnh (jpg, png, webp, ...) — max 20MB (cấu hình trong application.properties)
+     * @param file File ảnh (jpg, png, webp, ...) — tối đa 25 MB (application.yml); ảnh trên 10 MB được nén trước khi gửi Cloudinary
      * @return JSON chứa {@code url} — đường link HTTPS đến ảnh trên Cloudinary
      */
     @Operation(

@@ -38,6 +38,7 @@ public class AuthService {
     @Autowired private JwtUtils jwtUtils;
     @Autowired private com.trilong.kpibackend.core.security.HoSoNongService hoSoNong;
     @Autowired private PhienDangNhapService phienDangNhapService;
+    @Autowired private QuenMatKhauService quenMatKhauService;
 
     @Value("${app.jwt.expiration-ms:3600000}")
     private long accessTokenExpMs;
@@ -119,6 +120,8 @@ public class AuthService {
                 .officeLat(dept != null ? dept.getOfficeLat() : null)
                 .officeLng(dept != null ? dept.getOfficeLng() : null)
                 .allowedRadius(dept != null ? dept.getAllowedRadius() : 50)
+                // Web không cần: quên mật khẩu chỉ tự đặt lại được trên điện thoại
+                .khoaKhoiPhuc(laApp(deviceInfo) ? quenMatKhauService.capKhoa(user, deviceInfo) : null)
                 .build();
     }
 

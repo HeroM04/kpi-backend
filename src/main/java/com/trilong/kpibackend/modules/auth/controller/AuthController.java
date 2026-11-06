@@ -203,6 +203,41 @@ public class AuthController {
                 "message", "Đổi mật khẩu thành công. Vui lòng đăng nhập lại trên tất cả thiết bị."));
     }
 
+    // ── Quên mật khẩu ────────────────────────────────────────────────────────
+
+    @Autowired
+    private com.trilong.kpibackend.modules.auth.service.QuenMatKhauService quenMatKhauService;
+
+    @Operation(
+            summary = "Quên mật khẩu — tự đặt lại về 123456 (không cần token)",
+            description = "Body: {\"phoneNumber\": \"...\", \"khoaKhoiPhuc\": \"...\"}. Khóa khôi phục là khóa " +
+                    "máy chủ cấp lúc đăng nhập app trên chính điện thoại đó — máy chưa từng đăng nhập " +
+                    "tài khoản này thì không đặt lại được (nhờ Admin). Xong thì mọi thiết bị bị đăng xuất."
+    )
+    @PostMapping("/quen-mat-khau")
+    public ResponseEntity<?> quenMatKhau(@RequestBody Map<String, String> body) {
+        quenMatKhauService.datLaiMatKhau(body.get("phoneNumber"), body.get("khoaKhoiPhuc"));
+        return ResponseEntity.ok(Map.of("status", "SUCCESS",
+                "message", "Đã đặt lại mật khẩu về " + com.trilong.kpibackend.modules.auth.service.QuenMatKhauService.MAT_KHAU_MAC_DINH
+                        + ". Đăng nhập rồi đổi mật khẩu mới ngay."));
+    }
+
+    @Operation(
+            summary = "Xin (hoặc giữ) khóa khôi phục cho điện thoại đang đăng nhập",
+            description = "Body: {\"khoaHienCo\": \"...\"} (có thể trống). Khóa máy đang giữ còn hiệu lực thì " +
+                    "trả lại đúng khóa đó, không thì cấp khóa mới.",
+            security = @SecurityRequirement(name = "Bearer Authentication")
+    )
+    @PostMapping("/khoa-khoi-phuc")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<?> khoaKhoiPhuc(@AuthenticationPrincipal UserPrincipal currentUser,
+                                          @RequestBody(required = false) Map<String, String> body,
+                                          HttpServletRequest httpRequest) {
+        String khoa = quenMatKhauService.giuHoacCapMoi(currentUser.getUserId(),
+                body == null ? null : body.get("khoaHienCo"), httpRequest.getHeader("User-Agent"));
+        return ResponseEntity.ok(Map.of("status", "SUCCESS", "data", Map.of("khoaKhoiPhuc", khoa)));
+    }
+
     // ── GET /ping ────────────────────────────────────────────────────────────
     @Operation(summary = "Kiểm tra server", description = "Health check — không cần token.")
     @GetMapping("/ping")

@@ -34,9 +34,4 @@ public class LoginResponseDTO {
     private Double  officeLat;
     private Double  officeLng;
     private Integer allowedRadius;  // Bán kính check-in văn phòng (mét)
-
-    // ── Quên mật khẩu ──────────────────────────────────────────────────────
-    // Chỉ có khi đăng nhập từ app: khóa để chính điện thoại này sau này tự đặt
-    // lại mật khẩu về mặc định. App giữ trong kho bảo mật, đăng xuất không xóa.
-    private String khoaKhoiPhuc;
 }

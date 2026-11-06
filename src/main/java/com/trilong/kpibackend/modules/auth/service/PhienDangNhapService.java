@@ -43,7 +43,6 @@ public class PhienDangNhapService {
     private final UserRepository userRepository;
     private final HoSoNongService hoSoNong;
     private final GhiHoatDongNen ghiNen;
-    private final com.trilong.kpibackend.modules.auth.repository.KhoaKhoiPhucRepository khoaKhoiPhucRepository;
 
     private final Map<Long, Long> lanGhiCuoi = new ConcurrentHashMap<>();
 
@@ -69,20 +68,6 @@ public class PhienDangNhapService {
      */
     @Transactional
     public int dangXuatMoiThietBi(Long userId) {
-        return dangXuatMoiThietBi(userId, null);
-    }
-
-    /**
-     * Như trên, và gỡ luôn khóa khôi phục mật khẩu của các máy đó — máy bị đá ra
-     * vì nghi người lạ dùng mà vẫn tự đặt lại mật khẩu về 123456 rồi vào lại được
-     * thì đá ra cũng vô ích. Máy chính chủ đăng nhập lại sẽ được cấp khóa mới.
-     *
-     * @param giuKhoaId khóa được giữ lại (máy vừa tự đặt lại mật khẩu), null = gỡ hết
-     */
-    @Transactional
-    public int dangXuatMoiThietBi(Long userId, Long giuKhoaId) {
-        if (giuKhoaId == null) khoaKhoiPhucRepository.xoaHet(userId);
-        else khoaKhoiPhucRepository.xoaHetTru(userId, giuKhoaId);
         int soPhien = refreshTokenRepository.thuHoiTatCa(userId);
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy nhân sự"));
@@ -103,10 +88,6 @@ public class PhienDangNhapService {
         if (xong) {
             hoSoNong.quen(userId);   // để yêu cầu kế tiếp của máy đó bị chặn ngay
             lanGhiCuoi.remove(phienId);
-            // Không biết khóa khôi phục nào thuộc máy vừa gỡ, nên gỡ hết: máy bị
-            // gỡ không tự đặt lại mật khẩu để vào lại được nữa; các máy còn
-            // đăng nhập tự xin khóa mới lần mở app kế tiếp.
-            khoaKhoiPhucRepository.xoaHet(userId);
         }
         return xong;
     }

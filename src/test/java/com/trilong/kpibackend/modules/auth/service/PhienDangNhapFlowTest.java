@@ -34,14 +34,13 @@ class PhienDangNhapFlowTest {
     @Mock UserRepository userRepository;
     @Mock HoSoNongService hoSoNong;
     @Mock PhienDangNhapService.GhiHoatDongNen ghiNen;
-    @Mock com.trilong.kpibackend.modules.auth.repository.KhoaKhoiPhucRepository khoaRepository;
     PhienDangNhapService service;
 
     private final User admin = User.builder().id(1L).fullName("Admin").build();
 
     @BeforeEach
     void chuanBi() {
-        service = new PhienDangNhapService(refreshTokenRepository, userRepository, hoSoNong, ghiNen, khoaRepository);
+        service = new PhienDangNhapService(refreshTokenRepository, userRepository, hoSoNong, ghiNen);
         when(userRepository.findById(1L)).thenReturn(Optional.of(admin));
         when(userRepository.save(any())).thenAnswer(i -> i.getArgument(0));
     }
@@ -57,7 +56,6 @@ class PhienDangNhapFlowTest {
         assertThat(so).isEqualTo(3);
         assertThat(admin.getSessionsValidFrom()).isAfter(truoc);   // token phát trước mốc này bị chặn
         verify(hoSoNong).quen(1L);
-        verify(khoaRepository).xoaHet(1L);   // máy bị đá không tự đặt lại mật khẩu để vào lại được
     }
 
     @Test
@@ -66,12 +64,10 @@ class PhienDangNhapFlowTest {
         when(refreshTokenRepository.thuHoiMotPhien(501L, 1L)).thenReturn(1);
         assertThat(service.thuHoi(1L, 501L)).isTrue();
         verify(hoSoNong).quen(1L);
-        verify(khoaRepository).xoaHet(1L);
 
         // Không gỡ được phiên của người khác
         when(refreshTokenRepository.thuHoiMotPhien(502L, 1L)).thenReturn(0);
         assertThat(service.thuHoi(1L, 502L)).isFalse();
-        verify(khoaRepository, times(1)).xoaHet(1L);   // gỡ hụt thì không đụng khóa
     }
 
     @Test

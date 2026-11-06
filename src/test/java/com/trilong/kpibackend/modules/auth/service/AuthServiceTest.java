@@ -44,7 +44,6 @@ class AuthServiceTest {
     @Mock JwtUtils jwtUtils;
     @Mock HoSoNongService hoSoNong;
     @Mock PhienDangNhapService phienDangNhapService;
-    @Mock QuenMatKhauService quenMatKhauService;
     @Mock HttpServletRequest http;
     @InjectMocks AuthService service;
 
@@ -204,19 +203,6 @@ class AuthServiceTest {
                 .isBetween(bayGio.plusDays(89), bayGio.plusDays(91));
         assertThat(phien.getAllValues().get(1).getExpiresAt())
                 .isBetween(bayGio.plusDays(6), bayGio.plusDays(8));
-    }
-
-    @Test
-    @DisplayName("Đăng nhập từ app thì kèm khóa khôi phục mật khẩu cho máy đó; web thì không")
-    void khoaKhoiPhucChiChoApp() {
-        when(quenMatKhauService.capKhoa(any(User.class), anyString())).thenReturn("khoa-may");
-
-        when(http.getHeader("User-Agent")).thenReturn("Dart/3.5 (dart:io)");
-        assertThat(service.login(dangNhap("0912345678", "dung-mat-khau"), http).getKhoaKhoiPhuc()).isEqualTo("khoa-may");
-
-        when(http.getHeader("User-Agent")).thenReturn("Mozilla/5.0 (Windows NT 10.0) Chrome/140.0");
-        assertThat(service.login(dangNhap("0912345678", "dung-mat-khau"), http).getKhoaKhoiPhuc()).isNull();
-        verify(quenMatKhauService, times(1)).capKhoa(any(User.class), anyString());
     }
 
     @Test

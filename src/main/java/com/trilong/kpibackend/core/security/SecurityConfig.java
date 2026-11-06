@@ -44,7 +44,7 @@ public class SecurityConfig {
                                 "/api/v1/auth/refresh",
                                 "/api/v1/auth/ping",
                                 "/api/v1/auth/check-status",
-                                "/api/v1/auth/quen-mat-khau", // quên mật khẩu: phải có khóa của điện thoại đã từng đăng nhập
+                                "/api/v1/auth/quen-mat-khau", // quên mật khẩu: nhập số điện thoại → về 123456 (trừ Admin)
                                 "/ws/**", // <--- QUAN TRỌNG: Cho phép SockJS handshake
                                 "/ws-feedbacks/**" // <--- QUAN TRỌNG: Mở cổng cho WebSocket handshake
                         ).permitAll()

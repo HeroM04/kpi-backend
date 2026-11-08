@@ -25,6 +25,8 @@ public class DealResponseDTO {
     private String status;
     private ZonedDateTime submittedAt;
     private ZonedDateTime approvedAt;
+    /** Lý do Admin từ chối (chỉ có khi status = REJECTED). */
+    private String rejectReason;
     private Long approvedById;
     private String approvedByFullName;
     private Integer kpiTriggered;
@@ -45,6 +47,7 @@ public class DealResponseDTO {
                 .status(deal.getStatus())
                 .submittedAt(deal.getSubmittedAt())
                 .approvedAt(deal.getApprovedAt())
+                .rejectReason(deal.getRejectReason())
                 .approvedById(deal.getApprovedBy() != null ? deal.getApprovedBy().getId() : null)
                 .approvedByFullName(deal.getApprovedBy() != null ? deal.getApprovedBy().getFullName() : null)
                 .kpiTriggered(deal.getKpiTriggered())

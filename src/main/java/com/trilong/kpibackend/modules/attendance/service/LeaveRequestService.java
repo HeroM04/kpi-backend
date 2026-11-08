@@ -316,6 +316,7 @@ public class LeaveRequestService {
      */
     @Transactional
     public LeaveRequest reject(Long requestId, Long adminId, String note) {
+        note = com.trilong.kpibackend.core.utils.LyDoTuChoi.batBuoc(note);
         LeaveRequest req = leaveRequestRepository.findById(requestId)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn xin vắng."));
         if ("UNEXCUSED".equals(req.getStatus())) {

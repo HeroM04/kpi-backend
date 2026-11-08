@@ -176,7 +176,7 @@ class LeaveRequestServiceTest {
             c.setStatus("APPROVED");
             when(checkinRepo.findByUserIdAndCheckinTimeBetween(eq(7L), any(), any())).thenReturn(List.of(c));
 
-            service.reject(4L, 99L, null);
+            service.reject(4L, 99L, "Không có giấy xác nhận");
 
             assertThat(r.getStatus()).isEqualTo("REJECTED");
             verify(kpi, never()).updateKpiPoints(any(), any(), eq(-15), any(), any());
@@ -186,7 +186,7 @@ class LeaveRequestServiceTest {
         @DisplayName("Không từ chối được bản ghi vắng không phép do máy ghi — tránh hoàn nhầm 10đ cho khoản trừ 15đ")
         void khongTuChoiVangKhongPhep() {
             don(5, homQuaKhongPhaiCN(), "UNEXCUSED", true);
-            assertThatThrownBy(() -> service.reject(5L, 99L, null)).isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> service.reject(5L, 99L, "Sai ngày")).isInstanceOf(IllegalArgumentException.class);
             verify(kpi, never()).updateKpiPoints(any(), any(), anyInt(), any(), any());
         }
 
@@ -221,7 +221,7 @@ class LeaveRequestServiceTest {
             LeaveRequest r = don(9, thuBayTruoc(), "PENDING", false);
             when(checkinRepo.findByUserIdAndCheckinTimeBetween(eq(7L), any(), any())).thenReturn(List.of());
 
-            service.reject(9L, 99L, null);
+            service.reject(9L, 99L, "Không có giấy xác nhận");
 
             assertThat(r.getStatus()).isEqualTo("UNEXCUSED");
             assertThat(r.getKpiApplied()).isFalse();

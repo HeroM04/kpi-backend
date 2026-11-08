@@ -80,7 +80,7 @@ class OneOnOneFlowTest {
     @DisplayName("Từ chối báo cáo chờ duyệt → không đụng điểm, nhân sự nhận thông báo")
     void tuChoiChoDuyet() {
         baoCao("PENDING", null);
-        service.tuChoi(5L, 1L);
+        service.tuChoi(5L, 1L, "Nội dung chưa rõ");
         verify(kpi, never()).updateKpiPoints(any(), any(), anyInt(), any(), any());
         verify(push).guiToiNhanSu(eq(7L), contains("bị từ chối"), anyString(), any());
     }
@@ -91,7 +91,7 @@ class OneOnOneFlowTest {
         baoCao("APPROVED", 1L);
         when(ledger.findByUserIdAndCategoryAndReasonStartingWithOrderByIdAsc(7L, "meeting", "Admin duyệt đào tạo 1-1"))
                 .thenReturn(List.of(dong("Admin duyệt đào tạo 1-1 — cách học dự án", 0)));
-        service.tuChoi(5L, 1L);
+        service.tuChoi(5L, 1L, "Nội dung chưa rõ");
         verify(kpi, never()).updateKpiPoints(any(), any(), anyInt(), any(), any());
     }
 

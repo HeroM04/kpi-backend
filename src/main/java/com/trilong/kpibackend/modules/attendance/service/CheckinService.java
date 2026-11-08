@@ -552,11 +552,11 @@ public class CheckinService {
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy bản ghi chấm công"));
 
         String oldStatus = checkinLog.getStatus();
+        // Từ chối phải có lý do (nhân sự xem trong Lịch sử); trạng thái khác thì gỡ lý do cũ
+        String lyDo = "REJECTED".equalsIgnoreCase(newStatus)
+                ? com.trilong.kpibackend.core.utils.LyDoTuChoi.batBuoc(reason) : null;
         checkinLog.setStatus(newStatus.toUpperCase());
-
-        if (reason != null && !reason.trim().isEmpty()) {
-            checkinLog.setRejectReason(reason);
-        }
+        checkinLog.setRejectReason(lyDo);
 
         CheckinLog saved = checkinLogRepository.save(checkinLog);
 

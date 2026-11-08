@@ -78,6 +78,7 @@ public class DealService {
         }
 
         deal.setStatus("APPROVED");
+        deal.setRejectReason(null);
         deal.setApprovedBy(approver);
         deal.setApprovedAt(ZonedDateTime.now());
 
@@ -91,7 +92,8 @@ public class DealService {
     }
 
     @Transactional
-    public Deal rejectDeal(Long dealId, Long approvedById) {
+    public Deal rejectDeal(Long dealId, Long approvedById, String lyDoTuChoi) {
+        String lyDo = com.trilong.kpibackend.core.utils.LyDoTuChoi.batBuoc(lyDoTuChoi);
         Deal deal = dealRepository.findById(dealId)
                 .orElseThrow(() -> new IllegalArgumentException("KhÃ´ng tÃ¬m tháº¥y yÃªu cáº§u chá»‘t cÄƒn cÃ³ ID: " + dealId));
 
@@ -102,6 +104,7 @@ public class DealService {
         // Bỏ duyệt deal thì tháng đó mất tư cách "đạt 100% nhờ chốt căn",
         // việc này tự phản ánh khi xếp loại vì không còn deal APPROVED nào.
         deal.setStatus("REJECTED");
+        deal.setRejectReason(lyDo);
         deal.setApprovedBy(approver);
         deal.setApprovedAt(ZonedDateTime.now());
 

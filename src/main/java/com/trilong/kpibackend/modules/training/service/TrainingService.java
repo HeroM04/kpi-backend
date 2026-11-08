@@ -761,6 +761,7 @@ public class TrainingService {
             throw new IllegalStateException("Chỉ duyệt được đơn xin không tham gia.");
         }
 
+        if (!chapNhan) ghiChu = com.trilong.kpibackend.core.utils.LyDoTuChoi.batBuoc(ghiChu);
         rsvp.setStatus(chapNhan ? "APPROVED" : "REJECTED");
         rsvp.setReviewedBy(adminId);
         rsvp.setReviewedAt(ZonedDateTime.now());

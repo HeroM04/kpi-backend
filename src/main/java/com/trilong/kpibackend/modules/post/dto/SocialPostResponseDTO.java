@@ -24,6 +24,8 @@ public class SocialPostResponseDTO {
     private String status;
     private ZonedDateTime submittedAt;
     private ZonedDateTime approvedAt;
+    /** Lý do Admin từ chối (chỉ có khi status = REJECTED). */
+    private String rejectReason;
     private Long approvedById;
     private String approvedByFullName;
 
@@ -41,6 +43,7 @@ public class SocialPostResponseDTO {
                 .status(post.getStatus())
                 .submittedAt(post.getSubmittedAt())
                 .approvedAt(post.getApprovedAt())
+                .rejectReason(post.getRejectReason())
                 .approvedById(post.getApprovedBy() != null ? post.getApprovedBy().getId() : null)
                 .approvedByFullName(post.getApprovedBy() != null ? post.getApprovedBy().getFullName() : null)
                 .build();

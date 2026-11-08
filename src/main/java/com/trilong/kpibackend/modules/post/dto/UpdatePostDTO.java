@@ -10,4 +10,7 @@ public class UpdatePostDTO extends SubmitPostDTO {
 
     /** PENDING | APPROVED | REJECTED. Bỏ trống thì giữ nguyên trạng thái cũ. */
     private String status;
+
+    /** Bắt buộc khi đổi sang REJECTED — nhân sự xem trong Lịch sử trên app. */
+    private String rejectReason;
 }

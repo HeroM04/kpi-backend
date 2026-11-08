@@ -92,6 +92,7 @@ public class OneOnOneTrainingService {
         if ("APPROVED".equals(t.getStatus())) return mapToDto(t);
 
         t.setStatus("APPROVED");
+        t.setRejectReason(null);
         t.setReviewedBy(nguoiDuyet);
         t.setReviewedAt(ZonedDateTime.now());
         oneOnOneTrainingRepository.save(t);
@@ -108,13 +109,18 @@ public class OneOnOneTrainingService {
      * loại tự duyệt đời cũ) thì thu hồi 5đ đã cộng.
      */
     @Transactional
-    public OneOnOneTrainingDto tuChoi(Long id, Long nguoiDuyet) {
+    public OneOnOneTrainingDto tuChoi(Long id, Long nguoiDuyet, String lyDoTuChoi) {
+        String lyDo = com.trilong.kpibackend.core.utils.LyDoTuChoi.batBuoc(lyDoTuChoi);
         OneOnOneTraining t = timTheoId(id);
-        if ("REJECTED".equals(t.getStatus())) return mapToDto(t);
+        if ("REJECTED".equals(t.getStatus())) {
+            t.setRejectReason(lyDo); // từ chối lại: chỉ sửa lý do
+            return mapToDto(oneOnOneTrainingRepository.save(t));
+        }
 
         boolean daCongDiem = "APPROVED".equals(t.getStatus());
         int dangGiu = diemDangGiu(t);
         t.setStatus("REJECTED");
+        t.setRejectReason(lyDo);
         t.setReviewedBy(nguoiDuyet);
         t.setReviewedAt(ZonedDateTime.now());
         oneOnOneTrainingRepository.save(t);
@@ -288,6 +294,7 @@ public class OneOnOneTrainingService {
         dto.setStatus(entity.getStatus());
         dto.setSubmittedAt(entity.getSubmittedAt() != null ? entity.getSubmittedAt() : ZonedDateTime.now());
         dto.setReviewedAt(entity.getReviewedAt());
+        dto.setRejectReason(entity.getRejectReason());
         return dto;
     }
 }

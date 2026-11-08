@@ -115,9 +115,11 @@ public class OneOnOneTrainingController {
                description = "Báo cáo đã được duyệt trước đó thì thu hồi 5đ đã cộng.")
     @PutMapping("/{id}/reject")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<?> tuChoi(@PathVariable Long id, @AuthenticationPrincipal UserPrincipal admin) {
+    public ResponseEntity<?> tuChoi(@PathVariable Long id, @AuthenticationPrincipal UserPrincipal admin,
+                                    @RequestBody(required = false) Map<String, String> body) {
         try {
-            return ResponseEntity.ok(Map.of("status", "SUCCESS", "data", service.tuChoi(id, admin.getUserId())));
+            return ResponseEntity.ok(Map.of("status", "SUCCESS", "data", service.tuChoi(id, admin.getUserId(),
+                    com.trilong.kpibackend.core.utils.LyDoTuChoi.tuThan(body))));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("status", "ERROR", "message", e.getMessage()));
         }

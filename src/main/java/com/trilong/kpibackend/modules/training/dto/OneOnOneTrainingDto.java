@@ -14,4 +14,6 @@ public class OneOnOneTrainingDto {
     private String status;
     private ZonedDateTime submittedAt;
     private ZonedDateTime reviewedAt;
+    /** Lý do Admin từ chối (chỉ có khi status = REJECTED). */
+    private String rejectReason;
 }

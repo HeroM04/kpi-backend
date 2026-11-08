@@ -57,4 +57,8 @@ public class OneOnOneTraining {
 
     @Column(name = "reviewed_at")
     private ZonedDateTime reviewedAt;
+
+    /** Lý do Admin từ chối — nhân sự xem trong Lịch sử trên app. Null khi không bị từ chối. */
+    @Column(name = "reject_reason", length = 500)
+    private String rejectReason;
 }

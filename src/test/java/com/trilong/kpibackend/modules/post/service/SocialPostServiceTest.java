@@ -63,7 +63,7 @@ class SocialPostServiceTest {
     void tuChoiKhiDaDay() {
         bai("APPROVED");
         when(kpi.diemThucDaCong(7L, "post", "Admin duyệt: ", nop, 5)).thenReturn(0);
-        service.rejectPost(9L, 1L);
+        service.rejectPost(9L, 1L, "Ảnh không phải bài của bạn");
         verify(kpi, never()).updateKpiPoints(any(), any(), anyInt(), any(), any());
     }
 
@@ -151,5 +151,85 @@ class SocialPostServiceTest {
         service.deletePost(9L);
         verify(kpi).updateKpiPoints(eq(7L), eq("post"), eq(-5), any(), startsWith("Admin xóa bản ghi: "));
         verify(repo).delete(p);
+    }
+
+    // ── Lý do từ chối (08/11/2026) ──────────────────────────────────────────
+
+    @Test
+    @DisplayName("Từ chối không ghi lý do → báo lỗi, bài giữ nguyên, không đụng điểm")
+    void tuChoiThieuLyDo() {
+        SocialPost p = bai("APPROVED");
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.rejectPost(9L, 1L, "  "))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("lý do");
+        assertThat(p.getStatus()).isEqualTo("APPROVED");
+        verify(kpi, never()).updateKpiPoints(any(), any(), anyInt(), any(), any());
+    }
+
+    @Test
+    @DisplayName("Từ chối có lý do → lưu lý do; duyệt lại sau đó thì gỡ lý do")
+    void luuVaGoLyDo() {
+        SocialPost p = bai("PENDING");
+        service.rejectPost(9L, 1L, "  Ảnh chụp không thấy hashtag  ");
+        assertThat(p.getStatus()).isEqualTo("REJECTED");
+        assertThat(p.getRejectReason()).isEqualTo("Ảnh chụp không thấy hashtag");
+
+        service.approvePost(9L, 1L);
+        assertThat(p.getRejectReason()).isNull();
+    }
+
+    @Test
+    @DisplayName("Sửa bài sang Từ chối cũng phải có lý do")
+    void suaSangTuChoi() {
+        SocialPost p = bai("PENDING");
+        org.assertj.core.api.Assertions.assertThatThrownBy(
+                        () -> service.updatePost(9L, new SubmitPostDTO(), "REJECTED", 1L, null))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThat(p.getStatus()).isEqualTo("PENDING");
+
+        service.updatePost(9L, new SubmitPostDTO(), "REJECTED", 1L, "Trùng bài hôm qua");
+        assertThat(p.getStatus()).isEqualTo("REJECTED");
+        assertThat(p.getRejectReason()).isEqualTo("Trùng bài hôm qua");
+    }
+
+    // ── Nền tảng Zalo / Facebook / TikTok ────────────────────────────────────
+
+    private SubmitPostDTO guiBai(String nenTang, String link) {
+        when(userRepository.findById(7L)).thenReturn(Optional.of(
+                User.builder().id(7L).fullName("Sale A").role("SALE").build()));
+        SubmitPostDTO d = new SubmitPostDTO();
+        d.setPlatform(nenTang);
+        d.setLink(link);
+        d.setScreenshotUrl("https://res.cloudinary.com/x/anh.jpg");
+        d.setContentType("VIDEO");
+        return d;
+    }
+
+    @Test
+    @DisplayName("Facebook / TikTok không có link → báo cần dán link")
+    void facebookTikTokBatBuocLink() {
+        for (String nen : new String[]{"FACEBOOK", "TIKTOK"}) {
+            SubmitPostDTO d = guiBai(nen, "  ");
+            org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.submitPost(7L, d))
+                    .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("link");
+        }
+        verify(repo, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Zalo không có link vẫn gửi được")
+    void zaloKhongCanLink() {
+        SocialPost p = service.submitPost(7L, guiBai("ZALO", null));
+        assertThat(p.getPlatform()).isEqualTo("ZALO");
+        assertThat(p.getLink()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Tên nền tảng viết kiểu nào cũng quy về một mã; app đời cũ gửi OTHER không bị bắt link")
+    void chuanHoaNenTang() {
+        assertThat(service.submitPost(7L, guiBai("Tiktok", "https://www.tiktok.com/@a/video/1")).getPlatform())
+                .isEqualTo("TIKTOK");
+        assertThat(service.submitPost(7L, guiBai("facebook", "https://fb.com/p/1")).getPlatform())
+                .isEqualTo("FACEBOOK");
+        assertThat(service.submitPost(7L, guiBai("OTHER", "")).getPlatform()).isEqualTo("OTHER");
     }
 }

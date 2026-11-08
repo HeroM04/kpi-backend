@@ -103,7 +103,7 @@ class CheckinTangCaTest {
                 luot(6, "CHECK_OUT", "APPROVED", THU_HAI.atTime(17, 40).atZone(VN))));
 
         service.updateStatus(5L, "REJECTED", "Chấm công ra trùng");
-        service.updateStatus(6L, "REJECTED", null);
+        service.updateStatus(6L, "REJECTED", "Về sớm");
 
         verify(tangCaService).thuLaiNeuHetLuot(NGUOI, THU_HAI);
         verify(tangCaService, times(1)).thuLaiNeuHetLuot(anyLong(), any());

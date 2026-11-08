@@ -223,6 +223,7 @@ public class ReferralSubmissionService {
 
     @Transactional
     public ReferralSubmission reject(Long id, Long adminId, String note) {
+        note = com.trilong.kpibackend.core.utils.LyDoTuChoi.batBuoc(note);
         ReferralSubmission req = referralSubmissionRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn giới thiệu."));
         if ("APPROVED".equals(req.getStatus())) {

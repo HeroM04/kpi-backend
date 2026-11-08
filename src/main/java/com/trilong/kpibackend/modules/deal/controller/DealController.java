@@ -95,8 +95,10 @@ public class DealController {
     @PreAuthorize("hasAuthority('deal:approve') or hasRole('ADMIN')")
     public ResponseEntity<?> rejectDeal(
             @PathVariable Long id,
-            @AuthenticationPrincipal UserPrincipal currentUser) {
-        Deal deal = dealService.rejectDeal(id, currentUser.getUserId());
+            @AuthenticationPrincipal UserPrincipal currentUser,
+            @RequestBody(required = false) Map<String, String> body) {
+        Deal deal = dealService.rejectDeal(id, currentUser.getUserId(),
+                com.trilong.kpibackend.core.utils.LyDoTuChoi.tuThan(body));
         return ResponseEntity.ok(Map.of(
                 "status", "SUCCESS",
                 "message", "Đã từ chối giao dịch chốt căn.",

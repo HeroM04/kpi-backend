@@ -107,7 +107,7 @@ public class ReferralSubmissionController {
                                     @AuthenticationPrincipal UserPrincipal currentUser,
                                     @RequestBody(required = false) Map<String, String> body) {
         try {
-            String note = body != null ? body.get("note") : null;
+            String note = com.trilong.kpibackend.core.utils.LyDoTuChoi.tuThan(body);
             ReferralSubmission r = service.reject(id, currentUser.getUserId(), note);
             return ResponseEntity.ok(Map.of(
                     "status", "SUCCESS",

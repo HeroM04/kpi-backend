@@ -95,8 +95,10 @@ public class SocialPostController {
     @PreAuthorize("hasAuthority('post:approve') or hasRole('ADMIN')")
     public ResponseEntity<?> rejectPost(
             @PathVariable Long id,
-            @AuthenticationPrincipal UserPrincipal currentUser) {
-        SocialPost post = socialPostService.rejectPost(id, currentUser.getUserId());
+            @AuthenticationPrincipal UserPrincipal currentUser,
+            @RequestBody(required = false) Map<String, String> body) {
+        SocialPost post = socialPostService.rejectPost(id, currentUser.getUserId(),
+                com.trilong.kpibackend.core.utils.LyDoTuChoi.tuThan(body));
         return ResponseEntity.ok(Map.of(
                 "status", "SUCCESS",
                 "message", "Đã từ chối bài đăng MXH.",
@@ -133,7 +135,8 @@ public class SocialPostController {
                                         @RequestBody com.trilong.kpibackend.modules.post.dto.UpdatePostDTO dto,
                                         @AuthenticationPrincipal UserPrincipal currentUser) {
         try {
-            SocialPost post = socialPostService.updatePost(id, dto, dto.getStatus(), currentUser.getUserId());
+            SocialPost post = socialPostService.updatePost(id, dto, dto.getStatus(), currentUser.getUserId(),
+                    dto.getRejectReason());
             return ResponseEntity.ok(Map.of(
                     "status", "SUCCESS",
                     "message", "Đã cập nhật bài đăng MXH.",

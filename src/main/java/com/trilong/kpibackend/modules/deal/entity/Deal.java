@@ -51,6 +51,10 @@ public class Deal {
     @Column(name = "approved_at")
     private ZonedDateTime approvedAt;
 
+    /** Lý do Admin từ chối — nhân sự xem trong Lịch sử trên app. Null khi không bị từ chối. */
+    @Column(name = "reject_reason", length = 500)
+    private String rejectReason;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "approved_by")
     private User approvedBy;

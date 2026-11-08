@@ -136,6 +136,7 @@ public class FieldBattleService {
         }
 
         battle.setStatus("APPROVED");
+        battle.setRejectReason(null);
         battle.setApprovedBy(approver);
         battle.setApprovedAt(ZonedDateTime.now());
         FieldBattle savedBattle = fieldBattleRepository.save(battle);
@@ -149,7 +150,8 @@ public class FieldBattleService {
     }
 
     @Transactional
-    public FieldBattle rejectBattle(Long battleId, Long approvedById) {
+    public FieldBattle rejectBattle(Long battleId, Long approvedById, String lyDoTuChoi) {
+        String lyDo = com.trilong.kpibackend.core.utils.LyDoTuChoi.batBuoc(lyDoTuChoi);
         FieldBattle battle = fieldBattleRepository.findById(battleId)
                 .orElseThrow(() -> new IllegalArgumentException("KhÃ´ng tÃ¬m tháº¥y bÃ¡o cÃ¡o thá»±c chiáº¿n cÃ³ ID: " + battleId));
 
@@ -160,6 +162,7 @@ public class FieldBattleService {
         thuHoiDiem(battle, "Admin từ chối thực chiến — ");
 
         battle.setStatus("REJECTED");
+        battle.setRejectReason(lyDo);
         battle.setApprovedBy(approver);
         battle.setApprovedAt(ZonedDateTime.now());
 

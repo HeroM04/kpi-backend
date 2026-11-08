@@ -95,8 +95,10 @@ public class FieldBattleController {
     @PreAuthorize("hasAuthority('meeting:approve') or hasRole('ADMIN')")
     public ResponseEntity<?> rejectBattle(
             @PathVariable Long id,
-            @AuthenticationPrincipal UserPrincipal currentUser) {
-        FieldBattle battle = fieldBattleService.rejectBattle(id, currentUser.getUserId());
+            @AuthenticationPrincipal UserPrincipal currentUser,
+            @RequestBody(required = false) Map<String, String> body) {
+        FieldBattle battle = fieldBattleService.rejectBattle(id, currentUser.getUserId(),
+                com.trilong.kpibackend.core.utils.LyDoTuChoi.tuThan(body));
         return ResponseEntity.ok(Map.of(
                 "status", "SUCCESS",
                 "message", "Đã từ chối báo cáo thực chiến.",

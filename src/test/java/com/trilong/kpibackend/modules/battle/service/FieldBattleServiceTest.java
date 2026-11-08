@@ -87,7 +87,7 @@ class FieldBattleServiceTest {
         FieldBattle b = baoCao("MEETING", "APPROVED");
         when(kpi.diemThucDaCong(7L, "meeting", "Admin duyệt thực chiến", nop, 10)).thenReturn(10);
 
-        service.rejectBattle(50L, 1L);
+        service.rejectBattle(50L, 1L, "Ảnh không thấy khách");
 
         assertThat(b.getStatus()).isEqualTo("REJECTED");
         verify(kpi).updateKpiPoints(eq(7L), eq("meeting"), eq(-10), eq(nop), startsWith("Admin từ chối thực chiến"));
@@ -99,7 +99,7 @@ class FieldBattleServiceTest {
         baoCao("MEETING", "APPROVED");
         when(kpi.diemThucDaCong(anyLong(), anyString(), anyString(), any(), anyInt())).thenReturn(0);
 
-        service.rejectBattle(50L, 1L);
+        service.rejectBattle(50L, 1L, "Ảnh không thấy khách");
 
         verify(kpi, never()).updateKpiPoints(any(), any(), anyInt(), any(), any());
     }
@@ -108,7 +108,7 @@ class FieldBattleServiceTest {
     @DisplayName("Từ chối báo cáo chưa duyệt → không đụng điểm")
     void tuChoiChoDuyet() {
         baoCao("MEETING", "PENDING");
-        service.rejectBattle(50L, 1L);
+        service.rejectBattle(50L, 1L, "Ảnh không thấy khách");
         verify(kpi, never()).updateKpiPoints(any(), any(), anyInt(), any(), any());
     }
 

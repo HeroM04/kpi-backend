@@ -29,6 +29,8 @@ public class FieldBattleResponseDTO {
     private String status;
     private ZonedDateTime submittedAt;
     private ZonedDateTime approvedAt;
+    /** Lý do Admin từ chối (chỉ có khi status = REJECTED). */
+    private String rejectReason;
     private Long approvedById;
     private String approvedByFullName;
 
@@ -50,6 +52,7 @@ public class FieldBattleResponseDTO {
                 .status(battle.getStatus())
                 .submittedAt(battle.getSubmittedAt())
                 .approvedAt(battle.getApprovedAt())
+                .rejectReason(battle.getRejectReason())
                 .approvedById(battle.getApprovedBy() != null ? battle.getApprovedBy().getId() : null)
                 .approvedByFullName(battle.getApprovedBy() != null ? battle.getApprovedBy().getFullName() : null)
                 .build();

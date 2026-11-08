@@ -3,6 +3,7 @@ package com.trilong.kpibackend.modules.deal.controller;
 import com.trilong.kpibackend.core.security.UserPrincipal;
 import com.trilong.kpibackend.modules.deal.dto.DealResponseDTO;
 import com.trilong.kpibackend.modules.deal.dto.SubmitDealDTO;
+import com.trilong.kpibackend.modules.deal.dto.UpdateDealDTO;
 import com.trilong.kpibackend.modules.deal.entity.Deal;
 import com.trilong.kpibackend.modules.deal.service.DealService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -123,6 +124,24 @@ public class DealController {
 
             return ResponseEntity.ok(Map.of("status", "SUCCESS", "data", DealResponseDTO.from(deal)));
         } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("status", "ERROR", "message", e.getMessage()));
+        }
+    }
+
+    @Operation(summary = "Sửa yêu cầu chốt căn",
+            description = "Admin sửa thông tin giao dịch/trạng thái. Đổi sang REJECTED phải kèm rejectReason.")
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('deal:manage') or hasRole('ADMIN')")
+    public ResponseEntity<?> updateDeal(@PathVariable Long id,
+                                        @RequestBody UpdateDealDTO dto,
+                                        @AuthenticationPrincipal UserPrincipal currentUser) {
+        try {
+            Deal deal = dealService.updateDeal(id, dto, currentUser.getUserId());
+            return ResponseEntity.ok(Map.of(
+                    "status", "SUCCESS",
+                    "message", "Đã cập nhật giao dịch chốt căn.",
+                    "data", DealResponseDTO.from(deal)));
+        } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("status", "ERROR", "message", e.getMessage()));
         }
     }

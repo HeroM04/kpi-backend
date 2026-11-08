@@ -1,7 +1,9 @@
 package com.trilong.kpibackend.modules.battle.service;
 
+import com.trilong.kpibackend.core.utils.LyDoTuChoi;
 import com.trilong.kpibackend.modules.battle.dto.SubmitFieldBattleDTO;
 import com.trilong.kpibackend.modules.battle.dto.FieldBattleResponseDTO;
+import com.trilong.kpibackend.modules.battle.dto.UpdateFieldBattleDTO;
 import com.trilong.kpibackend.modules.battle.entity.FieldBattle;
 import com.trilong.kpibackend.modules.battle.repository.FieldBattleRepository;
 import com.trilong.kpibackend.modules.kpi.service.KpiCalculationService;
@@ -167,6 +169,80 @@ public class FieldBattleService {
         battle.setApprovedAt(ZonedDateTime.now());
 
         return fieldBattleRepository.save(battle);
+    }
+
+    /**
+     * Admin sửa báo cáo trong modal "Sửa" trên web. Đổi trạng thái ở đây cộng /
+     * thu hồi điểm đúng như bấm Duyệt / Từ chối, để hai đường sửa không lệch điểm.
+     * Đổi loại (gặp khách ↔ hỗ trợ) khi đang duyệt thì gỡ điểm theo loại cũ rồi
+     * cộng lại theo loại mới. Người nộp và giờ nộp không sửa được: điểm neo vào
+     * đúng người, đúng tuần nộp.
+     */
+    @Transactional
+    public FieldBattle updateBattle(Long battleId, UpdateFieldBattleDTO dto, Long editorId) {
+        FieldBattle battle = fieldBattleRepository.findById(battleId)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy báo cáo thực chiến có ID: " + battleId));
+
+        String cu = battle.getStatus();
+        String moi = chuanHoaTrangThai(dto.getStatus(), cu);
+        boolean doiTrangThai = !moi.equals(cu);
+        // Kiểm lý do trước mọi thay đổi: thiếu lý do thì báo lỗi, bản ghi và điểm giữ nguyên
+        String lyDo = null;
+        if ("REJECTED".equals(moi) && (doiTrangThai || !trong(dto.getRejectReason()))) {
+            lyDo = LyDoTuChoi.batBuoc(dto.getRejectReason());
+        }
+
+        boolean dangDuyet = "APPROVED".equals(cu);
+        boolean seDuyet = "APPROVED".equals(moi);
+        String loaiMoi = trong(dto.getBattleType()) ? chuanHoaLoai(battle.getBattleType()) : chuanHoaLoai(dto.getBattleType());
+        boolean doiLoai = !loaiMoi.equals(chuanHoaLoai(battle.getBattleType()));
+
+        // Gỡ điểm theo loại CŨ, trước khi đổi loại
+        if (dangDuyet && (!seDuyet || doiLoai)) {
+            thuHoiDiem(battle, seDuyet ? "Admin đổi loại thực chiến — " : "Admin gỡ duyệt thực chiến — ");
+        }
+
+        if (dto.getCustomerName() != null) battle.setCustomerName(dto.getCustomerName().trim());
+        if (dto.getCustomerPhone() != null) battle.setCustomerPhone(dto.getCustomerPhone().trim());
+        if (dto.getProject() != null) battle.setProject(dto.getProject().trim());
+        if (!trong(dto.getContent())) battle.setContent(dto.getContent().trim());   // cột NOT NULL, không cho xóa trắng
+        if (dto.getLocation() != null) battle.setLocation(dto.getLocation());
+        battle.setBattleType(loaiMoi);
+
+        if (seDuyet && (!dangDuyet || doiLoai)) {
+            kpiCalculationService.updateKpiPoints(battle.getUser().getId(), "meeting", diemCua(battle),
+                    battle.getSubmittedAt(),
+                    "Admin duyệt thực chiến — " + tenLoai(battle) + " " + battle.getCustomerName());
+        }
+
+        if (doiTrangThai) {
+            battle.setStatus(moi);
+            if (seDuyet || "REJECTED".equals(moi)) {
+                userRepository.findById(editorId).ifPresent(battle::setApprovedBy);
+                battle.setApprovedAt(ZonedDateTime.now());
+            } else {
+                battle.setApprovedBy(null);
+                battle.setApprovedAt(null);
+            }
+        }
+        if (!"REJECTED".equals(moi)) battle.setRejectReason(null);
+        else if (lyDo != null) battle.setRejectReason(lyDo);
+
+        return fieldBattleRepository.save(battle);
+    }
+
+    /** PENDING / APPROVED / REJECTED; trống thì giữ trạng thái cũ, giá trị lạ thì báo lỗi. */
+    private static String chuanHoaTrangThai(String raw, String cu) {
+        if (trong(raw)) return cu;
+        String s = raw.trim().toUpperCase();
+        if (!s.equals("PENDING") && !s.equals("APPROVED") && !s.equals("REJECTED")) {
+            throw new IllegalArgumentException("Trạng thái không hợp lệ: " + raw);
+        }
+        return s;
+    }
+
+    private static boolean trong(String s) {
+        return s == null || s.isBlank();
     }
 
     @Transactional

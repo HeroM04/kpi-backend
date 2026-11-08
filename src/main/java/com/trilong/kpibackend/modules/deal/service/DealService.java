@@ -1,6 +1,8 @@
 package com.trilong.kpibackend.modules.deal.service;
 
+import com.trilong.kpibackend.core.utils.LyDoTuChoi;
 import com.trilong.kpibackend.modules.deal.dto.SubmitDealDTO;
+import com.trilong.kpibackend.modules.deal.dto.UpdateDealDTO;
 import com.trilong.kpibackend.modules.deal.entity.Deal;
 import com.trilong.kpibackend.modules.deal.repository.DealRepository;
 import com.trilong.kpibackend.modules.kpi.service.KpiCalculationService;
@@ -109,6 +111,66 @@ public class DealService {
         deal.setApprovedAt(ZonedDateTime.now());
 
         return dealRepository.save(deal);
+    }
+
+    /**
+     * Admin sửa yêu cầu chốt căn trong modal "Sửa" trên web. Chốt căn không cộng
+     * điểm vào bảng KPI nên đổi trạng thái ở đây chỉ cần ghi người duyệt / lý do
+     * như bấm Duyệt / Từ chối. Người nộp không sửa được: "đạt 100% nhờ chốt căn"
+     * xét theo đúng người nộp.
+     */
+    @Transactional
+    public Deal updateDeal(Long dealId, UpdateDealDTO dto, Long editorId) {
+        Deal deal = dealRepository.findById(dealId)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy yêu cầu chốt căn có ID: " + dealId));
+
+        String cu = deal.getStatus();
+        String moi = chuanHoaTrangThai(dto.getStatus(), cu);
+        boolean doiTrangThai = !moi.equals(cu);
+        // Kiểm lý do trước mọi thay đổi: thiếu lý do thì báo lỗi, bản ghi giữ nguyên
+        String lyDo = null;
+        if ("REJECTED".equals(moi) && (doiTrangThai || !trong(dto.getRejectReason()))) {
+            lyDo = LyDoTuChoi.batBuoc(dto.getRejectReason());
+        }
+
+        // Các cột NOT NULL: chỉ ghi khi có giá trị, không cho xóa trắng
+        if (!trong(dto.getProjectName())) deal.setProjectName(dto.getProjectName().trim());
+        if (!trong(dto.getUnit())) deal.setUnit(dto.getUnit().trim());
+        if (dto.getPrice() != null) deal.setPrice(dto.getPrice());
+        if (dto.getCommission() != null) deal.setCommission(dto.getCommission());
+        if (!trong(dto.getCustomerName())) deal.setCustomerName(dto.getCustomerName().trim());
+        if (!trong(dto.getCustomerPhone())) deal.setCustomerPhone(dto.getCustomerPhone().trim());
+        if (dto.getContractPhotoUrl() != null) deal.setContractPhotoUrl(dto.getContractPhotoUrl());
+
+        if (doiTrangThai) {
+            deal.setStatus(moi);
+            if ("APPROVED".equals(moi) || "REJECTED".equals(moi)) {
+                userRepository.findById(editorId).ifPresent(deal::setApprovedBy);
+                deal.setApprovedAt(ZonedDateTime.now());
+            } else {
+                deal.setApprovedBy(null);
+                deal.setApprovedAt(null);
+            }
+            if ("APPROVED".equals(moi)) deal.setKpiTriggered(0);   // như approveDeal
+        }
+        if (!"REJECTED".equals(moi)) deal.setRejectReason(null);
+        else if (lyDo != null) deal.setRejectReason(lyDo);
+
+        return dealRepository.save(deal);
+    }
+
+    /** PENDING / APPROVED / REJECTED; trống thì giữ trạng thái cũ, giá trị lạ thì báo lỗi. */
+    private static String chuanHoaTrangThai(String raw, String cu) {
+        if (trong(raw)) return cu;
+        String s = raw.trim().toUpperCase();
+        if (!s.equals("PENDING") && !s.equals("APPROVED") && !s.equals("REJECTED")) {
+            throw new IllegalArgumentException("Trạng thái không hợp lệ: " + raw);
+        }
+        return s;
+    }
+
+    private static boolean trong(String s) {
+        return s == null || s.isBlank();
     }
 
     @Transactional

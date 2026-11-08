@@ -3,6 +3,7 @@ package com.trilong.kpibackend.modules.battle.controller;
 import com.trilong.kpibackend.core.security.UserPrincipal;
 import com.trilong.kpibackend.modules.battle.dto.FieldBattleResponseDTO;
 import com.trilong.kpibackend.modules.battle.dto.SubmitFieldBattleDTO;
+import com.trilong.kpibackend.modules.battle.dto.UpdateFieldBattleDTO;
 import com.trilong.kpibackend.modules.battle.entity.FieldBattle;
 import com.trilong.kpibackend.modules.battle.service.FieldBattleService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -123,6 +124,25 @@ public class FieldBattleController {
 
             return ResponseEntity.ok(Map.of("status", "SUCCESS", "data", FieldBattleResponseDTO.from(battle)));
         } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("status", "ERROR", "message", e.getMessage()));
+        }
+    }
+
+    @Operation(summary = "Sửa báo cáo thực chiến",
+            description = "Admin sửa nội dung/loại/trạng thái. Đổi trạng thái sẽ cộng hoặc thu hồi điểm Thực chiến tương ứng; "
+                    + "đổi sang REJECTED phải kèm rejectReason.")
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('meeting:manage') or hasRole('ADMIN')")
+    public ResponseEntity<?> updateBattle(@PathVariable Long id,
+                                          @RequestBody UpdateFieldBattleDTO dto,
+                                          @AuthenticationPrincipal UserPrincipal currentUser) {
+        try {
+            FieldBattle battle = fieldBattleService.updateBattle(id, dto, currentUser.getUserId());
+            return ResponseEntity.ok(Map.of(
+                    "status", "SUCCESS",
+                    "message", "Đã cập nhật báo cáo thực chiến.",
+                    "data", FieldBattleResponseDTO.from(battle)));
+        } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("status", "ERROR", "message", e.getMessage()));
         }
     }

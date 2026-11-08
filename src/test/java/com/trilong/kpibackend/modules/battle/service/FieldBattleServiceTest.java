@@ -167,6 +167,137 @@ class FieldBattleServiceTest {
         verify(fieldBattleRepository, times(2)).save(any());
     }
 
+    // ── Sửa báo cáo qua modal "Sửa" trên web (PUT /field-battle/{id}) ─────────
+
+    private com.trilong.kpibackend.modules.battle.dto.UpdateFieldBattleDTO sua(String trangThai, String lyDo) {
+        var dto = new com.trilong.kpibackend.modules.battle.dto.UpdateFieldBattleDTO();
+        dto.setStatus(trangThai);
+        dto.setRejectReason(lyDo);
+        return dto;
+    }
+
+    @Test
+    @DisplayName("Sửa từ Chờ duyệt sang Đã duyệt → +10đ, ghi người duyệt như bấm Duyệt")
+    void suaSangDuyet() {
+        FieldBattle b = baoCao("MEETING", "PENDING");
+
+        service.updateBattle(50L, sua("APPROVED", null), 1L);
+
+        assertThat(b.getStatus()).isEqualTo("APPROVED");
+        assertThat(b.getApprovedBy()).isEqualTo(admin);
+        assertThat(b.getApprovedAt()).isNotNull();
+        verify(kpi).updateKpiPoints(eq(7L), eq("meeting"), eq(10), eq(nop), startsWith("Admin duyệt thực chiến"));
+    }
+
+    @Test
+    @DisplayName("Sửa từ Đã duyệt về Chờ duyệt → gỡ đúng số đã thực cộng, xóa người duyệt")
+    void suaGoDuyet() {
+        FieldBattle b = baoCao("MEETING", "APPROVED");
+        b.setApprovedBy(admin);
+        when(kpi.diemThucDaCong(7L, "meeting", "Admin duyệt thực chiến", nop, 10)).thenReturn(6);
+
+        service.updateBattle(50L, sua("PENDING", null), 1L);
+
+        assertThat(b.getStatus()).isEqualTo("PENDING");
+        assertThat(b.getApprovedBy()).isNull();
+        assertThat(b.getApprovedAt()).isNull();
+        verify(kpi).updateKpiPoints(eq(7L), eq("meeting"), eq(-6), eq(nop), startsWith("Admin gỡ duyệt thực chiến"));
+    }
+
+    @Test
+    @DisplayName("Sửa sang Từ chối mà thiếu lý do → báo lỗi, báo cáo và điểm giữ nguyên")
+    void suaSangTuChoiThieuLyDo() {
+        FieldBattle b = baoCao("MEETING", "APPROVED");
+        when(kpi.diemThucDaCong(anyLong(), anyString(), anyString(), any(), anyInt())).thenReturn(10);
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.updateBattle(50L, sua("REJECTED", "  "), 1L))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("lý do");
+
+        assertThat(b.getStatus()).isEqualTo("APPROVED");
+        verify(kpi, never()).updateKpiPoints(any(), any(), anyInt(), any(), any());
+        verify(fieldBattleRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Sửa từ Đã duyệt sang Từ chối có lý do → thu hồi điểm, lưu lý do đã cắt khoảng trắng")
+    void suaSangTuChoi() {
+        FieldBattle b = baoCao("MEETING", "APPROVED");
+        when(kpi.diemThucDaCong(7L, "meeting", "Admin duyệt thực chiến", nop, 10)).thenReturn(10);
+
+        service.updateBattle(50L, sua("REJECTED", "  Ảnh không thấy khách  "), 1L);
+
+        assertThat(b.getStatus()).isEqualTo("REJECTED");
+        assertThat(b.getRejectReason()).isEqualTo("Ảnh không thấy khách");
+        assertThat(b.getApprovedBy()).isEqualTo(admin);
+        verify(kpi).updateKpiPoints(eq(7L), eq("meeting"), eq(-10), eq(nop), anyString());
+    }
+
+    @Test
+    @DisplayName("Sửa báo cáo bị từ chối sang Đã duyệt → +điểm và gỡ lý do từ chối")
+    void suaTuChoiSangDuyet() {
+        FieldBattle b = baoCao("SUPPORT", "REJECTED");
+        b.setRejectReason("Ảnh mờ");
+
+        service.updateBattle(50L, sua("APPROVED", "Ảnh mờ"), 1L);
+
+        assertThat(b.getRejectReason()).isNull();
+        verify(kpi).updateKpiPoints(eq(7L), eq("meeting"), eq(5), eq(nop), anyString());
+    }
+
+    @Test
+    @DisplayName("Giữ Từ chối, chỉ sửa lại lý do → lưu lý do mới, không đụng điểm")
+    void suaLyDo() {
+        FieldBattle b = baoCao("MEETING", "REJECTED");
+        b.setRejectReason("Ảnh mờ");
+
+        service.updateBattle(50L, sua("REJECTED", "Không thấy khách trong ảnh"), 1L);
+
+        assertThat(b.getRejectReason()).isEqualTo("Không thấy khách trong ảnh");
+        verify(kpi, never()).updateKpiPoints(any(), any(), anyInt(), any(), any());
+    }
+
+    @Test
+    @DisplayName("Sửa nội dung, không đổi trạng thái → ghi nội dung mới, không đụng điểm; nội dung trống thì giữ cũ")
+    void suaNoiDung() {
+        FieldBattle b = baoCao("MEETING", "APPROVED");
+        var dto = sua(null, null);
+        dto.setProject("Văn phòng Vista");
+        dto.setCustomerName("Chị Lan");
+        dto.setContent("   ");
+
+        service.updateBattle(50L, dto, 1L);
+
+        assertThat(b.getStatus()).isEqualTo("APPROVED");
+        assertThat(b.getProject()).isEqualTo("Văn phòng Vista");
+        assertThat(b.getCustomerName()).isEqualTo("Chị Lan");
+        assertThat(b.getContent()).isEqualTo("gặp khách");
+        verify(kpi, never()).updateKpiPoints(any(), any(), anyInt(), any(), any());
+    }
+
+    @Test
+    @DisplayName("Đang duyệt mà đổi gặp khách → hỗ trợ: gỡ điểm loại cũ rồi cộng 5đ loại mới")
+    void suaDoiLoai() {
+        FieldBattle b = baoCao("MEETING", "APPROVED");
+        when(kpi.diemThucDaCong(7L, "meeting", "Admin duyệt thực chiến", nop, 10)).thenReturn(10);
+        var dto = sua("APPROVED", null);
+        dto.setBattleType("SUPPORT");
+
+        service.updateBattle(50L, dto, 1L);
+
+        assertThat(b.getBattleType()).isEqualTo("SUPPORT");
+        verify(kpi).updateKpiPoints(eq(7L), eq("meeting"), eq(-10), eq(nop), startsWith("Admin đổi loại thực chiến"));
+        verify(kpi).updateKpiPoints(eq(7L), eq("meeting"), eq(5), eq(nop), startsWith("Admin duyệt thực chiến"));
+    }
+
+    @Test
+    @DisplayName("Trạng thái lạ → báo lỗi, không lưu")
+    void suaTrangThaiLa() {
+        baoCao("MEETING", "PENDING");
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.updateBattle(50L, sua("DONE", null), 1L))
+                .isInstanceOf(IllegalArgumentException.class);
+        verify(fieldBattleRepository, never()).save(any());
+    }
+
     @Test
     @DisplayName("Xóa báo cáo đã duyệt vào được một phần (5/10đ) → gỡ đúng 5đ rồi xóa")
     void xoaDaDuyet() {

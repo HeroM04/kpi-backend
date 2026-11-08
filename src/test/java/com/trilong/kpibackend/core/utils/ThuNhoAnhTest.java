@@ -80,12 +80,12 @@ public class ThuNhoAnhTest {
     }
 
     @Test
-    @DisplayName("ảnh chụp cuộn rất dài → khoảng 12 MP (Cloudinary Free chặn trên 25 MP), vẫn đọc được chữ")
+    @DisplayName("ảnh chụp cuộn rất dài → khoảng 8 MP (Cloudinary Free chặn trên 25 MP), vẫn đọc được chữ")
     void anhCuonDai() throws Exception {
-        BufferedImage a = doc(ThuNhoAnh.thuNho(png(new BufferedImage(1080, 22000, BufferedImage.TYPE_INT_RGB))));
-        assertThat((long) a.getWidth() * a.getHeight()).isLessThanOrEqualTo(12_000_000L + 30_000L);
+        BufferedImage a = doc(ThuNhoAnh.thuNho(png(new BufferedImage(1080, 14000, BufferedImage.TYPE_INT_RGB))));
+        assertThat((long) a.getWidth() * a.getHeight()).isLessThanOrEqualTo(8_000_000L + 30_000L);
         assertThat(a.getWidth()).isGreaterThan(700);
-        assertThat((double) a.getHeight() / a.getWidth()).isCloseTo(22000.0 / 1080, org.assertj.core.data.Offset.offset(0.2));
+        assertThat((double) a.getHeight() / a.getWidth()).isCloseTo(14000.0 / 1080, org.assertj.core.data.Offset.offset(0.2));
 
         // Dài hơn nữa: đọc thưa để không tràn bộ nhớ máy chủ, vẫn không vượt trần Cloudinary
         BufferedImage b = doc(ThuNhoAnh.thuNho(png(new BufferedImage(1080, 40000, BufferedImage.TYPE_INT_RGB))));

@@ -39,10 +39,14 @@ public final class ThuNhoAnh {
     public static final int NGUONG_NEN = 9_500_000;
 
     static final int NGANG_TOI_DA = 1920;
-    /** Dưới trần 25 MP của Cloudinary; ảnh chụp cuộn 1080×22000 ra cỡ 768 px ngang, vẫn đọc được chữ. */
-    static final long DIEM_ANH_TOI_DA = 12_000_000L;
-    /** Giải mã thưa (bỏ bớt điểm ảnh) để ảnh rất lớn không ngốn hết bộ nhớ máy chủ (heap ~300 MB). */
-    static final long DIEM_ANH_GIAI_MA_TOI_DA = 24_000_000L;
+    /** Dưới trần 25 MP của Cloudinary; ảnh chụp cuộn 1080×14000 ra cỡ 785 px ngang, vẫn đọc được chữ. */
+    static final long DIEM_ANH_TOI_DA = 8_000_000L;
+    /**
+     * Giải mã thưa (bỏ bớt điểm ảnh) ảnh lớn hơn mức này. Máy chủ Render chỉ có
+     * 512 MB cho cả JVM: 08/11/2026 nén một ảnh 11,3 MB làm container bị tắt vì
+     * hết bộ nhớ. 16 MP giải mã tốn tối đa ~64 MB.
+     */
+    static final long DIEM_ANH_GIAI_MA_TOI_DA = 16_000_000L;
 
     static final String KHONG_NEN_DUOC =
             "Ảnh nặng hơn 10 MB và máy chủ không tự nén được định dạng này. Chụp màn hình lại hoặc chọn ảnh khác nhỏ hơn.";
@@ -86,7 +90,7 @@ public final class ThuNhoAnh {
         }
     }
 
-    /** Tỉ lệ thu (≤ 1) để ngang ≤ 1920 px và tổng điểm ảnh ≤ 12 MP. */
+    /** Tỉ lệ thu (≤ 1) để ngang ≤ 1920 px và tổng điểm ảnh ≤ 8 MP. */
     static double tiLe(int rong, int cao) {
         double k = Math.min(1.0, (double) NGANG_TOI_DA / rong);
         return Math.min(k, Math.sqrt((double) DIEM_ANH_TOI_DA / ((double) rong * cao)));

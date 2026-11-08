@@ -28,11 +28,22 @@ EXPOSE 8088
 
 # Mặc định chạy profile prod (đọc DATABASE_URL, AWS_* từ biến môi trường)
 ENV SPRING_PROFILES_ACTIVE=prod
-# Cỡ bộ nhớ cho container nhỏ (Render Free/Starter: 512 MB). Mặc định JDK 17 chỉ
-# lấy 25% RAM container làm heap (= 128 MB) — Spring Boot + Hibernate cần hơn
-# thế, tới giờ chấm công 200 người cùng lúc là thiếu. Lấy 60% (~300 MB), phần
-# còn lại cho metaspace, luồng và bộ đệm. Serial GC gọn nhất ở 1 CPU; -Xss512k
-# giảm bộ nhớ mỗi luồng (mặc định 1 MB × số luồng Tomcat).
-ENV JAVA_OPTS="-XX:MaxRAMPercentage=60 -XX:+UseSerialGC -Xss512k"
+# Bộ nhớ cho container 512 MB (Render Free). Cả JVM phải nằm gọn trong 512 MB,
+# không chỉ heap: đo bằng Native Memory Tracking (08/11/2026), ứng dụng này
+# ngoài heap đã chiếm ~200 MB (metaspace ~110, symbol ~47, code, luồng...).
+# Trước đây heap 60% RAM (~307 MB) + ~200 MB ngoài heap = sát 512 MB: ngày
+# 08/11 nén một ảnh 11 MB làm heap phình lên và Render tắt container ("Ran out
+# of memory"). Heap thật chỉ dùng ~75 MB lúc rảnh, ~130 MB lúc nén ảnh lớn.
+#   -Xmx200m                   heap tối đa 200 MB → tổng đo được ~405 MB
+#   -XX:TieredStopAtLevel=1    chỉ dùng trình biên dịch C1: mã máy nhỏ hơn, khởi
+#                              động nhanh hơn trên 0,1 CPU, bớt bộ nhớ biên dịch
+#   -XX:ReservedCodeCacheSize  trần vùng mã máy (mặc định 240 MB, lớn dần theo giờ)
+#   -XX:MaxDirectMemorySize    trần bộ đệm ngoài heap (mặc định = heap)
+#   -XX:+PrintCommandLineFlags in cờ JVM vào log Render lúc khởi động để kiểm tra
+# Serial GC gọn nhất ở 1 CPU; -Xss512k giảm bộ nhớ mỗi luồng Tomcat.
+ENV JAVA_OPTS="-Xmx200m -Xss512k -XX:+UseSerialGC -XX:TieredStopAtLevel=1 -XX:ReservedCodeCacheSize=48m -XX:MaxDirectMemorySize=32m -XX:+PrintCommandLineFlags"
+# glibc mặc định mở nhiều vùng cấp phát (8 × số CPU) cho các luồng → bộ nhớ
+# tiến trình phình mà JVM không thấy. 2 vùng là đủ cho container 1 CPU.
+ENV MALLOC_ARENA_MAX=2
 
 ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]

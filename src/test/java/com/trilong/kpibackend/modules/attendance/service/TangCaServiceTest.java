@@ -107,6 +107,19 @@ class TangCaServiceTest {
     }
 
     @Test
+    @DisplayName("Đã cộng tăng ca trong ngày: còn +5 chưa thu lại → đã cộng; ngày khác hoặc đã thu lại hết → chưa")
+    void daCongTrongNgay() {
+        assertThat(service.daCongTrongNgay(NGUOI, THU_HAI)).isFalse();
+
+        cong(5, luc(20, 20));
+        assertThat(service.daCongTrongNgay(NGUOI, THU_HAI)).isTrue();
+        assertThat(service.daCongTrongNgay(NGUOI, THU_HAI.plusDays(1))).isFalse();
+
+        ghiSo(-5, -5, "Thu lại điểm tăng ca ngày 12/10/2026 — lượt về đã bị thu hồi", luc(20, 20));
+        assertThat(service.daCongTrongNgay(NGUOI, THU_HAI)).isFalse();
+    }
+
+    @Test
     @DisplayName("Về 2 lần lúc 20:20 bị cộng 2 lần: xem trước không ghi gì, thu lại 5đ, chạy lại không thu nữa")
     void haiLanCungNgay() {
         ve("APPROVED", luc(20, 20));

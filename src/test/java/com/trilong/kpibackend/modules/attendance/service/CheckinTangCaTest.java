@@ -95,6 +95,19 @@ class CheckinTangCaTest {
     }
 
     @Test
+    @DisplayName("Lượt về đã cộng bị xóa khỏi bảng chấm công, nhật ký ngày đó còn +5 → lượt về sau không cộng nữa")
+    void nhatKyDaCoTangCa() {
+        when(checkinRepo.findById(5L)).thenReturn(Optional.of(
+                luot(5, "CHECK_OUT", "PENDING", THU_HAI.atTime(20, 40).atZone(VN))));
+        when(tangCaService.conLuotVeTangCa(NGUOI, THU_HAI, 5L)).thenReturn(false);
+        when(tangCaService.daCongTrongNgay(NGUOI, THU_HAI)).thenReturn(true);
+
+        service.updateStatus(5L, "APPROVED", null);
+
+        verify(kpi, never()).updateKpiPoints(eq(NGUOI), eq("meeting"), anyInt(), any(), anyString());
+    }
+
+    @Test
     @DisplayName("Thu hồi lượt về đủ giờ tăng ca → nhờ TangCaService thu lại nếu ngày đó hết lượt về")
     void thuHoiLuotVe() {
         when(checkinRepo.findById(5L)).thenReturn(Optional.of(

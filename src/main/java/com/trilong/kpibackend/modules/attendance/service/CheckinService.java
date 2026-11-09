@@ -861,13 +861,17 @@ public class CheckinService {
      *
      * <p>Điểm tăng ca thuộc nhóm <b>Thực chiến</b> (trần 40đ/tuần).
      * Chỉ tính khi CHECK_OUT, không tính vào cuối tuần, và <b>mỗi ngày một
-     * lần</b>: ngày đó đã có lượt về khác (đã duyệt, đủ giờ) thì thôi.
+     * lần</b>, tự động, không cần Admin lọc trùng: ngày đó đã có lượt về khác
+     * (đã duyệt, đủ giờ) hoặc nhật ký điểm ngày đó đã có khoản tăng ca chưa bị
+     * thu lại thì lượt về này không cộng nữa. Vế nhật ký chặn cả khi lượt về đã
+     * được cộng bị Admin xóa hẳn khỏi bảng chấm công (xóa không thu lại điểm).
      *
      * @param logId lượt về đang xét — bỏ qua chính nó khi tìm lượt về khác
      */
     private void awardOvertimeIfEligible(Long userId, String actionType, ZonedDateTime time, Long logId) {
         if (!duDieuKienTangCa(actionType, time)) return;
-        if (tangCaService.conLuotVeTangCa(userId, com.trilong.kpibackend.core.utils.GioVN.ngayCua(time), logId)) {
+        LocalDate ngay = com.trilong.kpibackend.core.utils.GioVN.ngayCua(time);
+        if (tangCaService.conLuotVeTangCa(userId, ngay, logId) || tangCaService.daCongTrongNgay(userId, ngay)) {
             log.info("[Checkin]  Tăng ca userId={} ngày {} đã tính rồi — lượt về {} không cộng thêm",
                     userId, time.toLocalDate(), gio(time));
             return;

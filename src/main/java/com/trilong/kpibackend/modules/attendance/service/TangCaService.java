@@ -79,6 +79,18 @@ public class TangCaService {
     }
 
     /**
+     * Nhật ký điểm ngày đó người này còn đang giữ điểm tăng ca không (đã cộng,
+     * chưa bị thu lại) — có thì ngày đó đã được tăng ca, lượt về sau không cộng.
+     * Đọc thẳng nhật ký nên vẫn đúng khi lượt về đã cộng bị Admin xóa khỏi bảng
+     * chấm công.
+     */
+    public boolean daCongTrongNgay(Long userId, LocalDate ngay) {
+        String tuan = kpiCalculationService.getWeekString(ngay.atTime(12, 0).atZone(GioVN.VN));
+        SoLieu so = tinh(ledgerRepository.findByUserIdAndCategoryAndWeekOrderByIdAsc(userId, NHOM, tuan), ngay);
+        return so != null && so.dangCo() > 0;
+    }
+
+    /**
      * Admin vừa thu hồi một lượt về: ngày đó không còn lượt về nào đủ giờ tăng
      * ca thì thu lại điểm tăng ca ngày ấy đang có. Còn lượt khác thì ngày đó vẫn
      * được tăng ca — giữ nguyên.

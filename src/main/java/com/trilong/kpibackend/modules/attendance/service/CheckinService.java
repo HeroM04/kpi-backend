@@ -566,8 +566,7 @@ public class CheckinService {
             // nếu lấy thẳng toLocalTime() thì 09:30 VN thành 02:30 và bị chấm
             // nhầm thành "đi đúng giờ".
             LocalTime mocDungGio = mocDungGioCua(checkinLog.getUserId());
-            int kpiPoints = calculateAttendanceKpi(checkinLog.getActionType(),
-                    checkinLog.getCheckinTime().withZoneSameInstant(VN_ZONE).toLocalTime(), mocDungGio);
+            int kpiPoints = diemTheoLuat(checkinLog, checkinLog.getCheckinTime(), mocDungGio);
             if (!"CHECK_OUT".equals(checkinLog.getActionType())
                     && daTinhDiemTrongNgay(checkinLog.getUserId(), checkinLog.getCheckinTime(), checkinLog.getId())) {
                 kpiPoints = 0; // ngày này đã được tính điểm chuyên cần rồi
@@ -579,8 +578,7 @@ public class CheckinService {
                         ? "Admin thêm chấm công tay — " : "Admin duyệt chấm công ngoại tuyến — ";
                 kpiCalculationService.updateKpiPoints(
                         checkinLog.getUserId(), "attendance", kpiPoints, checkinLog.getCheckinTime(),
-                        dauCau + dienGiaiChuyenCan(checkinLog.getActionType(),
-                                        checkinLog.getCheckinTime(), mocDungGio)
+                        dauCau + dienGiaiLuot(checkinLog, checkinLog.getCheckinTime(), mocDungGio)
                 );
             }
             // Duyệt bản ghi check-out muộn cũng được tính tăng ca như chấm công tại chỗ
@@ -591,9 +589,15 @@ public class CheckinService {
             // Phải quy về giờ Việt Nam: giá trị đọc từ DB đang ở múi giờ UTC,
             // nếu lấy thẳng toLocalTime() thì 09:30 VN thành 02:30 và bị chấm
             // nhầm thành "đi đúng giờ".
-            int kpiPoints = calculateAttendanceKpi(checkinLog.getActionType(),
-                    checkinLog.getCheckinTime().withZoneSameInstant(VN_ZONE).toLocalTime(),
+            // Gỡ đúng mức lượt này đã được tính lúc duyệt: theo giờ chấm, hoặc
+            // theo "Chỉ tính công" nếu Admin đã bấm; lượt vào không phải lượt
+            // đầu ngày thì lúc duyệt được 0đ nên thu hồi cũng không gỡ gì.
+            int kpiPoints = diemTheoLuat(checkinLog, checkinLog.getCheckinTime(),
                     mocDungGioCua(checkinLog.getUserId()));
+            if (!"CHECK_OUT".equals(checkinLog.getActionType())
+                    && daTinhDiemTrongNgay(checkinLog.getUserId(), checkinLog.getCheckinTime(), checkinLog.getId())) {
+                kpiPoints = 0;
+            }
             // Thứ Bảy không tính điểm chuyên cần nên thu hồi cũng không có gì để gỡ
             if (com.trilong.kpibackend.core.utils.GioVN.laThuBay(checkinLog.getCheckinTime())) kpiPoints = 0;
             if (kpiPoints != 0) {
@@ -683,10 +687,10 @@ public class CheckinService {
             }
             LocalTime moc = mocDungGioCua(userId);
             int diemMoi = daTinhDiemTrongNgay(userId, moi, saved.getId())
-                    ? 0 : calculateAttendanceKpi("CHECK_IN", moi.toLocalTime(), moc);
+                    ? 0 : diemTheoLuat(saved, moi, moc);
             if (diemMoi != 0) {
                 kpiCalculationService.updateKpiPoints(userId, "attendance", diemMoi, moi,
-                        "Admin sửa giờ chấm công — " + dienGiaiChuyenCan("CHECK_IN", moi, moc));
+                        "Admin sửa giờ chấm công — " + dienGiaiLuot(saved, moi, moc));
                 diemCong = diemMoi;
             }
         }
@@ -720,6 +724,105 @@ public class CheckinService {
                 .filter(e -> e.getReason() != null && e.getReason().contains(chu))
                 .mapToInt(e -> e.getEffectivePoints() == null ? 0 : e.getEffectivePoints())
                 .sum();
+    }
+
+    // ── Chỉ tính công ──────────────────────────────────────────────────────
+    /** "Chỉ tính công" 0 điểm: không cộng đúng giờ, không trừ đi muộn. */
+    public static final String CHI_CONG_KHONG_DIEM = "KHONG_DIEM";
+    /** "Chỉ tính công" tính là đi muộn: −5, bảng công ghi M. */
+    public static final String CHI_CONG_DI_MUON = "DI_MUON";
+    private static final int LY_DO_TOI_DA = 500;
+
+    /** Kết quả Admin bấm "Chỉ tính công". diemTruoc / diemSau: điểm chuyên cần lượt này trước / sau khi bấm. */
+    public record KetQuaChiTinhCong(CheckinLog luot, int diemTruoc, int diemSau, String moTa) {}
+
+    /**
+     * Admin "Chỉ tính công" cho một lượt VÀO của người có KPI (Sale, Trưởng
+     * phòng): vẫn tính ngày công nhưng không cho điểm đúng giờ — ví dụ chấm
+     * công ở cửa lúc 08:45, lên tới nơi đã muộn. Giờ chấm thật giữ nguyên.
+     *
+     * <ul>
+     *   <li>{@code KHONG_DIEM}: lượt này 0 điểm (gỡ +5 nếu đã cộng).</li>
+     *   <li>{@code DI_MUON}: tính là đi muộn −5; bảng công ghi M.</li>
+     *   <li>null / {@code BO}: bỏ chỉ tính công, tính lại theo giờ chấm.</li>
+     * </ul>
+     * Lượt đã duyệt: gỡ / trừ ngay đúng phần chênh so với số điểm lượt đang
+     * thực có (tra nhật ký như khi sửa giờ). Lượt chờ duyệt: bấm là duyệt luôn
+     * theo mức đã chọn. Đặt chế độ thì bắt buộc lý do — nhân sự thấy trên app.
+     */
+    @Transactional
+    public KetQuaChiTinhCong chiTinhCong(Long id, String cheDo, String lyDo) {
+        String che = cheDo == null || cheDo.isBlank() || "BO".equalsIgnoreCase(cheDo.trim())
+                ? null : cheDo.trim().toUpperCase();
+        if (che != null && !CHI_CONG_KHONG_DIEM.equals(che) && !CHI_CONG_DI_MUON.equals(che)) {
+            throw new IllegalArgumentException("Chọn 0 điểm hoặc tính đi muộn.");
+        }
+        String ly = lyDo == null ? "" : lyDo.trim();
+        if (che != null && ly.isEmpty()) {
+            throw new IllegalArgumentException("Nhập lý do chỉ tính công để nhân sự biết vì sao không được điểm đúng giờ.");
+        }
+        if (ly.length() > LY_DO_TOI_DA) {
+            throw new IllegalArgumentException("Lý do tối đa " + LY_DO_TOI_DA + " ký tự.");
+        }
+
+        CheckinLog c = checkinLogRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy bản ghi chấm công."));
+        if ("CHECK_OUT".equals(c.getActionType())) {
+            throw new IllegalArgumentException("Chỉ tính công áp cho lượt chấm công VÀO — lượt ra không có điểm đúng giờ.");
+        }
+        if ("REJECTED".equals(c.getStatus())) {
+            throw new IllegalArgumentException("Lượt này đã bị từ chối nên không tính công.");
+        }
+        User u = userRepository.findById(c.getUserId())
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy nhân sự của lượt chấm công."));
+        if (!KpiCalculationService.duocChamKpi(u)) {
+            throw new IllegalArgumentException("Nhân sự này không làm KPI — chấm công vốn chỉ tính công, không có điểm.");
+        }
+        ZonedDateTime t = c.getCheckinTime();
+        if (com.trilong.kpibackend.core.utils.GioVN.laThuBay(t)) {
+            throw new IllegalArgumentException("Thứ Bảy không tính điểm đúng giờ / đi muộn nên không cần chỉ tính công.");
+        }
+        if (daTinhDiemTrongNgay(c.getUserId(), t, c.getId())) {
+            throw new IllegalArgumentException("Ngày này đã có lượt vào sớm hơn được tính điểm — chọn lượt vào đầu tiên trong ngày.");
+        }
+
+        String cheCu = c.getChiTinhCong();
+        c.setChiTinhCong(che);
+        c.setChiTinhCongLyDo(che == null ? null : ly);
+        String gioChu = gio(t);
+        String nhan = che == null ? "tính theo giờ chấm"
+                : CHI_CONG_DI_MUON.equals(che) ? "tính là đi muộn" : "0 điểm";
+
+        if (!"APPROVED".equals(c.getStatus())) {
+            // Chờ duyệt: đặt chế độ thì duyệt luôn — updateStatus tính điểm theo chế độ
+            CheckinLog luu = checkinLogRepository.save(c);
+            if (che == null) return new KetQuaChiTinhCong(luu, 0, 0, "Đã bỏ chỉ tính công. Lượt này vẫn chờ duyệt.");
+            CheckinLog duyet = updateStatus(id, "APPROVED", null);
+            int diem = CHI_CONG_DI_MUON.equals(che) ? KPI_LATE : 0;
+            log.info("[Checkin] Admin duyệt chỉ tính công #{} userId={} lúc {} ({}) — {}", id, c.getUserId(), gioChu, che, ly);
+            return new KetQuaChiTinhCong(duyet, 0, diem,
+                    "Đã duyệt chỉ tính công lượt vào " + gioChu + " (" + nhan + ")."
+                            + (diem != 0 ? " Điểm chuyên cần " + diem + "đ." : ""));
+        }
+
+        CheckinLog luu = checkinLogRepository.save(c);
+        int dangCo = diemChuyenCanCuaLuot(c.getUserId(), t);
+        int muc = diemTheoLuat(luu, t, mocDungGioCua(c.getUserId()));
+        int chenh = muc - dangCo;
+        if (chenh != 0) {
+            // Mang "lúc <giờ chấm>" và đúng mốc giờ chấm để lần sau tra thấy đã gỡ
+            String cau = che == null
+                    ? "Admin bỏ chỉ tính công lượt vào lúc " + gioChu + " — tính lại theo giờ chấm"
+                    : "Admin chỉ tính công lượt vào lúc " + gioChu + " — " + nhan + ": " + ly;
+            kpiCalculationService.updateKpiPoints(c.getUserId(), "attendance", chenh, t, cau);
+        }
+        log.info("[Checkin] Admin chỉ tính công #{} userId={} lúc {}: {} → {} ({} → {}đ)",
+                id, c.getUserId(), gioChu, cheCu, che, dangCo, muc);
+        String moTa = (che == null ? "Đã bỏ chỉ tính công lượt vào " + gioChu + "."
+                : "Đã chỉ tính công lượt vào " + gioChu + " (" + nhan + ").")
+                + (chenh != 0 ? " Điểm chuyên cần " + (dangCo > 0 ? "+" : "") + dangCo + "đ → "
+                        + (muc > 0 ? "+" : "") + muc + "đ." : " Điểm không đổi.");
+        return new KetQuaChiTinhCong(luu, dangCo, muc, moTa);
     }
 
     /** Xóa bản ghi checkin (Admin) */
@@ -923,6 +1026,28 @@ public class CheckinService {
             return quaMoc(time, mocDungGio) ? KPI_LATE : KPI_ON_TIME;
         }
         return quaMoc(time, AFTERNOON_ON_TIME_LIMIT) ? KPI_LATE : KPI_ON_TIME;
+    }
+
+    /**
+     * Điểm chuyên cần đúng luật của một lượt tại giờ {@code t}: Admin đã bấm
+     * "Chỉ tính công" thì 0 / −5 theo chế độ, không thì tính theo giờ chấm.
+     * Chưa xét "lượt vào đầu ngày" và thứ Bảy — chỗ gọi tự xét.
+     */
+    private int diemTheoLuat(CheckinLog c, ZonedDateTime t, LocalTime mocDungGio) {
+        if (!"CHECK_OUT".equals(c.getActionType())) {
+            if (CHI_CONG_KHONG_DIEM.equals(c.getChiTinhCong())) return 0;
+            if (CHI_CONG_DI_MUON.equals(c.getChiTinhCong())) return KPI_LATE;
+        }
+        return calculateAttendanceKpi(c.getActionType(), t.withZoneSameInstant(VN_ZONE).toLocalTime(), mocDungGio);
+    }
+
+    /** Câu diễn giải khớp {@link #diemTheoLuat}: lượt chỉ tính công thì nói rõ vì sao bị tính muộn. */
+    private String dienGiaiLuot(CheckinLog c, ZonedDateTime t, LocalTime mocDungGio) {
+        if (!"CHECK_OUT".equals(c.getActionType()) && CHI_CONG_DI_MUON.equals(c.getChiTinhCong())) {
+            return "Chỉ tính công, tính là đi muộn — chấm công lúc " + gio(t)
+                    + (c.getChiTinhCongLyDo() != null ? " (" + c.getChiTinhCongLyDo() + ")" : "");
+        }
+        return dienGiaiChuyenCan(c.getActionType(), t, mocDungGio);
     }
 
     /**

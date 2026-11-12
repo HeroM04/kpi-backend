@@ -247,6 +247,26 @@ public class CheckinController {
         }
     }
 
+    @Operation(
+            summary = "🕘 Admin chỉ tính công một lượt vào",
+            description = "Cho người làm KPI chấm công trong hạn nhưng lên tới nơi đã muộn: giữ ngày công, "
+                    + "không cho điểm đúng giờ. cheDo=KHONG_DIEM (0 điểm) | DI_MUON (tính đi muộn −5, bảng công ghi M) "
+                    + "| BO (bỏ, tính lại theo giờ chấm). lyDo bắt buộc khi đặt chế độ. Lượt chờ duyệt thì duyệt luôn."
+    )
+    @PutMapping("/{id}/chi-tinh-cong")
+    @PreAuthorize("hasAuthority('attendance:approve') or hasRole('ADMIN')")
+    public ResponseEntity<?> chiTinhCong(@PathVariable Long id,
+                                         @RequestParam(required = false) String cheDo,
+                                         @RequestParam(required = false) String lyDo) {
+        try {
+            var kq = checkinService.chiTinhCong(id, cheDo, lyDo);
+            return ResponseEntity.ok(Map.of("status", "SUCCESS", "message", kq.moTa(), "data", Map.of(
+                    "luot", kq.luot(), "diemTruoc", kq.diemTruoc(), "diemSau", kq.diemSau(), "moTa", kq.moTa())));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("status", "ERROR", "message", e.getMessage()));
+        }
+    }
+
     /** Thân yêu cầu thêm chấm công tay. Giờ dạng HH:mm, ngày dạng yyyy-MM-dd. */
     public record ThemTayDTO(Long userId, LocalDate ngay, java.time.LocalTime gioVao,
                              java.time.LocalTime gioRa, String ghiChu) {}

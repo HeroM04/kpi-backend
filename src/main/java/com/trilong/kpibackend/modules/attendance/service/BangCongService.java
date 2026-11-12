@@ -109,6 +109,7 @@ public class BangCongService {
                 List<CheckinLog> logs = cuaNguoi.get(d);
                 boolean coCho = false, coDuyet = false, coTuChoi = false;
                 ZonedDateTime vaoDauTien = null, raCuoi = null;
+                CheckinLog luotVaoDau = null;
                 if (logs != null) {
                     for (CheckinLog c : logs) {
                         if ("PENDING".equals(c.getStatus())) coCho = true;
@@ -119,6 +120,7 @@ public class BangCongService {
                                 if (raCuoi == null || c.getCheckinTime().isAfter(raCuoi)) raCuoi = c.getCheckinTime();
                             } else if (vaoDauTien == null || c.getCheckinTime().isBefore(vaoDauTien)) {
                                 vaoDauTien = c.getCheckinTime();
+                                luotVaoDau = c;
                             }
                         }
                     }
@@ -131,7 +133,9 @@ public class BangCongService {
                 else if ("APPROVED".equals(trangThaiVang)) { ky = "P"; coPhep++; }
                 else if (coCho) { ky = "?"; choDuyet++; }
                 else if (coDuyet && vaoDauTien != null) {
-                    boolean dung = checkinService.laDungGio(u, vaoDauTien);
+                    // Admin "Chỉ tính công — tính là đi muộn" thì ghi M dù giờ chấm còn trong hạn
+                    boolean dung = checkinService.laDungGio(u, vaoDauTien)
+                            && !CheckinService.CHI_CONG_DI_MUON.equals(luotVaoDau.getChiTinhCong());
                     ky = dung ? "V" : "M"; cong++; if (!dung) muon++;
                 }
                 else if (coDuyet) { ky = "V"; cong++; }            // chỉ có check-out được duyệt

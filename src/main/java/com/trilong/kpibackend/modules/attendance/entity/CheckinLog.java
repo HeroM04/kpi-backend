@@ -86,6 +86,19 @@ public class CheckinLog {
     @Column(name = "reject_reason", length = 500)
     private String rejectReason;
 
+    /**
+     * Admin bấm "Chỉ tính công" cho lượt VÀO của người có KPI: vẫn tính ngày
+     * công nhưng không cho điểm đúng giờ — ví dụ chấm công ở cửa lúc 08:45, lên
+     * tới nơi đã muộn. {@code KHONG_DIEM} = 0 điểm; {@code DI_MUON} = tính là
+     * đi muộn (−5, bảng công ghi M). Null = tính theo giờ chấm như thường.
+     */
+    @Column(name = "chi_tinh_cong", length = 20)
+    private String chiTinhCong;
+
+    /** Lý do Admin ghi khi bấm "Chỉ tính công" — nhân sự xem trong Lịch sử trên app. */
+    @Column(name = "chi_tinh_cong_ly_do", length = 500)
+    private String chiTinhCongLyDo;
+
     @PrePersist
     public void prePersist() {
         if (this.checkinTime == null) {

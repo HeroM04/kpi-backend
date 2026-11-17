@@ -121,17 +121,17 @@ public class FieldBattleService {
 
     public FieldBattle getBattleById(Long battleId) {
         return fieldBattleRepository.findById(battleId)
-                .orElseThrow(() -> new IllegalArgumentException("KhÃ´ng tÃ¬m tháº¥y bÃ¡o cÃ¡o thá»±c chiáº¿n cÃ³ ID: " + battleId));
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy báo cáo thực chiến có ID: " + battleId));
     }
 
 
     @Transactional
     public FieldBattle approveBattle(Long battleId, Long approvedById) {
         FieldBattle battle = fieldBattleRepository.findById(battleId)
-                .orElseThrow(() -> new IllegalArgumentException("KhÃ´ng tÃ¬m tháº¥y bÃ¡o cÃ¡o thá»±c chiáº¿n cÃ³ ID: " + battleId));
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy báo cáo thực chiến có ID: " + battleId));
 
         User approver = userRepository.findById(approvedById)
-                .orElseThrow(() -> new IllegalArgumentException("KhÃ´ng tÃ¬m tháº¥y ngÆ°á»i duyá»‡t"));
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy người duyệt"));
 
         if ("APPROVED".equals(battle.getStatus())) {
             return battle;
@@ -143,7 +143,7 @@ public class FieldBattleService {
         battle.setApprovedAt(ZonedDateTime.now());
         FieldBattle savedBattle = fieldBattleRepository.save(battle);
 
-        // Cá»™ng Ä‘iá»ƒm KPI thÃ¡ng gá»­i yÃªu cáº§u
+        // Cộng điểm KPI tháng gửi yêu cầu
         kpiCalculationService.updateKpiPoints(battle.getUser().getId(), "meeting", diemCua(battle),
                 battle.getSubmittedAt(),
                 "Admin duyệt thực chiến — " + tenLoai(battle) + " " + battle.getCustomerName());
@@ -155,10 +155,10 @@ public class FieldBattleService {
     public FieldBattle rejectBattle(Long battleId, Long approvedById, String lyDoTuChoi) {
         String lyDo = com.trilong.kpibackend.core.utils.LyDoTuChoi.batBuoc(lyDoTuChoi);
         FieldBattle battle = fieldBattleRepository.findById(battleId)
-                .orElseThrow(() -> new IllegalArgumentException("KhÃ´ng tÃ¬m tháº¥y bÃ¡o cÃ¡o thá»±c chiáº¿n cÃ³ ID: " + battleId));
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy báo cáo thực chiến có ID: " + battleId));
 
         User approver = userRepository.findById(approvedById)
-                .orElseThrow(() -> new IllegalArgumentException("KhÃ´ng tÃ¬m tháº¥y ngÆ°á»i duyá»‡t"));
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy người duyệt"));
 
         // Đang APPROVED thì thu hồi đúng số điểm báo cáo này thực đã cộng
         thuHoiDiem(battle, "Admin từ chối thực chiến — ");
@@ -248,12 +248,47 @@ public class FieldBattleService {
     @Transactional
     public void deleteBattle(Long battleId) {
         FieldBattle battle = fieldBattleRepository.findById(battleId)
-                .orElseThrow(() -> new IllegalArgumentException("KhÃ´ng tÃ¬m tháº¥y bÃ¡o cÃ¡o thá»±c chiáº¿n cÃ³ ID: " + battleId));
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy báo cáo thực chiến có ID: " + battleId));
 
         // Đang APPROVED thì thu hồi đúng số điểm báo cáo này thực đã cộng
         thuHoiDiem(battle, "Admin xóa báo cáo thực chiến — ");
 
         fieldBattleRepository.delete(battle);
+    }
+
+    /**
+     * Sale tự xóa báo cáo của chính mình khi gửi nhầm, nhập sai hay khách đổi
+     * lịch — như hủy đơn xin vắng. Chỉ khi còn CHỜ DUYỆT: lúc đó chưa có điểm nào,
+     * xóa không đụng KPI. Đã duyệt (đã cộng điểm) hay đã bị từ chối thì là việc
+     * của Admin trên web, để Admin còn giữ được lịch sử duyệt.
+     *
+     * <p>Báo Admin để trang Thực chiến trên web bỏ báo cáo khỏi hàng chờ, không
+     * thì Admin bấm duyệt một báo cáo đã không còn.
+     */
+    @Transactional
+    public void xoaBaoCaoCuaToi(Long userId, Long battleId) {
+        FieldBattle battle = fieldBattleRepository.findById(battleId)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy báo cáo thực chiến này."));
+        if (battle.getUser() == null || !battle.getUser().getId().equals(userId)) {
+            throw new IllegalArgumentException("Bạn chỉ xóa được báo cáo của chính mình.");
+        }
+        if ("APPROVED".equals(battle.getStatus())) {
+            throw new IllegalArgumentException("Báo cáo đã được duyệt và cộng điểm, không tự xóa được. Cần gỡ thì liên hệ Admin.");
+        }
+        if (!"PENDING".equals(battle.getStatus())) {
+            throw new IllegalArgumentException("Chỉ xóa được báo cáo đang chờ duyệt.");
+        }
+
+        fieldBattleRepository.delete(battle);
+        log.info("[ThucChien] userId={} tự xóa báo cáo #{} (đang chờ duyệt)", userId, battleId);
+
+        try {
+            messagingTemplate.convertAndSend("/topic/admin/requests", (Object) java.util.Map.of(
+                    "type", "MEETING",
+                    "message", battle.getUser().getFullName() + " đã tự xóa một báo cáo thực chiến đang chờ duyệt."));
+        } catch (Exception e) {
+            // Báo tin hỏng không được làm hỏng việc xóa — trang web tự tải lại khi mở
+        }
     }
 
     /**

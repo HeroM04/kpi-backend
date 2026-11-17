@@ -59,6 +59,20 @@ public class FieldBattleController {
         return ResponseEntity.ok(Map.of("status", "SUCCESS", "data", dtos));
     }
 
+    @Operation(summary = "Sales tự xóa báo cáo thực chiến của mình",
+            description = "Chỉ khi báo cáo còn chờ duyệt (chưa cộng điểm). Đã duyệt / bị từ chối thì Admin xử lý trên web.")
+    @DeleteMapping("/my-battles/{id}")
+    @PreAuthorize("hasAuthority('meeting:submit') or hasRole('ADMIN')")
+    public ResponseEntity<?> xoaBaoCaoCuaToi(@AuthenticationPrincipal UserPrincipal currentUser,
+                                            @PathVariable Long id) {
+        try {
+            fieldBattleService.xoaBaoCaoCuaToi(currentUser.getUserId(), id);
+            return ResponseEntity.ok(Map.of("status", "SUCCESS", "message", "Đã xóa báo cáo thực chiến."));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("status", "ERROR", "message", e.getMessage()));
+        }
+    }
+
     @Operation(summary = "Xem danh sách thực chiến chờ duyệt", description = "Dành cho Admin/Trưởng phòng để duyệt.")
     @GetMapping("/pending")
     @PreAuthorize("hasAuthority('meeting:approve') or hasRole('ADMIN')")

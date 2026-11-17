@@ -309,4 +309,42 @@ class FieldBattleServiceTest {
         verify(kpi).updateKpiPoints(eq(7L), eq("meeting"), eq(-5), eq(nop), startsWith("Admin xóa báo cáo thực chiến"));
         verify(fieldBattleRepository).delete(b);
     }
+
+    // ── Sale tự xóa báo cáo của mình ─────────────────────────────────────────
+
+    @Test
+    @DisplayName("Sale tự xóa báo cáo đang chờ duyệt của mình → xóa, không đụng điểm")
+    void saleXoaBaoCaoChoDuyet() {
+        FieldBattle b = baoCao("MEETING", "PENDING");
+
+        service.xoaBaoCaoCuaToi(7L, 50L);
+
+        verify(fieldBattleRepository).delete(b);
+        verifyNoInteractions(kpi);
+    }
+
+    @Test
+    @DisplayName("Không xóa được báo cáo của người khác")
+    void saleKhongXoaBaoCaoNguoiKhac() {
+        baoCao("MEETING", "PENDING");
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.xoaBaoCaoCuaToi(8L, 50L))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("của chính mình");
+        verify(fieldBattleRepository, never()).delete(any());
+    }
+
+    @Test
+    @DisplayName("Báo cáo đã duyệt (đã cộng điểm) hoặc đã bị từ chối → Sale không tự xóa được, điểm giữ nguyên")
+    void saleKhongXoaBaoCaoDaXuLy() {
+        baoCao("MEETING", "APPROVED");
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.xoaBaoCaoCuaToi(7L, 50L))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("liên hệ Admin");
+
+        baoCao("MEETING", "REJECTED");
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.xoaBaoCaoCuaToi(7L, 50L))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("đang chờ duyệt");
+
+        verify(fieldBattleRepository, never()).delete(any());
+        verifyNoInteractions(kpi);
+    }
 }

@@ -229,8 +229,12 @@ public class TrainingService {
             dienGiai = "Thiếu buổi đào tạo bắt buộc trong tuần — thu hồi điểm đã cộng";
         }
 
-        kpiCalculationService.updateKpiPoints(userId, "attendance", chenh,
-                mocGhiSo(thuHai), dienGiai);
+        // Thu hồi thì trừ đúng phần đã thực vào, không trừ theo mức quy định 15đ
+        int diemGhi = chenh < 0 ? mucThuHoiThucTe(userId, tuan, chenh) : chenh;
+        if (diemGhi != 0) {
+            kpiCalculationService.updateKpiPoints(userId, "attendance", diemGhi,
+                    mocGhiSo(thuHai), dienGiai);
+        }
 
         var g = ghiNhan.orElseGet(KpiAutoGrant::new);
         g.setUserId(userId);
@@ -242,6 +246,49 @@ public class TrainingService {
                 ? "Dự đủ các buổi đào tạo bắt buộc của tuần " + tuan
                 : "Thiếu buổi đào tạo bắt buộc trong tuần " + tuan);
         kpiAutoGrantRepository.save(g);
+    }
+
+    /**
+     * Số điểm phải trừ khi thu hồi điểm đào tạo tuần (số âm, hoặc 0).
+     *
+     * <p>KHÔNG trừ theo mức quy định 15đ. Nhóm Phát triển cá nhân có trần 30đ:
+     * ai đã gần đầy thì lúc cộng chỉ vào được 5đ ("Quy định 15đ, nhóm sắp đầy
+     * nên chỉ vào được 5đ"). Thu hồi 15đ là trừ lẹm sang điểm khác của họ.
+     */
+    private int mucThuHoiThucTe(Long userId, String tuan, int chenhTheoQuyDinh) {
+        List<KpiLedgerEntry> dong = kpiLedgerEntryRepository
+                .findByUserIdAndCategoryAndWeekOrderByIdAsc(userId, "attendance", tuan);
+        int hienTai = kpiWeeklyScoreRepository.findByUserIdAndWeek(userId, tuan)
+                .map(w -> w.getAttendance()).orElse(0);
+        return tinhMucThuHoi(dong, hienTai, chenhTheoQuyDinh);
+    }
+
+    /**
+     * Tính lại điểm nhóm của tuần từ nhật ký, bỏ mọi dòng của cơ chế đào tạo tuần
+     * (đúng thứ tự, đúng trần 0–30 như lúc cộng thật), rồi trừ phần chênh. Nhờ
+     * vậy điểm khác từng bị trần "nuốt" vì khoản đào tạo cũng được tính lại đúng.
+     *
+     * <p>Nhật ký không khớp với điểm hiện tại (tuần cũ, trước khi có nhật ký) thì
+     * trừ bằng tổng điểm THỰC VÀO của các dòng đào tạo tuần. Không bao giờ trừ quá
+     * mức quy định.
+     */
+    static int tinhMucThuHoi(List<KpiLedgerEntry> dongTheoThuTu, int hienTai, int chenhTheoQuyDinh) {
+        int phatLai = 0;
+        for (KpiLedgerEntry e : dongTheoThuTu) {
+            int p = e.getPoints() == null ? 0 : e.getPoints();
+            phatLai = Math.max(0, Math.min(KpiCalculationService.CAP_PERSONAL, phatLai + p));
+        }
+        int chenh;
+        if (phatLai == hienTai) {
+            chenh = diemTuanKhongTinhDaoTao(dongTheoThuTu) - hienTai;
+        } else {
+            int thucVao = dongTheoThuTu.stream()
+                    .filter(e -> laDongDiemDaoTaoTuan(e.getReason()))
+                    .mapToInt(e -> e.getEffectivePoints() == null ? 0 : e.getEffectivePoints())
+                    .sum();
+            chenh = -Math.max(0, thucVao);
+        }
+        return Math.max(chenhTheoQuyDinh, Math.min(0, chenh));
     }
 
     /**
@@ -645,17 +692,24 @@ public class TrainingService {
             throw new IllegalStateException("Phòng học đã đạt giới hạn số lượng học viên tối đa (" + session.getMaxSlots() + ")!");
         }
 
+        // Điểm danh bù cho buổi đã kết thúc (buổi học diễn ra ngoài app, Admin
+        // nhập lại sau) thì ghi giờ của buổi học, không ghi hôm nay.
+        ZonedDateTime bayGio = ZonedDateTime.now();
+        boolean buoiDaQua = session.getEndTime() != null && session.getEndTime().isBefore(bayGio)
+                && session.getStartTime() != null;
         TrainingAttendee attendee = TrainingAttendee.builder()
                 .sessionId(sessionId)
                 .userId(userId)
                 .session(session)
                 .user(user)
-                .attendedAt(ZonedDateTime.now())
+                .attendedAt(buoiDaQua ? session.getStartTime() : bayGio)
                 .build();
 
         TrainingAttendee savedAttendee = trainingAttendeeRepository.save(attendee);
         tuDiemDanhCungNhomKyNang(session, userId);
-        chamDiemDaoTaoTuan(userId, attendee.getAttendedAt());
+        // Chấm lại đúng TUẦN CỦA BUỔI HỌC — trước đây chấm tuần hiện tại, nên
+        // điểm danh bù buổi tuần trước không trả lại điểm đào tạo của tuần đó.
+        chamDiemDaoTaoTuan(userId, session.getStartTime() != null ? session.getStartTime() : bayGio);
         return savedAttendee;
     }
 

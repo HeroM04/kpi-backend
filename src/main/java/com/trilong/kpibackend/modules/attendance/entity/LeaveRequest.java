@@ -14,7 +14,8 @@ import java.time.ZonedDateTime;
  * <ul>
  *   <li>Nhân sự mở màn hình Điểm danh trên app → "Xin vắng" → chọn ngày + nhập lý do → gửi</li>
  *   <li>Admin vào WebAdmin duyệt hoặc từ chối</li>
- *   <li>Được duyệt → ngày đó tính là <b>vắng có phép</b>, trừ 10đ KPI</li>
+ *   <li>Được duyệt → ngày đó tính là <b>vắng có phép</b>: đơn gửi từ hôm trước
+ *       ngày nghỉ không trừ điểm, đơn gửi ngay trong ngày nghỉ trừ 10đ KPI</li>
  *   <li>Không gửi đơn (hoặc đơn bị từ chối) mà cũng không chấm công →
  *       cuối ngày hệ thống tự chấm <b>vắng không phép</b>, trừ 15đ KPI</li>
  * </ul>

@@ -33,10 +33,11 @@ import static org.mockito.Mockito.*;
 /**
  * Đơn xin vắng và chốt vắng không phép cuối ngày.
  *
- * <p>Luật: nghỉ có đơn được duyệt −10đ, vắng không đơn −15đ, Chủ nhật không
- * tính. Thứ Bảy vẫn ghi có phép / không phép trên bảng công nhưng không trừ
- * điểm KPI. Mọi tình huống duyệt / thu hồi duyệt / gửi lại phải cho ra đúng một
- * trong ba kết quả đó, không trừ trùng, không bỏ sót.
+ * <p>Luật: nghỉ có đơn được duyệt −10đ nếu đơn gửi ngay trong ngày nghỉ, 0đ nếu
+ * xin từ hôm trước (giờ VN); vắng không đơn −15đ, Chủ nhật không tính. Thứ Bảy
+ * vẫn ghi có phép / không phép trên bảng công nhưng không trừ điểm KPI. Mọi tình
+ * huống duyệt / thu hồi duyệt / gửi lại phải cho ra đúng một kết quả đó, không
+ * trừ trùng, không bỏ sót.
  */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -64,6 +65,11 @@ class LeaveRequestServiceTest {
         r.setKpiApplied(daTru);
         when(leaveRepo.findById(id)).thenReturn(Optional.of(r));
         return r;
+    }
+
+    /** Giờ VN hh:mm của ngày {@code ngay} — giờ gửi đơn. */
+    private static ZonedDateTime luc(LocalDate ngay, int gio, int phut) {
+        return ngay.atTime(gio, phut).atZone(VN);
     }
 
     private static boolean cuoiTuan(LocalDate d) {
@@ -105,14 +111,90 @@ class LeaveRequestServiceTest {
     class DuyetTuChoi {
 
         @Test
-        @DisplayName("Duyệt đơn → −10đ một lần; duyệt lại không trừ thêm")
+        @DisplayName("Duyệt đơn gửi ngay trong ngày nghỉ → −10đ một lần; duyệt lại không trừ thêm")
         void duyet() {
-            LeaveRequest r = don(1, ngayThuongSau(2), "PENDING", false);
+            LocalDate ngay = ngayThuongSau(2);
+            LeaveRequest r = don(1, ngay, "PENDING", false);
+            r.setSubmittedAt(luc(ngay, 7, 30));
             service.approve(1L, 99L, null);
             service.approve(1L, 99L, null);
 
             assertThat(r.getStatus()).isEqualTo("APPROVED");
             verify(kpi, times(1)).updateKpiPoints(eq(7L), eq("attendance"), eq(-10), any(), anyString());
+        }
+
+        @Test
+        @DisplayName("Đơn xin từ hôm trước → duyệt là có phép nhưng không trừ điểm")
+        void duyetDonXinTruoc() {
+            LocalDate ngay = ngayThuongSau(2);
+            LeaveRequest r = don(20, ngay, "PENDING", false);
+            r.setSubmittedAt(luc(ngay.minusDays(1), 17, 0));
+
+            service.approve(20L, 99L, null);
+
+            assertThat(r.getStatus()).isEqualTo("APPROVED");
+            assertThat(r.getKpiApplied()).isFalse();
+            verifyNoInteractions(kpi);
+        }
+
+        @Test
+        @DisplayName("Gửi 23:50 tối hôm trước (giờ VN) → xin trước; gửi 00:10 sáng ngày nghỉ → xin trong ngày, dù theo UTC vẫn là hôm trước")
+        void xinTruocTinhTheoGioVN() {
+            LocalDate ngay = ngayThuongSau(2);
+            LeaveRequest khuya = new LeaveRequest();
+            khuya.setLeaveDate(ngay);
+            khuya.setSubmittedAt(luc(ngay.minusDays(1), 23, 50).withZoneSameInstant(ZoneId.of("UTC")));
+            LeaveRequest sang = new LeaveRequest();
+            sang.setLeaveDate(ngay);
+            sang.setSubmittedAt(luc(ngay, 0, 10).withZoneSameInstant(ZoneId.of("UTC"))); // 17:10 UTC hôm trước
+
+            assertThat(LeaveRequestService.xinTruoc(khuya)).isTrue();
+            assertThat(LeaveRequestService.xinTruoc(sang)).isFalse();
+        }
+
+        @Test
+        @DisplayName("Duyệt lại đơn xin trước mà ngày đó đã bị chốt không phép (−15) → hoàn 15, không trừ 10")
+        void duyetLaiDonXinTruocSauChotVang() {
+            LocalDate ngay = homQuaKhongPhaiCN();
+            LeaveRequest r = don(21, ngay, "UNEXCUSED", true);
+            r.setReason("Đi khám bệnh");
+            r.setSubmittedAt(luc(ngay.minusDays(2), 9, 0));
+            when(kpi.diemThucDaTru(eq(7L), eq("attendance"), startsWith("Vắng không phép ngày"), any(), eq(15))).thenReturn(15);
+
+            service.approve(21L, 99L, null);
+
+            assertThat(r.getStatus()).isEqualTo("APPROVED");
+            assertThat(r.getKpiApplied()).isFalse();
+            verify(kpi).updateKpiPoints(eq(7L), eq("attendance"), eq(15), any(), startsWith("Hoàn điểm vắng không phép"));
+            verify(kpi, never()).updateKpiPoints(any(), any(), eq(-10), any(), any());
+        }
+
+        @Test
+        @DisplayName("Thu hồi duyệt đơn xin trước (chưa trừ gì) ngày đã qua, không chấm công → không hoàn 10, chỉ −15")
+        void thuHoiDonXinTruoc() {
+            LocalDate ngay = homQuaKhongPhaiCN();
+            LeaveRequest r = don(22, ngay, "APPROVED", false);
+            r.setSubmittedAt(luc(ngay.minusDays(1), 10, 0));
+            when(checkinRepo.findByUserIdAndCheckinTimeBetween(eq(7L), any(), any())).thenReturn(List.of());
+
+            service.reject(22L, 99L, "Không có giấy xác nhận");
+
+            assertThat(r.getStatus()).isEqualTo("UNEXCUSED");
+            verify(kpi, never()).updateKpiPoints(any(), any(), eq(10), any(), any());
+            verify(kpi).updateKpiPoints(eq(7L), eq("attendance"), eq(-15), any(), startsWith("Vắng không phép"));
+        }
+
+        @Test
+        @DisplayName("Danh sách trả về cờ xinTruoc và điểm 0 cho đơn xin trước đã duyệt")
+        void dtoXinTruoc() {
+            LocalDate ngay = ngayThuongSau(2);
+            LeaveRequest r = don(23, ngay, "APPROVED", false);
+            r.setSubmittedAt(luc(ngay.minusDays(3), 9, 0));
+
+            var dto = service.toDTO(r);
+
+            assertThat(dto.getXinTruoc()).isTrue();
+            assertThat(dto.getKpiPoints()).isZero();
         }
 
         @Test
@@ -246,6 +328,51 @@ class LeaveRequestServiceTest {
             verify(kpi, times(1)).updateKpiPoints(eq(7L), eq("attendance"), eq(10), any(),
                     startsWith("Hoàn điểm đơn nghỉ thứ Bảy 17/10"));
             verifyNoMoreInteractions(kpi);
+        }
+
+        @Test
+        @DisplayName("Hoàn mọi đơn có phép bị trừ theo luật cũ, đúng số thực trừ; giữ khoản trừ luật mới; chạy lại không hoàn trùng")
+        void hoanDonCoPhepLuatCu() {
+            LeaveRequest du10 = don(30, LocalDate.of(2026, 10, 5), "APPROVED", true);      // nhật ký −10
+            LeaveRequest biSan = don(31, LocalDate.of(2026, 10, 6), "APPROVED", true);     // nhóm còn 4đ → thực trừ −4
+            LeaveRequest truocNhatKy = don(32, LocalDate.of(2026, 8, 10), "APPROVED", true); // trước 21/08: không có nhật ký
+            LeaveRequest luatMoi = don(33, LocalDate.of(2026, 11, 16), "APPROVED", true);  // gửi trong ngày, duyệt sau bản mới
+            LeaveRequest xinTruoc = don(34, LocalDate.of(2026, 11, 17), "APPROVED", false); // chưa bị trừ
+            when(leaveRepo.findByStatusOrderByLeaveDateAsc("APPROVED"))
+                    .thenReturn(List.of(truocNhatKy, du10, biSan, luatMoi, xinTruoc));
+
+            java.util.Map<String, Integer> nhatKyCu = java.util.Map.of("Nghỉ có phép ngày 05/10", 10, "Nghỉ có phép ngày 06/10", 4);
+            when(kpi.diemThucDaTru(eq(7L), eq("attendance"), anyString(), any(), anyInt())).thenAnswer(i -> {
+                String dauCau = i.getArgument(2);
+                int macDinh = i.getArgument(4);
+                if (dauCau.endsWith("— đơn gửi trong ngày nghỉ")) return dauCau.contains("16/11") ? 10 : macDinh;
+                return nhatKyCu.getOrDefault(dauCau, macDinh);
+            });
+
+            assertThat(service.hoanDonCoPhepLuatCu()).isEqualTo(3);
+            assertThat(service.hoanDonCoPhepLuatCu()).isZero();
+
+            verify(kpi).updateKpiPoints(eq(7L), eq("attendance"), eq(10), any(), startsWith("Hoàn điểm nghỉ có phép ngày 05/10"));
+            verify(kpi).updateKpiPoints(eq(7L), eq("attendance"), eq(4), any(), startsWith("Hoàn điểm nghỉ có phép ngày 06/10"));
+            verify(kpi).updateKpiPoints(eq(7L), eq("attendance"), eq(10), any(), startsWith("Hoàn điểm nghỉ có phép ngày 10/08"));
+            verify(kpi, never()).updateKpiPoints(any(), any(), anyInt(), any(), contains("16/11"));
+            verify(kpi, never()).updateKpiPoints(any(), any(), anyInt(), any(), contains("17/11"));
+            assertThat(List.of(du10, biSan, truocNhatKy)).allMatch(r -> !r.getKpiApplied());
+            assertThat(luatMoi.getKpiApplied()).isTrue();
+        }
+
+        @Test
+        @DisplayName("Đơn cũ mà lúc trừ nhóm đã 0đ (thực trừ 0) → không cộng gì, chỉ bỏ cờ đã trừ")
+        void hoanDonCuThucTruBangKhong() {
+            LeaveRequest r = don(35, LocalDate.of(2026, 9, 14), "APPROVED", true);
+            when(leaveRepo.findByStatusOrderByLeaveDateAsc("APPROVED")).thenReturn(List.of(r));
+            when(kpi.diemThucDaTru(eq(7L), eq("attendance"), anyString(), any(), anyInt())).thenAnswer(i ->
+                    ((String) i.getArgument(2)).endsWith("— đơn gửi trong ngày nghỉ") ? i.getArgument(4) : 0);
+
+            assertThat(service.hoanDonCoPhepLuatCu()).isEqualTo(1);
+
+            verify(kpi, never()).updateKpiPoints(any(), any(), anyInt(), any(), any());
+            assertThat(r.getKpiApplied()).isFalse();
         }
 
         @Test

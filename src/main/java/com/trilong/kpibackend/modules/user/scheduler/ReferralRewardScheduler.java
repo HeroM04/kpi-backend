@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
  * Mỗi ngày 23:20 (giờ VN) rà điểm "gieo hạt nhân sự mới": ai giới thiệu người
  * vào công ty và người đó đã làm đủ một tháng thì cộng 15đ cho người giới thiệu.
  *
- * <p>Chạy trước bộ chốt vắng mặt (23:30) để điểm của ngày được ghi trọn vẹn.
+ * <p>Chạy trước bộ chốt vắng mặt (23:59) để điểm của ngày được ghi trọn vẹn.
  */
 @Slf4j
 @Component

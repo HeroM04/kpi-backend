@@ -12,10 +12,10 @@ import java.time.ZoneId;
 /**
  * Chốt vắng mặt cuối ngày.
  *
- * <p>23:30 mỗi ngày (giờ VN), rà lại ngày vừa qua: nhân sự nào không có bản ghi
+ * <p>23:59 mỗi ngày (giờ VN), rà lại ngày hôm đó: nhân sự nào không có bản ghi
  * chấm công và cũng không có đơn xin vắng được duyệt thì bị chấm
- * <b>vắng không phép (−15đ)</b>. Ai có đơn được duyệt đã bị trừ 10đ ngay lúc
- * Admin bấm duyệt nên không xử lý lại ở đây.
+ * <b>vắng không phép (−15đ)</b>. Ai có đơn được duyệt đã được tính điểm ngay lúc
+ * Admin bấm duyệt (xin trong ngày −10đ, xin trước 0đ) nên không xử lý lại ở đây.
  */
 @Slf4j
 @Component

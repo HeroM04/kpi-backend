@@ -26,8 +26,10 @@ public class LeaveRequestResponseDTO {
     private String reviewedByFullName;
     private ZonedDateTime reviewedAt;
     private String reviewNote;
-    /** Điểm KPI đã áp cho ngày này (-10 nếu có phép, 0 nếu chưa duyệt) */
+    /** Điểm KPI đã áp cho ngày này (-10 nếu có phép xin trong ngày, 0 nếu xin trước / thứ Bảy / chưa duyệt) */
     private Integer kpiPoints;
+    /** Đơn gửi từ hôm trước ngày nghỉ trở về trước (giờ VN) — duyệt thì không trừ điểm */
+    private Boolean xinTruoc;
 
     public static LeaveRequestResponseDTO from(LeaveRequest r, String userFullName,
                                                String departmentName, String reviewerFullName,

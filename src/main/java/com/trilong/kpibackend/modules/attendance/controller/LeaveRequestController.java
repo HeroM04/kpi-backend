@@ -119,7 +119,7 @@ public class LeaveRequestController {
         }
     }
 
-    @Operation(summary = "Admin duyệt đơn xin vắng", description = "Ghi nhận vắng có phép, trừ 10đ KPI (thứ Bảy không trừ).")
+    @Operation(summary = "Admin duyệt đơn xin vắng", description = "Ghi nhận vắng có phép. Đơn gửi trong ngày nghỉ trừ 10đ KPI; đơn xin từ hôm trước và thứ Bảy không trừ.")
     @PutMapping("/{id}/approve")
     @PreAuthorize("hasAuthority('attendance:approve') or hasRole('ADMIN')")
     public ResponseEntity<?> approve(@PathVariable Long id,
@@ -131,7 +131,9 @@ public class LeaveRequestController {
             return ResponseEntity.ok(Map.of(
                     "status", "SUCCESS",
                     "message", Boolean.TRUE.equals(req.getKpiApplied())
-                            ? "Đã duyệt vắng có phép (−10đ KPI)."
+                            ? "Đã duyệt vắng có phép (−10đ KPI, đơn gửi trong ngày nghỉ)."
+                            : LeaveRequestService.xinTruoc(req)
+                            ? "Đã duyệt vắng có phép (xin trước ngày nghỉ, không trừ điểm KPI)."
                             : "Đã duyệt vắng có phép (thứ Bảy, không trừ điểm KPI).",
                     "data", leaveRequestService.toDTO(req)));
         } catch (IllegalArgumentException e) {
@@ -159,7 +161,7 @@ public class LeaveRequestController {
 
     @Operation(summary = "Admin chốt vắng mặt thủ công cho một ngày",
             description = "Chấm vắng không phép (−15đ) cho ai không chấm công và không có đơn được duyệt. "
-                    + "Bình thường hệ thống tự chạy lúc 23:30 mỗi ngày, API này để chạy bù.")
+                    + "Bình thường hệ thống tự chạy lúc 23:59 mỗi ngày, API này để chạy bù.")
     @PostMapping("/close-day")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> closeDay(@RequestParam(required = false) String date) {

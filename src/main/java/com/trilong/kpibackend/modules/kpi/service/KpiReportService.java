@@ -376,9 +376,14 @@ public class KpiReportService {
             boolean unexcused = "UNEXCUSED".equals(lv.getStatus());
             boolean approved = "APPROVED".equals(lv.getStatus());
             String loai = unexcused ? "Vắng không phép"
-                    : approved ? "Vắng có phép"
+                    : approved ? (com.trilong.kpibackend.modules.attendance.service.LeaveRequestService.xinTruoc(lv)
+                                  ? "Vắng có phép (xin trước)" : "Vắng có phép")
                     : "PENDING".equals(lv.getStatus()) ? "Đơn chờ duyệt" : "Đơn bị từ chối";
-            int diem = unexcused ? -15 : (approved ? -10 : 0);
+            // Đúng số đã trừ: kpiApplied = false là chưa trừ hoặc không trừ (thứ Bảy, đơn xin trước
+            // ngày nghỉ). Trước đây ghi cứng −10 / −15 nên thứ Bảy cũng hiện bị trừ.
+            int diem = !Boolean.TRUE.equals(lv.getKpiApplied()) ? 0
+                    : unexcused ? com.trilong.kpibackend.modules.attendance.service.LeaveRequestService.KPI_LEAVE_UNEXCUSED
+                    : approved ? com.trilong.kpibackend.modules.attendance.service.LeaveRequestService.KPI_LEAVE_APPROVED : 0;
 
             Row row = sh.createRow(r++);
             setCell(row, 0, lv.getLeaveDate().format(DATE_FMT), st.normal);

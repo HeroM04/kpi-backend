@@ -29,7 +29,10 @@ import java.util.Set;
  *
  * <p>Theo quy định KPI của công ty:
  * <ul>
- *   <li><b>Vắng có phép</b> (đơn được Admin duyệt): −10đ</li>
+ *   <li><b>Vắng có phép, xin trước</b> (đơn gửi từ hôm trước ngày nghỉ trở về
+ *       trước, được Admin duyệt): không trừ điểm — nghỉ có kế hoạch</li>
+ *   <li><b>Vắng có phép, xin trong ngày</b> (đơn gửi ngay trong ngày nghỉ, được
+ *       Admin duyệt): −10đ</li>
  *   <li><b>Vắng không phép</b> (không chấm công, không có đơn được duyệt): −15đ</li>
  * </ul>
  * Điểm trừ nằm trong nhóm "Phát triển cá nhân" (trần 30đ/tuần) và không kéo
@@ -46,7 +49,7 @@ public class LeaveRequestService {
 
     private static final ZoneId VN_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
 
-    /** Vắng có phép — đơn đã được Admin duyệt */
+    /** Vắng có phép — đơn gửi ngay trong ngày nghỉ, đã được Admin duyệt (xin trước thì 0, xem {@link #xinTruoc}) */
     public static final int KPI_LEAVE_APPROVED = -10;
 
     /** Vắng không phép — không chấm công và không có đơn được duyệt */
@@ -54,6 +57,13 @@ public class LeaveRequestService {
 
     /** Đầu lý do của bản ghi vắng không phép do máy tự ghi (không phải đơn người gửi). */
     public static final String LY_DO_MAY_GHI = "Hệ thống tự ghi nhận";
+
+    /**
+     * Đuôi câu nhật ký của khoản −10đ theo luật mới (đơn gửi trong ngày nghỉ). Khoản trừ
+     * theo luật cũ ghi "— Admin đã duyệt đơn"; {@link #hoanDonCoPhepLuatCu} dựa vào câu này để
+     * chỉ hoàn khoản cũ, giữ khoản mới. Đổi câu thì đổi cả hai chỗ qua hằng này.
+     */
+    private static final String DUOI_TRU_TRONG_NGAY = " — đơn gửi trong ngày nghỉ";
 
     private final LeaveRequestRepository leaveRequestRepository;
     private final CheckinLogRepository checkinLogRepository;
@@ -263,7 +273,10 @@ public class LeaveRequestService {
         return t.toLowerCase().trim();
     }
 
-    /** Admin duyệt đơn → ghi nhận vắng có phép, trừ 10đ. */
+    /**
+     * Admin duyệt đơn → ghi nhận vắng có phép. Đơn xin trước ngày nghỉ không
+     * trừ điểm; đơn gửi ngay trong ngày nghỉ trừ 10đ; thứ Bảy không trừ.
+     */
     @Transactional
     public LeaveRequest approve(Long requestId, Long adminId, String note) {
         LeaveRequest req = leaveRequestRepository.findById(requestId)
@@ -292,14 +305,19 @@ public class LeaveRequestService {
         req.setReviewedAt(ZonedDateTime.now());
         req.setReviewNote(note);
 
-        // Thứ Bảy: vẫn ghi có phép trên bảng công nhưng không trừ điểm KPI
-        if (!Boolean.TRUE.equals(req.getKpiApplied()) && !laThuBay(req.getLeaveDate())) {
+        // Thứ Bảy, hoặc đơn xin trước ngày nghỉ (nghỉ có kế hoạch): vẫn ghi có
+        // phép trên bảng công nhưng không trừ điểm KPI
+        boolean truDiem = !laThuBay(req.getLeaveDate()) && !xinTruoc(req);
+        if (!Boolean.TRUE.equals(req.getKpiApplied()) && truDiem) {
             kpiCalculationService.updateKpiPoints(req.getUserId(), "attendance",
                     KPI_LEAVE_APPROVED, atNoon(req.getLeaveDate()),
-                    "Nghỉ có phép ngày " + ngay(req.getLeaveDate()) + " — Admin đã duyệt đơn");
+                    "Nghỉ có phép ngày " + ngay(req.getLeaveDate()) + DUOI_TRU_TRONG_NGAY + ", Admin đã duyệt");
             req.setKpiApplied(true);
-            log.info("[Leave] Duyệt đơn vắng userId={} ngày={} → {} KPI (vắng có phép)",
+            log.info("[Leave] Duyệt đơn vắng userId={} ngày={} → {} KPI (vắng có phép, xin trong ngày)",
                     req.getUserId(), req.getLeaveDate(), KPI_LEAVE_APPROVED);
+        } else if (xinTruoc(req)) {
+            log.info("[Leave] Duyệt đơn vắng userId={} ngày={} → 0 KPI (xin trước ngày nghỉ)",
+                    req.getUserId(), req.getLeaveDate());
         }
 
         return leaveRequestRepository.save(req);
@@ -466,8 +484,66 @@ public class LeaveRequestService {
         return dem;
     }
 
+    /**
+     * Hoàn điểm cho MỌI đơn nghỉ có phép đã bị trừ theo luật cũ (duyệt là −10đ, không
+     * xét ngày gửi) — người dùng chốt 16/11/2026: hoàn tất cả, không giới hạn ngày.
+     *
+     * <ul>
+     *   <li>Khoản −10 theo luật mới (đơn gửi trong ngày nghỉ, duyệt sau bản này) giữ
+     *       nguyên: nhận ra qua câu nhật ký có {@link #DUOI_TRU_TRONG_NGAY}.</li>
+     *   <li>Hoàn đúng số đã thực trừ theo nhật ký điểm (nhóm đang 0đ thì −10 có khi chỉ
+     *       vào −4). Đơn duyệt trước khi có nhật ký (21/08/2026) thì hoàn đủ 10.</li>
+     *   <li>Cờ {@code kpiApplied} về false sau khi hoàn, nên chạy lại không hoàn trùng,
+     *       và thu hồi duyệt sau đó cũng không hoàn thêm lần nữa.</li>
+     * </ul>
+     *
+     * @return số đơn được hoàn
+     */
+    @Transactional
+    public int hoanDonCoPhepLuatCu() {
+        int dem = 0;
+        int tongDiem = 0;
+        for (LeaveRequest r : leaveRequestRepository.findByStatusOrderByLeaveDateAsc("APPROVED")) {
+            if (!Boolean.TRUE.equals(r.getKpiApplied())) continue;
+            LocalDate d = r.getLeaveDate();
+            ZonedDateTime moc = atNoon(d);
+            String dauCau = "Nghỉ có phép ngày " + ngay(d);
+
+            // −1 = không có dòng nhật ký nào như vậy; có dòng thì là khoản trừ theo luật mới → giữ
+            int truLuatMoi = kpiCalculationService.diemThucDaTru(r.getUserId(), "attendance",
+                    dauCau + DUOI_TRU_TRONG_NGAY, moc, -1);
+            if (truLuatMoi >= 0) continue;
+
+            int daTru = kpiCalculationService.diemThucDaTru(r.getUserId(), "attendance",
+                    dauCau, moc, -KPI_LEAVE_APPROVED);
+            if (daTru > 0) {
+                kpiCalculationService.updateKpiPoints(r.getUserId(), "attendance", daTru, moc,
+                        "Hoàn điểm nghỉ có phép ngày " + ngay(d) + " — bỏ khoản trừ 10đ của đơn đã duyệt theo luật cũ");
+                tongDiem += daTru;
+            }
+            r.setKpiApplied(false);
+            leaveRequestRepository.save(r);
+            dem++;
+        }
+        log.info("[Leave] Hoàn điểm {} đơn nghỉ có phép theo luật cũ, tổng {} điểm.", dem, tongDiem);
+        return dem;
+    }
+
     private static boolean laThuBay(LocalDate d) {
         return d != null && d.getDayOfWeek() == DayOfWeek.SATURDAY;
+    }
+
+    /**
+     * Đơn gửi từ hôm trước ngày nghỉ trở về trước — nghỉ có kế hoạch, duyệt thì
+     * không trừ điểm. So theo NGÀY GIỜ VN: máy chủ Render chạy giờ UTC, 00:10 sáng
+     * ngày nghỉ ở VN là 17:10 hôm trước theo UTC, so thẳng thì đọc nhầm thành xin trước.
+     *
+     * <p>Đơn bị từ chối rồi gửi lại thì tính theo lần gửi lại (submit ghi đè
+     * {@code submittedAt}). Không có giờ gửi (dữ liệu rất cũ) thì coi như xin trong ngày.
+     */
+    public static boolean xinTruoc(LeaveRequest r) {
+        if (r == null || r.getSubmittedAt() == null || r.getLeaveDate() == null) return false;
+        return r.getSubmittedAt().withZoneSameInstant(VN_ZONE).toLocalDate().isBefore(r.getLeaveDate());
     }
 
     /** Ngày dạng dd/MM để ghép vào câu diễn giải điểm. */
@@ -488,7 +564,9 @@ public class LeaveRequestService {
         String reviewer = r.getReviewedBy() == null ? null
                 : userRepository.findById(r.getReviewedBy()).map(User::getFullName).orElse(null);
         int penalty = "UNEXCUSED".equals(r.getStatus()) ? KPI_LEAVE_UNEXCUSED : KPI_LEAVE_APPROVED;
-        return LeaveRequestResponseDTO.from(r, u != null ? u.getFullName() : null, dept, reviewer, penalty);
+        LeaveRequestResponseDTO dto = LeaveRequestResponseDTO.from(r, u != null ? u.getFullName() : null, dept, reviewer, penalty);
+        dto.setXinTruoc(xinTruoc(r));
+        return dto;
     }
 
     private void notifyAdmin() {

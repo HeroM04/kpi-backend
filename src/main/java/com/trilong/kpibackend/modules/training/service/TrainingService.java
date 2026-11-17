@@ -5,6 +5,8 @@ import com.trilong.kpibackend.modules.kpi.entity.KpiLedgerEntry;
 import com.trilong.kpibackend.modules.kpi.repository.KpiAutoGrantRepository;
 import com.trilong.kpibackend.modules.kpi.service.KpiCalculationService;
 import com.trilong.kpibackend.modules.training.dto.CreateTrainingSessionDTO;
+import com.trilong.kpibackend.core.utils.GioVN;
+import com.trilong.kpibackend.modules.training.dto.TrainingAttendeeResponseDTO;
 import com.trilong.kpibackend.modules.training.dto.TrainingRsvpResponseDTO;
 import com.trilong.kpibackend.modules.training.entity.TrainingAttendee;
 import com.trilong.kpibackend.modules.training.entity.TrainingRsvp;
@@ -22,9 +24,16 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -440,6 +449,77 @@ public class TrainingService {
 
     public List<TrainingAttendee> getMyTrainings(Long userId) {
         return trainingAttendeeRepository.findByUserId(userId);
+    }
+
+    /**
+     * Lịch sử đào tạo của một người, mỗi dòng kèm tên buổi học (trước đây app
+     * chỉ hiện chung chung "Buổi đào tạo" vì không có tên buổi).
+     *
+     * @param loc       lọc theo ngày giờ VN (một ngày hoặc cả tháng)
+     * @param kemGhiChu thêm cả các ghi chú vắng chưa được tính điểm danh (chờ
+     *                  duyệt / bị từ chối). App cũ không hỏi kèm nên không thấy
+     *                  các dòng này — tránh hiện nhầm thành "đã tham gia".
+     */
+    public List<TrainingAttendeeResponseDTO> lichSuDaoTaoCuaToi(
+            Long userId, Predicate<LocalDate> loc, boolean kemGhiChu) {
+        List<TrainingAttendee> diemDanh = trainingAttendeeRepository.findByUserId(userId);
+        List<TrainingRsvp> ghiChu = trainingRsvpRepository.findByUserId(userId);
+        Set<Long> idBuoi = new HashSet<>();
+        diemDanh.forEach(a -> idBuoi.add(a.getSessionId()));
+        ghiChu.forEach(r -> idBuoi.add(r.getSessionId()));
+        idBuoi.remove(null);
+        Map<Long, TrainingSession> buoi = idBuoi.isEmpty() ? Map.of()
+                : trainingSessionRepository.findAllById(idBuoi).stream()
+                        .collect(Collectors.toMap(TrainingSession::getId, s -> s));
+        return ghepLichSu(diemDanh, ghiChu, buoi, loc, kemGhiChu);
+    }
+
+    /**
+     * Ghép điểm danh + ghi chú vắng + thông tin buổi thành danh sách lịch sử,
+     * mới nhất đứng trên. Tách riêng (không đụng cơ sở dữ liệu) để kiểm thử.
+     *
+     * <p>Dòng điểm danh lọc theo ngày điểm danh như trước. Dòng chỉ có ghi chú
+     * (chưa được tính) thì lọc theo ngày của buổi học — đó là ngày nhân sự nhớ.
+     */
+    static List<TrainingAttendeeResponseDTO> ghepLichSu(
+            List<TrainingAttendee> diemDanh, List<TrainingRsvp> ghiChu, Map<Long, TrainingSession> buoi,
+            Predicate<LocalDate> loc, boolean kemGhiChu) {
+        Map<Long, TrainingRsvp> ghiChuTheoBuoi = new HashMap<>();
+        for (TrainingRsvp r : ghiChu) {
+            if ("DECLINE".equals(r.getChoice()) && r.getSessionId() != null) ghiChuTheoBuoi.put(r.getSessionId(), r);
+        }
+
+        List<TrainingAttendeeResponseDTO> ketQua = new ArrayList<>();
+        Set<Long> daTinh = new HashSet<>();
+        for (TrainingAttendee a : diemDanh) {
+            daTinh.add(a.getSessionId());
+            if (a.getAttendedAt() == null || !loc.test(GioVN.ngayCua(a.getAttendedAt()))) continue;
+            ketQua.add(TrainingAttendeeResponseDTO.from(a)
+                    .kemBuoi(buoi.get(a.getSessionId()))
+                    .kemGhiChu(ghiChuTheoBuoi.get(a.getSessionId())));
+        }
+
+        if (kemGhiChu) {
+            for (TrainingRsvp r : ghiChuTheoBuoi.values()) {
+                if (daTinh.contains(r.getSessionId())) continue;
+                TrainingSession s = buoi.get(r.getSessionId());
+                ZonedDateTime moc = s != null && s.getStartTime() != null ? s.getStartTime() : r.getCreatedAt();
+                if (moc == null || !loc.test(GioVN.ngayCua(moc))) continue;
+                var dong = TrainingAttendeeResponseDTO.builder()
+                        .userId(r.getUserId())
+                        .source("NOTE")
+                        .autoMarked(false)
+                        .sessionId(r.getSessionId())
+                        .build();
+                ketQua.add(dong.kemBuoi(s).kemGhiChu(r));
+            }
+        }
+
+        java.util.function.Function<TrainingAttendeeResponseDTO, ZonedDateTime> thoiDiem =
+                d -> d.getAttendedAt() != null ? d.getAttendedAt() : d.getSessionStartTime();
+        ketQua.sort(Comparator.comparing(thoiDiem,
+                Comparator.nullsLast(Comparator.<ZonedDateTime>reverseOrder())));
+        return ketQua;
     }
 
     /**

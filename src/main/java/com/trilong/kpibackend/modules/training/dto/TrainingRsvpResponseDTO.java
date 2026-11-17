@@ -18,6 +18,8 @@ public class TrainingRsvpResponseDTO {
     private Long sessionId;
     private String sessionTitle;
     private ZonedDateTime sessionStartTime;
+    /** SKILL = đào tạo kỹ năng · PROJECT = đào tạo dự án. */
+    private String trainingType;
     private Long userId;
     private String userFullName;
     private String departmentName;
@@ -46,6 +48,8 @@ public class TrainingRsvpResponseDTO {
                 .sessionId(r.getSessionId())
                 .sessionTitle(buoiHoc != null ? buoiHoc.getTitle() : null)
                 .sessionStartTime(buoiHoc != null ? buoiHoc.getStartTime() : null)
+                .trainingType(buoiHoc != null
+                        ? (buoiHoc.getTrainingType() != null ? buoiHoc.getTrainingType() : "SKILL") : null)
                 .userId(r.getUserId())
                 .userFullName(nguoiGui != null ? nguoiGui.getFullName() : null)
                 .departmentName(nguoiGui != null && nguoiGui.getDepartment() != null

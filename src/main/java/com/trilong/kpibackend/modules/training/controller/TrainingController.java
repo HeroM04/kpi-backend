@@ -249,22 +249,25 @@ public class TrainingController {
         return ResponseEntity.ok(Map.of("status", "SUCCESS", "data", dtos));
     }
 
-    @Operation(summary = "Lấy lịch sử đào tạo cá nhân", description = "Xem danh sách các buổi đào tạo đã tham gia.")
+    @Operation(summary = "Lấy lịch sử đào tạo cá nhân", description = """
+            Các buổi đào tạo đã được tính điểm danh, mỗi dòng kèm tên buổi (`sessionTitle`),
+            người hướng dẫn, loại buổi và ghi chú vắng nếu có (`note`, `noteStatus`).
+
+            `kemGhiChu=true`: thêm cả các buổi chỉ mới có ghi chú vắng, chưa được tính
+            (`source = NOTE`, `attendedAt` trống, lọc theo ngày của buổi học). App cũ
+            không gửi tham số này nên vẫn nhận đúng danh sách như trước.
+            """)
     @GetMapping("/my-trainings")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> getMyTrainings(
             @AuthenticationPrincipal UserPrincipal currentUser,
             @RequestParam(required = false) String date,
-            @RequestParam(required = false) String month) {
+            @RequestParam(required = false) String month,
+            @RequestParam(required = false, defaultValue = "false") boolean kemGhiChu) {
         // Ngày theo giờ VN — máy chủ chạy UTC, lấy thẳng toLocalDate() là lệch 7 tiếng
         var loc = com.trilong.kpibackend.core.utils.GioVN.locNgayHoacThang(date, month); // month=yyyy-MM: cả tháng
-        List<TrainingAttendee> attendees = trainingService.getMyTrainings(currentUser.getUserId()).stream()
-                .filter(a -> loc.test(com.trilong.kpibackend.core.utils.GioVN.ngayCua(a.getAttendedAt())))
-                .toList();
-        List<TrainingAttendeeResponseDTO> dtos = attendees.stream()
-                .map(TrainingAttendeeResponseDTO::from)
-                .toList();
-        return ResponseEntity.ok(Map.of("status", "SUCCESS", "data", dtos));
+        return ResponseEntity.ok(Map.of("status", "SUCCESS",
+                "data", trainingService.lichSuDaoTaoCuaToi(currentUser.getUserId(), loc, kemGhiChu)));
     }
 
     @Operation(summary = "Xem chi tiết buổi đào tạo", description = "Lấy thông tin và danh sách nhân viên đã điểm danh.")

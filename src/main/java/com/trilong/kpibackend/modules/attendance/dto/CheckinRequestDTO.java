@@ -48,4 +48,26 @@ public class CheckinRequestDTO {
 
     /** CHECK_IN hoặc CHECK_OUT — mặc định CHECK_IN nếu không truyền */
     private String actionType;
+
+    // ── Chấm công gửi chậm do mạng (app từ 18/11/2026; app cũ không gửi các ô này) ──
+
+    /**
+     * Lúc nhân sự bấm chấm công, theo đồng hồ điện thoại. Chỉ dùng khi không đo
+     * được {@link #daChoGiay} (máy khởi động lại giữa chừng) — đồng hồ điện thoại
+     * chỉnh tay được nên khi đó lượt này phải chờ duyệt.
+     */
+    private java.time.ZonedDateTime lucBam;
+
+    /**
+     * Số giây từ lúc bấm đến lúc gửi lượt này, đo bằng đồng hồ tính từ lúc bật
+     * máy (người dùng không chỉnh được, vẫn chạy khi màn hình tắt). Máy chủ lấy
+     * giờ của chính mình trừ đi số này ra giờ bấm — không phụ thuộc giờ điện thoại.
+     */
+    private Long daChoGiay;
+
+    /**
+     * Mã do app sinh cho một lần bấm. App gửi lại nhiều lần (mạng chập chờn, lần
+     * trước đã tới nơi nhưng mất phản hồi) thì máy chủ nhận ra và trả lại lượt cũ.
+     */
+    private String maLuot;
 }

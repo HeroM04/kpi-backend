@@ -102,9 +102,14 @@ public class CheckinController {
         try {
             CheckinLog saved = checkinService.submitCheckin(currentUser.getUserId(), request);
 
-            String message = "OFFICE".equals(saved.getCheckinType())
-                    ? "✅ Chấm công tại văn phòng thành công! KPI đã được cộng."
-                    : "⏳ Đã gửi yêu cầu chấm công ngoại tuyến. Chờ Admin/Trưởng phòng duyệt.";
+            String message;
+            if ("OFFICE".equals(saved.getCheckinType()) && "PENDING".equals(saved.getStatus())) {
+                message = "⏳ Đã nhận chấm công, nhưng gửi chậm quá 30 phút do mạng nên chờ Admin/Trưởng phòng duyệt.";
+            } else if ("OFFICE".equals(saved.getCheckinType())) {
+                message = "✅ Chấm công tại văn phòng thành công! KPI đã được cộng.";
+            } else {
+                message = "⏳ Đã gửi yêu cầu chấm công ngoại tuyến. Chờ Admin/Trưởng phòng duyệt.";
+            }
 
             return ResponseEntity.ok(Map.of(
                     "status", "SUCCESS",

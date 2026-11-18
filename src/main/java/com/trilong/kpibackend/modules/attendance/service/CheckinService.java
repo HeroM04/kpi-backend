@@ -169,8 +169,8 @@ public class CheckinService {
      *
      * <p>Hàm này tự quyết định luồng dựa trên khoảng cách GPS:
      * <ul>
-     *   <li>≤ 50m → gọi {@link #processOfficeCheckin(Long, CheckinRequestDTO, double)}</li>
-     *   <li>> 50m → gọi {@link #processFieldCheckin(Long, CheckinRequestDTO, double)}</li>
+     *   <li>≤ 50m → gọi {@link #processOfficeCheckin(Long, CheckinRequestDTO, double, GioBam)}</li>
+     *   <li>> 50m → gọi {@link #processFieldCheckin(Long, CheckinRequestDTO, double, GioBam)}</li>
      * </ul>
      *
      * @return {@link CheckinLog} đã lưu vào DB
@@ -185,7 +185,27 @@ public class CheckinService {
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy nhân viên"));
 
         String actionType = resolveActionType(request.getActionType());
-        CheckinLog vuaGui = timLuotVuaGui(userId, actionType);
+
+        // Lần bấm này app đã gửi tới nơi rồi (mất phản hồi nên gửi lại) → trả lượt cũ
+        String maLuot = request.getMaLuot() == null || request.getMaLuot().isBlank()
+                ? null : request.getMaLuot().trim();
+        if (maLuot != null) {
+            var daNhan = checkinLogRepository.findFirstByUserIdAndMaLuot(userId, maLuot);
+            if (daNhan.isPresent()) {
+                log.info("[Checkin] Lần bấm {} của userId={} đã nhận ở lượt #{} — trả lại lượt cũ", maLuot, userId, daNhan.get().getId());
+                return daNhan.get();
+            }
+        }
+
+        ZonedDateTime bayGio = ZonedDateTime.now(VN_ZONE);
+        GioBam gioBam = xetGioBam(bayGio, request.getLucBam(), request.getDaChoGiay());
+        if (!gioBam.gio().toLocalDate().equals(bayGio.toLocalDate())) {
+            throw new IllegalArgumentException("Lượt chấm công lúc " + gio(gioBam.gio()) + " ngày "
+                    + gioBam.gio().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM"))
+                    + " không gửi được trong ngày nên không nhận tự động. Báo Admin thêm chấm công tay cho ngày đó.");
+        }
+
+        CheckinLog vuaGui = timLuotVuaGui(userId, actionType, gioBam.gio());
         if (vuaGui != null) {
             // Trả lại đúng lượt đã có (app vẫn báo thành công), không tạo lượt trùng
             log.info("[Checkin] Bỏ lượt gửi lặp {} của userId={} — trùng lượt #{}", actionType, userId, vuaGui.getId());
@@ -215,11 +235,75 @@ public class CheckinService {
                 userId, String.format("%.1f", distance), request.getLatitude(), request.getLongitude(),
                 office.source(), office.lat(), office.lng(), String.format("%.0f", office.radiusMeters()));
 
-        if (distance <= office.radiusMeters()) {
-            return processOfficeCheckin(userId, request, distance);
-        } else {
-            return processFieldCheckin(userId, request, distance);
+        if (gioBam.guiChamGiay() != null) {
+            log.info("[Checkin] userId={} gửi chậm {} giây do mạng — tính theo giờ bấm {}{}",
+                    userId, gioBam.guiChamGiay(), gio(gioBam.gio()), gioBam.canDuyet() ? " (cần duyệt)" : "");
         }
+
+        CheckinLog luu = distance <= office.radiusMeters()
+                ? processOfficeCheckin(userId, request, distance, gioBam)
+                : processFieldCheckin(userId, request, distance, gioBam);
+        return luu;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // GỬI CHẬM DO MẠNG — tính theo giờ BẤM, không theo giờ máy chủ nhận được
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /** Gửi chậm tới mức này (30 phút) vẫn tự nhận như bình thường; quá thì chờ duyệt. */
+    static final int GUI_CHAM_TU_NHAN_GIAY = 30 * 60;
+
+    /** Dưới mức này coi như gửi ngay (thời gian tải ảnh lên) — không gắn nhãn gửi chậm. */
+    static final int GUI_CHAM_GHI_NHAN_GIAY = 60;
+
+    /**
+     * Giờ chấm công của một lượt và có phải chờ duyệt vì gửi chậm không.
+     *
+     * @param guiChamGiay null khi gửi ngay (dưới 1 phút) hoặc app cũ
+     * @param lyDo        câu ghi vào lượt chấm công khi phải chờ duyệt
+     */
+    record GioBam(ZonedDateTime gio, Integer guiChamGiay, boolean canDuyet, String lyDo) {}
+
+    /**
+     * Sát giờ chấm công mà mạng kẹt: bấm lúc 08:44, 08:47 mới gửi được. Tính theo
+     * lúc nhận thì thành đi muộn dù người ta có mặt đúng giờ.
+     *
+     * <ul>
+     *   <li>App gửi kèm {@code daChoGiay} — đo bằng đồng hồ tính từ lúc bật máy,
+     *       không chỉnh được — thì giờ bấm = giờ MÁY CHỦ trừ đi số đó; đồng hồ
+     *       điện thoại sai hay bị chỉnh cũng không ảnh hưởng. Chậm tới 30 phút tự
+     *       nhận như thường, quá 30 phút thì chờ duyệt.</li>
+     *   <li>Không đo được (máy khởi động lại giữa chừng) mà {@code lucBam} cách giờ
+     *       máy chủ hơn 2 phút → lấy giờ điện thoại, nhưng phải chờ duyệt.</li>
+     *   <li>App cũ / gửi ngay → giờ máy chủ như trước.</li>
+     * </ul>
+     */
+    static GioBam xetGioBam(ZonedDateTime bayGio, ZonedDateTime lucBam, Long daChoGiay) {
+        ZonedDateTime nay = bayGio.withZoneSameInstant(VN_ZONE);
+        // Không giới hạn trên: lượt bấm từ hôm trước ra giờ của hôm trước, và nơi
+        // gọi từ chối vì khác ngày — không được rơi về "giờ máy chủ" thành lượt hôm nay
+        if (daChoGiay != null && daChoGiay >= 0) {
+            ZonedDateTime gio = nay.minusSeconds(daChoGiay);
+            if (daChoGiay < GUI_CHAM_GHI_NHAN_GIAY) return new GioBam(gio, null, false, null);
+            boolean qua = daChoGiay > GUI_CHAM_TU_NHAN_GIAY;
+            return new GioBam(gio, (int) Math.min(daChoGiay, Integer.MAX_VALUE), qua,
+                    qua ? "Gửi chậm " + phut(daChoGiay) + " do mạng (bấm lúc " + gio(gio)
+                            + ") — quá 30 phút nên cần duyệt" : null);
+        }
+        if (lucBam != null) {
+            long tre = java.time.Duration.between(lucBam, nay).getSeconds();
+            if (tre > 120) {
+                ZonedDateTime gio = lucBam.withZoneSameInstant(VN_ZONE);
+                return new GioBam(gio, (int) Math.min(tre, Integer.MAX_VALUE), true,
+                        "Gửi chậm " + phut(tre) + " do mạng (bấm lúc " + gio(gio)
+                                + " theo đồng hồ điện thoại, máy đã khởi động lại) — cần duyệt");
+            }
+        }
+        return new GioBam(nay, null, false, null);
+    }
+
+    private static String phut(long giay) {
+        return Math.max(1, Math.round(giay / 60.0)) + " phút";
     }
 
     /**
@@ -841,8 +925,9 @@ public class CheckinService {
      * Luồng 1: GPS ≤ 50m — tự động APPROVED, cộng KPI ngay.
      */
     @Transactional
-    private CheckinLog processOfficeCheckin(Long userId, CheckinRequestDTO req, double distance) {
-        ZonedDateTime now = ZonedDateTime.now(VN_ZONE);
+    private CheckinLog processOfficeCheckin(Long userId, CheckinRequestDTO req, double distance, GioBam gioBam) {
+        // Giờ BẤM chấm công (gửi chậm do mạng thì sớm hơn lúc máy chủ nhận)
+        ZonedDateTime now = gioBam.gio();
 
         CheckinLog checkinLog = new CheckinLog();
         checkinLog.setUserId(userId);
@@ -856,6 +941,20 @@ public class CheckinService {
         checkinLog.setAddress(req.getAddress());
         checkinLog.setPhotoUrl(req.getPhotoUrl());
         checkinLog.setNote(req.getNote());
+        checkinLog.setGuiChamGiay(gioBam.guiChamGiay());
+        checkinLog.setMaLuot(req.getMaLuot());
+
+        if (gioBam.canDuyet()) {
+            // Gửi chậm quá 30 phút (hoặc không đo được): chờ duyệt, chưa cộng điểm.
+            // Duyệt xong đi đường updateStatus — tính điểm theo đúng giờ bấm.
+            checkinLog.setStatus("PENDING");
+            if (checkinLog.getNote() == null || checkinLog.getNote().isBlank()) checkinLog.setNote(gioBam.lyDo());
+            CheckinLog cho = checkinLogRepository.save(checkinLog);
+            log.info("[Checkin]  OFFICE {} userId={} bấm lúc {} → PENDING (gửi chậm {} giây)",
+                    finalActionType, userId, now.toLocalTime(), gioBam.guiChamGiay());
+            notifyAdmin("CHECKIN_PENDING_NEW");
+            return cho;
+        }
         checkinLog.setStatus("APPROVED");
 
         CheckinLog saved = checkinLogRepository.save(checkinLog);
@@ -889,7 +988,7 @@ public class CheckinService {
      * Luồng 2: GPS > 50m — PENDING, cần Admin duyệt.
      */
     @Transactional
-    private CheckinLog processFieldCheckin(Long userId, CheckinRequestDTO req, double distance) {
+    private CheckinLog processFieldCheckin(Long userId, CheckinRequestDTO req, double distance, GioBam gioBam) {
         // Bắt buộc phải có lý do khi ngoại tuyến
         if (req.getNote() == null || req.getNote().trim().isEmpty()) {
             throw new IllegalArgumentException(
@@ -898,7 +997,8 @@ public class CheckinService {
             );
         }
 
-        ZonedDateTime now = ZonedDateTime.now(VN_ZONE);
+        // Giờ BẤM chấm công; lượt ngoài văn phòng vốn đã chờ duyệt
+        ZonedDateTime now = gioBam.gio();
 
         CheckinLog checkinLog = new CheckinLog();
         checkinLog.setUserId(userId);
@@ -911,6 +1011,8 @@ public class CheckinService {
         checkinLog.setAddress(req.getAddress());
         checkinLog.setPhotoUrl(req.getPhotoUrl());
         checkinLog.setNote(req.getNote());
+        checkinLog.setGuiChamGiay(gioBam.guiChamGiay());
+        checkinLog.setMaLuot(req.getMaLuot());
         checkinLog.setStatus("PENDING");
 
         CheckinLog saved = checkinLogRepository.save(checkinLog);
@@ -928,10 +1030,13 @@ public class CheckinService {
      * Lượt cùng loại (vào / ra) của người này vừa gửi trong {@link #CUA_SO_GUI_LAP},
      * chưa bị từ chối. Bỏ qua lượt Admin thêm tay — giờ của nó do Admin chọn.
      */
-    private CheckinLog timLuotVuaGui(Long userId, String actionType) {
+    private CheckinLog timLuotVuaGui(Long userId, String actionType, ZonedDateTime gioBam) {
+        // Từ trước giờ bấm 2 phút tới bây giờ: lượt gửi chậm cũng bắt được lượt
+        // trùng đã lưu theo giờ bấm của nó
         ZonedDateTime bayGio = ZonedDateTime.now(VN_ZONE);
+        ZonedDateTime tu = (gioBam != null && gioBam.isBefore(bayGio) ? gioBam : bayGio).minus(CUA_SO_GUI_LAP);
         return checkinLogRepository
-                .findByUserIdAndCheckinTimeBetween(userId, bayGio.minus(CUA_SO_GUI_LAP), bayGio.plusSeconds(1))
+                .findByUserIdAndCheckinTimeBetween(userId, tu, bayGio.plusSeconds(1))
                 .stream()
                 .filter(c -> actionType.equals(c.getActionType())
                         && !"REJECTED".equals(c.getStatus())
@@ -1105,7 +1210,7 @@ public class CheckinService {
     }
 
     /** Giờ Việt Nam dạng HH:mm để ghép vào câu diễn giải điểm. */
-    private String gio(ZonedDateTime t) {
+    private static String gio(ZonedDateTime t) {
         return t.withZoneSameInstant(VN_ZONE).toLocalTime()
                 .format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"));
     }

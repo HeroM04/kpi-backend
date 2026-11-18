@@ -99,6 +99,18 @@ public class CheckinLog {
     @Column(name = "chi_tinh_cong_ly_do", length = 500)
     private String chiTinhCongLyDo;
 
+    /**
+     * Lượt gửi chậm do mạng: số giây từ lúc bấm tới lúc máy chủ nhận. Giờ chấm
+     * công ({@link #checkinTime}) là giờ BẤM, không phải giờ nhận. Null = gửi
+     * ngay (dưới 1 phút) hoặc app cũ.
+     */
+    @Column(name = "gui_cham_giay")
+    private Integer guiChamGiay;
+
+    /** Mã app sinh cho một lần bấm — chặn lượt trùng khi app gửi lại. */
+    @Column(name = "ma_luot", length = 64)
+    private String maLuot;
+
     @PrePersist
     public void prePersist() {
         if (this.checkinTime == null) {

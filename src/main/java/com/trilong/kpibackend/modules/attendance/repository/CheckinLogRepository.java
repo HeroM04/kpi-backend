@@ -28,6 +28,9 @@ public interface CheckinLogRepository extends JpaRepository<CheckinLog, Long>,
     // Tìm log chấm công của 1 user trong khoảng thời gian
     List<CheckinLog> findByUserIdAndCheckinTimeBetween(Long userId, ZonedDateTime start, ZonedDateTime end);
 
+    /** Lượt đã nhận của một lần bấm (app gửi lại khi mạng chập chờn). */
+    java.util.Optional<CheckinLog> findFirstByUserIdAndMaLuot(Long userId, String maLuot);
+
     // Tìm toàn bộ log chấm công trong khoảng thời gian
     List<CheckinLog> findByCheckinTimeBetween(ZonedDateTime start, ZonedDateTime end);
 

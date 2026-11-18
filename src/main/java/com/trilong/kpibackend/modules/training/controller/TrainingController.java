@@ -29,6 +29,7 @@ import java.util.Map;
 public class TrainingController {
 
     private final TrainingService trainingService;
+    private final com.trilong.kpibackend.modules.training.scheduler.NoTrainingWeekScheduler noTrainingWeekScheduler;
 
     // ══════════════════════════════════════════════════════════════════════
     //  ĐÀO TẠO DỰ ÁN — đăng ký tham gia / xin vắng
@@ -163,6 +164,34 @@ public class TrainingController {
             int n = trainingService.chamDiemDaoTaoTuanChoTatCa(moc);
             return ResponseEntity.ok(Map.of("status", "SUCCESS",
                     "message", "Đã chấm lại điểm đào tạo tuần cho " + n + " nhân sự."));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("status", "ERROR", "message", e.getMessage()));
+        }
+    }
+
+    @Operation(
+            summary = "Nhập bù buổi đào tạo đã diễn ra (Admin)",
+            description = """
+                    Lớp học diễn ra mà chưa lên lịch trên app: nhập buổi học kèm danh sách người
+                    đã dự trong MỘT lần. Lưu xong, máy chủ chấm lại điểm đào tạo của tuần đó cho
+                    toàn công ty (chạy nền vài phút): người đã dự giữ nguyên điểm, người vắng bị
+                    thu hồi đúng số điểm đào tạo tuần đã cộng. Không gửi thông báo "buổi mới".
+                    """
+    )
+    @PostMapping("/nhap-bu")
+    @PreAuthorize("hasAuthority('training:manage') or hasRole('ADMIN')")
+    public ResponseEntity<?> nhapBuBuoiDaDienRa(@Valid @RequestBody NhapBuBuoiDaoTaoDTO dto) {
+        try {
+            var kq = trainingService.nhapBuBuoiDaDienRa(dto);
+            TrainingSession s = kq.buoi();
+            noTrainingWeekScheduler.chamLaiTuanNen(s.getStartTime(), "nhập bù buổi #" + s.getId());
+            return ResponseEntity.ok(Map.of(
+                    "status", "SUCCESS",
+                    "message", "Đã nhập bù buổi \"" + s.getTitle() + "\" với " + kq.soNguoiDu()
+                            + " người đã dự. Máy chủ đang chấm lại điểm đào tạo tuần đó cho cả công ty"
+                            + " (vài phút) — ai không có trong danh sách sẽ bị thu hồi đúng số điểm đã cộng.",
+                    "data", TrainingSessionResponseDTO.from(s, trainingService.getAttendeeCount(s.getId()))
+            ));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("status", "ERROR", "message", e.getMessage()));
         }

@@ -95,6 +95,18 @@ public class NoTrainingWeekScheduler {
     }
 
     /**
+     * Chấm lại điểm đào tạo tuần cho toàn công ty, chạy nền.
+     *
+     * <p>Dùng sau khi Admin nhập bù một buổi đã diễn ra: tuần đã khép, ~150 người
+     * cần thu hồi có ghi sổ + thông báo, mất vài phút — chạy trong yêu cầu web thì
+     * quá thời gian chờ của Cloudflare (100 giây) dù máy chủ vẫn làm xong.
+     */
+    @org.springframework.scheduling.annotation.Async
+    public void chamLaiTuanNen(ZonedDateTime trongTuan, String lyDo) {
+        chamLai(lyDo, trongTuan);
+    }
+
+    /**
      * Chấm lại điểm đào tạo cho tuần chứa một ngày bất kỳ.
      * Giữ lại để gọi tay khi cần chấm bù một tuần cũ.
      */

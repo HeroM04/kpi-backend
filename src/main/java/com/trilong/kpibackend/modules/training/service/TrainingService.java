@@ -401,8 +401,84 @@ public class TrainingService {
         chamDiemDaoTaoTuanChoTatCa(daLuu.getStartTime() != null
                 ? daLuu.getStartTime() : ZonedDateTime.now(VN_ZONE));
 
-        baoCoBuoiDaoTaoMoi(daLuu);
+        // Buổi đã học xong (Admin lên lịch bù) thì không báo "Có buổi đào tạo mới"
+        // cho cả công ty — không ai còn đi học được nữa.
+        if (!daKetThuc(daLuu, ZonedDateTime.now(VN_ZONE))) baoCoBuoiDaoTaoMoi(daLuu);
         return daLuu;
+    }
+
+    static boolean daKetThuc(TrainingSession s, ZonedDateTime bayGio) {
+        return s.getEndTime() != null && !s.getEndTime().isAfter(bayGio);
+    }
+
+    public record KetQuaNhapBu(TrainingSession buoi, int soNguoiDu) {}
+
+    /**
+     * Nhập bù một buổi đào tạo đã diễn ra ngoài app, cùng danh sách người đã dự.
+     *
+     * <p>Chỉ lưu buổi học và điểm danh (giờ điểm danh = giờ bắt đầu buổi). KHÔNG
+     * chấm điểm ở đây: nơi gọi chấm lại cả tuần SAU khi lưu xong, chạy nền —
+     * chấm ~150 người có thu hồi mất vài phút, không bắt Admin chờ. Người đã dự
+     * thì điểm tuần không đổi; người vắng bị thu hồi đúng số đã cộng
+     * ({@link #mucThuHoiThucTe}). Không gửi thông báo "Có buổi đào tạo mới".
+     */
+    @Transactional
+    public KetQuaNhapBu nhapBuBuoiDaDienRa(com.trilong.kpibackend.modules.training.dto.NhapBuBuoiDaoTaoDTO dto) {
+        ZonedDateTime batDau = dto.getStartTime();
+        if (batDau == null) {
+            throw new IllegalArgumentException("Buổi nhập bù phải có ngày giờ bắt đầu.");
+        }
+        int phut = (dto.getDurationMinutes() == null || dto.getDurationMinutes() <= 0) ? 120 : dto.getDurationMinutes();
+        if (batDau.plusMinutes(phut).isAfter(ZonedDateTime.now(VN_ZONE))) {
+            throw new IllegalArgumentException("Buổi này chưa kết thúc — dùng \"Thêm buổi đào tạo\" bình thường để nhân sự quét mã QR.");
+        }
+        if (trainingSessionRepository.findByRoomCode(dto.getRoomCode()).isPresent()) {
+            throw new IllegalArgumentException("Mã phòng đào tạo '" + dto.getRoomCode() + "' đã tồn tại!");
+        }
+
+        List<Long> ids = nguoiDuKhongTrung(dto.getNguoiDaDu());
+        Map<Long, User> nguoi = new HashMap<>();
+        for (User u : userRepository.findAllById(ids)) nguoi.put(u.getId(), u);
+        List<Long> thieu = ids.stream().filter(id -> !nguoi.containsKey(id)).toList();
+        if (!thieu.isEmpty()) {
+            throw new IllegalArgumentException("Không tìm thấy nhân sự mã " + thieu + ".");
+        }
+
+        int soCho = Math.max(dto.getMaxSlots() != null && dto.getMaxSlots() > 0 ? dto.getMaxSlots() : 20, ids.size());
+        TrainingSession daLuu = trainingSessionRepository.save(TrainingSession.builder()
+                .title(dto.getTitle())
+                .description(dto.getDescription())
+                .presenter(dto.getPresenter())
+                .roomCode(dto.getRoomCode())
+                .startTime(batDau)
+                .location(dto.getLocation())
+                .maxSlots(soCho)
+                .durationMinutes(phut)
+                .trainingType("PROJECT".equalsIgnoreCase(dto.getTrainingType()) ? "PROJECT" : "SKILL")
+                .skillGroup(dto.getSkillGroup() != null && !dto.getSkillGroup().isBlank()
+                        ? dto.getSkillGroup().trim() : null)
+                .status("COMPLETED")
+                .photoUrl(dto.getPhotoUrl())
+                .videoUrl(dto.getVideoUrl())
+                .build());
+
+        for (Long id : ids) {
+            trainingAttendeeRepository.save(TrainingAttendee.builder()
+                    .sessionId(daLuu.getId())
+                    .userId(id)
+                    .session(daLuu)
+                    .user(nguoi.get(id))
+                    .attendedAt(batDau)
+                    .build());
+        }
+        tuDiemDanhNguoiDaHocNhom(daLuu);
+        return new KetQuaNhapBu(daLuu, ids.size());
+    }
+
+    /** Bỏ mã trống và mã trùng, giữ thứ tự Admin chọn. */
+    static List<Long> nguoiDuKhongTrung(List<Long> ds) {
+        if (ds == null) return List.of();
+        return ds.stream().filter(java.util.Objects::nonNull).distinct().toList();
     }
 
     /** Đẩy thông báo cho toàn bộ nhân sự khi có buổi đào tạo mới. */

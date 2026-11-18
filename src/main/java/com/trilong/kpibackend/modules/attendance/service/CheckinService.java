@@ -659,7 +659,10 @@ public class CheckinService {
             if (com.trilong.kpibackend.core.utils.GioVN.laThuBay(checkinLog.getCheckinTime())) kpiPoints = 0;
             if (kpiPoints != 0) {
                 String dauCau = ChamCongTayService.LOAI.equals(checkinLog.getCheckinType())
-                        ? "Admin thêm chấm công tay — " : "Admin duyệt chấm công ngoại tuyến — ";
+                        ? "Admin thêm chấm công tay — "
+                        : "OFFICE".equals(checkinLog.getCheckinType()) && checkinLog.getGuiChamGiay() != null
+                        ? "Admin duyệt chấm công gửi chậm do mạng — "
+                        : "Admin duyệt chấm công ngoại tuyến — ";
                 kpiCalculationService.updateKpiPoints(
                         checkinLog.getUserId(), "attendance", kpiPoints, checkinLog.getCheckinTime(),
                         dauCau + dienGiaiLuot(checkinLog, checkinLog.getCheckinTime(), mocDungGio)

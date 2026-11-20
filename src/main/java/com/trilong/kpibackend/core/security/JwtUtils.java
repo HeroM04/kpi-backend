@@ -65,6 +65,22 @@ public class JwtUtils {
     }
 
     /**
+     * Như {@link #extractAllClaims} nhưng nhận cả token ĐÃ HẾT HẠN — miễn chữ ký
+     * đúng (JJWT kiểm chữ ký trước rồi mới báo hết hạn, nên claims trong
+     * ExpiredJwtException là thật). Token giả / sửa / ký sai khóa vẫn ném lỗi.
+     *
+     * <p>Chỉ dùng cho kênh WebSocket: app nối lại kênh bằng token lúc mở kênh
+     * (đã quá 1 giờ), không phải lúc nào cũng có token mới — xem BaoVeWebSocket.
+     */
+    public Claims docClaimsKeCaHetHan(String token) {
+        try {
+            return extractAllClaims(token);
+        } catch (io.jsonwebtoken.ExpiredJwtException e) {
+            return e.getClaims();
+        }
+    }
+
+    /**
      * Lấy userId (subject) từ token
      */
     public Long extractUserId(String token) {

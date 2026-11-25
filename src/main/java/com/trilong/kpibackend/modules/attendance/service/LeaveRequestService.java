@@ -308,7 +308,9 @@ public class LeaveRequestService {
 
         // Thứ Bảy, hoặc đơn xin trước ngày nghỉ (nghỉ có kế hoạch): vẫn ghi có
         // phép trên bảng công nhưng không trừ điểm KPI
-        boolean truDiem = !laThuBay(req.getLeaveDate()) && !xinTruoc(req);
+        // Ngày nghỉ lễ của công ty: xin vắng ngày lễ là thừa, duyệt cũng không trừ
+        boolean truDiem = !laThuBay(req.getLeaveDate()) && !xinTruoc(req)
+                && !ngayNghiLeRepository.existsByNgay(req.getLeaveDate());
         if (!Boolean.TRUE.equals(req.getKpiApplied()) && truDiem) {
             kpiCalculationService.updateKpiPoints(req.getUserId(), "attendance",
                     KPI_LEAVE_APPROVED, atNoon(req.getLeaveDate()),
@@ -355,7 +357,9 @@ public class LeaveRequestService {
         req.setReviewNote(note);
 
         LocalDate ngayNghi = req.getLeaveDate();
+        // Ngày nghỉ lễ thì từ chối đơn cũng không thành vắng không phép
         if (ngayNghi.isBefore(LocalDate.now(VN_ZONE)) && ngayNghi.getDayOfWeek() != DayOfWeek.SUNDAY
+                && !ngayNghiLeRepository.existsByNgay(ngayNghi)
                 && !coChamCongTrongNgay(req.getUserId(), ngayNghi)) {
             req.setStatus("UNEXCUSED");
             // Thứ Bảy: vẫn ghi không phép trên bảng công nhưng không trừ điểm KPI

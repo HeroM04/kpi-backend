@@ -125,6 +125,26 @@ class LeaveRequestServiceTest {
         }
 
         @Test
+        @DisplayName("Đơn của ngày nghỉ lễ (gửi trong ngày) → duyệt không trừ; từ chối không thành vắng không phép")
+        void donNgayNghiLe() {
+            LocalDate le = homQuaKhongPhaiCN();
+            when(ngayLe.existsByNgay(le)).thenReturn(true);
+            when(checkinRepo.findByUserIdAndCheckinTimeBetween(anyLong(), any(), any())).thenReturn(List.of());
+
+            LeaveRequest duyet = don(31, le, "PENDING", false);
+            duyet.setSubmittedAt(luc(le, 7, 30));
+            service.approve(31L, 99L, null);
+            assertThat(duyet.getStatus()).isEqualTo("APPROVED");
+            assertThat(duyet.getKpiApplied()).isFalse();
+
+            LeaveRequest tuChoi = don(32, le, "PENDING", false);
+            tuChoi.setSubmittedAt(luc(le, 7, 30));
+            service.reject(32L, 99L, "Ngày lễ không cần xin");
+            assertThat(tuChoi.getStatus()).isEqualTo("REJECTED");
+            verifyNoInteractions(kpi);
+        }
+
+        @Test
         @DisplayName("Đơn xin từ hôm trước → duyệt là có phép nhưng không trừ điểm")
         void duyetDonXinTruoc() {
             LocalDate ngay = ngayThuongSau(2);

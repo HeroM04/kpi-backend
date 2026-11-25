@@ -9,6 +9,7 @@ import com.trilong.kpibackend.modules.battle.repository.FieldBattleRepository;
 import com.trilong.kpibackend.modules.kpi.service.KpiCalculationService;
 import com.trilong.kpibackend.modules.user.entity.User;
 import com.trilong.kpibackend.modules.user.repository.UserRepository;
+import com.trilong.kpibackend.modules.zalo.ZaloNhomService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -29,6 +30,7 @@ public class FieldBattleService {
     private final FieldBattleRepository fieldBattleRepository;
     private final UserRepository userRepository;
     private final KpiCalculationService kpiCalculationService;
+    private final ZaloNhomService zaloNhom;
 
     /** Trực tiếp gặp khách — +10đ mỗi báo cáo được duyệt. */
     private static final int KPI_POINTS_MEETING = 10;
@@ -148,6 +150,7 @@ public class FieldBattleService {
                 battle.getSubmittedAt(),
                 "Admin duyệt thực chiến — " + tenLoai(battle) + " " + battle.getCustomerName());
 
+        zaloNhom.thucChienDaDuyet(savedBattle); // đăng nhóm Zalo sau khi lưu xong
         return savedBattle;
     }
 
@@ -225,6 +228,7 @@ public class FieldBattleService {
                 battle.setApprovedAt(null);
             }
         }
+        if (seDuyet && !dangDuyet) zaloNhom.thucChienDaDuyet(battle); // duyệt qua nút Sửa
         if (!"REJECTED".equals(moi)) battle.setRejectReason(null);
         else if (lyDo != null) battle.setRejectReason(lyDo);
 

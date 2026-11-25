@@ -36,6 +36,7 @@ class OneOnOneFlowTest {
     @Mock KpiLedgerEntryRepository ledger;
     @Mock PushNotificationService push;
     @Mock SimpMessagingTemplate ws;
+    @Mock com.trilong.kpibackend.modules.zalo.ZaloNhomService zaloNhom;
     @InjectMocks OneOnOneTrainingService service;
 
     private final ZonedDateTime nop = ZonedDateTime.of(2026, 9, 23, 9, 0, 22, 0, ZoneId.of("Asia/Ho_Chi_Minh"));

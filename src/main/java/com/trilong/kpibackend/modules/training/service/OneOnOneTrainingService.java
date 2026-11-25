@@ -37,6 +37,7 @@ public class OneOnOneTrainingService {
     private final KpiLedgerEntryRepository kpiLedgerEntryRepository;
     private final PushNotificationService pushNotificationService;
     private final SimpMessagingTemplate messagingTemplate;
+    private final com.trilong.kpibackend.modules.zalo.ZaloNhomService zaloNhom;
 
     /** Điểm nhóm Thực chiến cho một buổi đào tạo 1-1 được duyệt. */
     private static final int KPI_POINTS_ONE_ON_ONE = 5;
@@ -101,6 +102,7 @@ public class OneOnOneTrainingService {
         // Admin mới duyệt thì điểm vẫn phải thuộc tuần cũ.
         kpiCalculationService.updateKpiPoints(t.getUserId(), "meeting", KPI_POINTS_ONE_ON_ONE,
                 lucNop(t), "Admin duyệt đào tạo 1-1 — " + tomTat(t.getContent()));
+        zaloNhom.daoTaoDaDuyet(t); // đăng nhóm Zalo sau khi lưu xong
         return mapToDto(t);
     }
 

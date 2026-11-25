@@ -49,6 +49,7 @@ class LeaveRequestServiceTest {
     @Mock CheckinLogRepository checkinRepo;
     @Mock UserRepository userRepository;
     @Mock KpiCalculationService kpi;
+    @Mock com.trilong.kpibackend.modules.attendance.repository.NgayNghiLeRepository ngayLe;
     @InjectMocks LeaveRequestService service;
 
     @BeforeEach
@@ -404,6 +405,19 @@ class LeaveRequestServiceTest {
         @DisplayName("Chủ nhật → không chốt ai")
         void chuNhat() {
             assertThat(service.closeDay(LocalDate.of(2026, 9, 27))).isZero();
+            verifyNoInteractions(kpi);
+        }
+
+        @Test
+        @DisplayName("Ngày nghỉ lễ (24/11/2026 nghỉ toàn quốc) → không chốt ai, không trừ điểm")
+        void ngayNghiLe() {
+            LocalDate le = LocalDate.of(2026, 11, 24);
+            when(ngayLe.existsByNgay(le)).thenReturn(true);
+            when(userRepository.findAll()).thenReturn(List.of(nguoi(1, "SALE", "ACTIVE")));
+            when(checkinRepo.findByCheckinTimeBetween(any(), any())).thenReturn(List.of());
+
+            assertThat(service.closeDay(le)).isZero();
+            verify(leaveRepo, never()).save(any());
             verifyNoInteractions(kpi);
         }
 

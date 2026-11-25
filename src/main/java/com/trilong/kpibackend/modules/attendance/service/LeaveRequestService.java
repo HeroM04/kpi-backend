@@ -69,6 +69,7 @@ public class LeaveRequestService {
     private final CheckinLogRepository checkinLogRepository;
     private final UserRepository userRepository;
     private final KpiCalculationService kpiCalculationService;
+    private final com.trilong.kpibackend.modules.attendance.repository.NgayNghiLeRepository ngayNghiLeRepository;
 
     @Autowired(required = false)
     private SimpMessagingTemplate messagingTemplate;
@@ -393,6 +394,12 @@ public class LeaveRequestService {
     public int closeDay(LocalDate date) {
         if (date.getDayOfWeek() == DayOfWeek.SUNDAY) {
             log.info("[Leave] {} là Chủ nhật — bỏ qua chốt vắng mặt.", date);
+            return 0;
+        }
+        // Ngày nghỉ lễ của công ty (Admin khai trên web): không ai vắng không phép.
+        // Trước đây 24/11/2026 nghỉ toàn quốc mà cả công ty bị trừ −15đ.
+        if (ngayNghiLeRepository.existsByNgay(date)) {
+            log.info("[Leave] {} là ngày nghỉ lễ — bỏ qua chốt vắng mặt.", date);
             return 0;
         }
         // Thứ Bảy vẫn chốt vắng để bảng công ghi không phép, chỉ không trừ điểm KPI

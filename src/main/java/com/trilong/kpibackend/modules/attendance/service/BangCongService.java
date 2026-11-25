@@ -37,6 +37,7 @@ import java.util.Map;
  *   P  vắng có phép (đơn được duyệt)
  *   X  vắng không phép (hệ thống chốt đêm)
  *   -  Chủ nhật
+ *   L  ngày nghỉ lễ của công ty (không đi làm) — xem NgayNghiLeService
  *   (rỗng) chưa tới ngày, hoặc trước ngày vào làm, hoặc chưa có dữ liệu
  *
  * Ưu tiên khi một ngày có nhiều thứ: đơn nghỉ có phép > chờ duyệt > có chấm
@@ -54,6 +55,7 @@ public class BangCongService {
     private final LeaveRequestRepository leaveRequestRepository;
     private final UserRepository userRepository;
     private final CheckinService checkinService;
+    private final com.trilong.kpibackend.modules.attendance.repository.NgayNghiLeRepository ngayNghiLeRepository;
 
     public Map<String, Object> bangCongThang(String thang, Long departmentId) {
         YearMonth ym = YearMonth.parse(thang);
@@ -88,11 +90,17 @@ public class BangCongService {
             vang.computeIfAbsent(r.getUserId(), k -> new HashMap<>()).put(r.getLeaveDate(), r.getStatus());
         }
 
-        // Cột ngày: số + thứ, để lưới tô Chủ nhật và hôm nay
+        // Ngày nghỉ lễ trong tháng → ô ghi "L", cột tô như Chủ nhật
+        Map<LocalDate, String> ngayLe = new HashMap<>();
+        for (var le : ngayNghiLeRepository.findByNgayBetween(dau, cuoi)) ngayLe.put(le.getNgay(), le.getTen());
+
+        // Cột ngày: số + thứ, để lưới tô Chủ nhật, ngày lễ và hôm nay
         List<Map<String, Object>> cotNgay = new ArrayList<>();
         for (LocalDate d = dau; !d.isAfter(cuoi); d = d.plusDays(1)) {
-            cotNgay.add(Map.of("ngay", d.getDayOfMonth(), "thu", d.getDayOfWeek().getValue(),
+            Map<String, Object> cot = new HashMap<>(Map.of("ngay", d.getDayOfMonth(), "thu", d.getDayOfWeek().getValue(),
                     "cn", d.getDayOfWeek() == DayOfWeek.SUNDAY, "homNay", d.equals(homNay)));
+            if (ngayLe.containsKey(d)) cot.put("le", ngayLe.get(d) != null ? ngayLe.get(d) : "Ngày nghỉ lễ");
+            cotNgay.add(cot);
         }
 
         List<Map<String, Object>> hang = new ArrayList<>();
@@ -130,6 +138,8 @@ public class BangCongService {
 
                 String trangThaiVang = vangCua.get(d);
                 if (d.getDayOfWeek() == DayOfWeek.SUNDAY) ky = "-";
+                // Ngày lễ: nghỉ là đúng, không tính vắng; ai vẫn đi làm thì hiện công như thường
+                else if (ngayLe.containsKey(d) && !coDuyet && !coCho) ky = "L";
                 else if ("APPROVED".equals(trangThaiVang)) { ky = "P"; coPhep++; }
                 else if (coCho) { ky = "?"; choDuyet++; }
                 else if (coDuyet && vaoDauTien != null) {

@@ -34,7 +34,6 @@ class FieldBattleServiceTest {
     @Mock FieldBattleRepository fieldBattleRepository;
     @Mock UserRepository userRepository;
     @Mock KpiCalculationService kpi;
-    @Mock com.trilong.kpibackend.modules.zalo.ZaloNhomService zaloNhom;
     @InjectMocks FieldBattleService service;
 
     private final User nhanSu = User.builder().id(7L).fullName("Sale A").build();

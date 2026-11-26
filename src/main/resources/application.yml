@@ -41,13 +41,6 @@ aws:
   rekognition:
     similarity-threshold: 60.0
 
-# Zalo Bot (bot.zapps.me) — tự đăng Thực chiến / Đào tạo 1-1 ĐÃ DUYỆT lên nhóm Zalo.
-# Để trống = không đăng. chat_id nhóm lấy ở GET /api/v1/zalo/nhom-gan-day.
-zalo:
-  bot-token: ${ZALO_BOT_TOKEN:}
-  nhom-thuc-chien: ${ZALO_NHOM_THUC_CHIEN:}
-  nhom-dao-tao: ${ZALO_NHOM_DAO_TAO:}
-
 # Google Gemini — dùng cho chức năng AI chấm điểm bài đăng.
 # KHÔNG ghi key trực tiếp vào đây. Đặt qua biến môi trường GEMINI_API_KEY
 # (local: file .env / biến hệ thống; production: Environment trên Render).
